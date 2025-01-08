@@ -6,12 +6,14 @@ import {loadFile} from "./util"
 import { screenToWorld } from './camera-utils';
 import Grid from './Grid';
 import DefaultTileSelector from "./DefaultTileSelector"
+import DefaultUnit from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './MapMesh';
+import Unit from './Units';
 
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
@@ -32,6 +34,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _controller: MapViewController = new DefaultMapViewController()
     private _selectedTile: TileData
 
+    private _units: Group = new Group() 
     private _onTileSelected: (tile: TileData) => void
     private _onLoaded: () => void
     private _onAnimate: (dtS: number) => void = (dtS) => {}
@@ -143,6 +146,10 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._scene.add(this._tileSelector)
         this._tileSelector.visible = true        
 
+
+        this._scene.add(this._units)
+
+
         // start rendering loop
         this.animate(0)        
         this._controller.init(this, canvas)
@@ -171,6 +178,30 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     updateTiles(tiles: TileData[]) {
         this._mapMesh.updateTiles(tiles)
+    }
+
+
+    addUnitToTile(tile: TileData) {
+        // Create a unit (a sphere in this case)
+        const unitGeometry = new THREE.BoxBufferGeometry(1, 1, 1); // Adjust size to fit the hex tile
+        const unitMaterial = new THREE.MeshStandardMaterial({ color: 'blue' });
+        const unit = new THREE.Mesh(unitGeometry, unitMaterial);
+
+
+        // const unit = new Unit()
+
+        // const geometry = new RingGeometry(5.85, 1, 6, 2)
+        // const material = new MeshBasicMaterial({
+        //     color: 0xff0000
+        // })
+        // const unit = new Mesh(geometry, material)
+
+        const worldPos = qrToWorld(tile.q, tile.r)
+        unit.position.set(worldPos.x, worldPos.y, 0.8);
+        this._units.add(unit);
+        console.log(this)
+        console.log(this._units)
+
     }
 
     getTile(q: number, r: number) {

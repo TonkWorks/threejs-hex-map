@@ -189,10 +189,11 @@ export default class MapMesh extends Group implements TileDataSource {
     private land: Mesh
     private mountains: Mesh
     private trees: Forests
+    private units: Mesh
 
     boundingSphere: Sphere
 
-    readonly loaded: Promise<void>
+    readonly loaded: Promise<any>
 
     private _showGrid = true
 
@@ -254,9 +255,11 @@ export default class MapMesh extends Group implements TileDataSource {
             this.createLandMesh(this.tiles.filter(t => !t.isMountain)),            
             this.createMountainMesh(this.tiles.filter(t => t.isMountain)),
             this.createTrees()
-        ]).catch((err) => {
-            console.error("Could not create MapMesh", err)
-        })
+        ]).then(() => {
+            // All promises resolved; return nothing to make this a Promise<void>
+        }).catch((err) => {
+            console.error("Could not create MapMesh", err);
+        });
     }
 
     /**
@@ -311,6 +314,7 @@ export default class MapMesh extends Group implements TileDataSource {
 
         landStyleAttr.needsUpdate = true
         mountainsStyleAttr.needsUpdate = true        
+
     }
 
     private updateFogStyle(attr: InstancedBufferAttribute, index: number, fog: boolean, clouds: boolean) {

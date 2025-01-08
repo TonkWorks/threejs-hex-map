@@ -124,7 +124,6 @@ class MapThunk extends Object3D implements TileDataSource {
         if (!this.mesh) {
             this.load()
         }
-
         this.mesh.updateTiles(tiles)        
     }
 

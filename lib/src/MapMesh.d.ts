@@ -1,4 +1,3 @@
-/// <reference types="three" />
 import { TileData, TextureAtlas, TileDataSource } from './interfaces';
 import { Texture, Group, Sphere, Color } from "three";
 import Grid from "./Grid";
@@ -131,8 +130,9 @@ export default class MapMesh extends Group implements TileDataSource {
     private land;
     private mountains;
     private trees;
+    private units;
     boundingSphere: Sphere;
-    readonly loaded: Promise<void>;
+    readonly loaded: Promise<any>;
     private _showGrid;
     showGrid: boolean;
     /**
@@ -153,8 +153,8 @@ export default class MapMesh extends Group implements TileDataSource {
      * @param tiles changed tiles
      */
     updateFogAndClouds(tiles: TileData[]): void;
-    private updateFogStyle(attr, index, fog, clouds);
-    private createTrees();
-    private createLandMesh(tiles);
-    private createMountainMesh(tiles);
+    private updateFogStyle;
+    private createTrees;
+    private createLandMesh;
+    private createMountainMesh;
 }

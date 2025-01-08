@@ -1,4 +1,3 @@
-/// <reference types="three" />
 import { Vector3, Camera } from 'three';
 import MapMesh from "./MapMesh";
 import { TileData, TileDataSource, QR } from './interfaces';
@@ -21,6 +20,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _tileSelector;
     private _controller;
     private _selectedTile;
+    private _units;
     private _onTileSelected;
     private _onLoaded;
     private _onAnimate;
@@ -44,6 +44,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     constructor(canvasElementQuery?: string);
     load(tiles: Grid<TileData>, options: MapMeshOptions): void;
     updateTiles(tiles: TileData[]): void;
+    addUnitToTile(tile: TileData): void;
     getTile(q: number, r: number): TileData;
     private animate;
     onWindowResize(event: Event): void;

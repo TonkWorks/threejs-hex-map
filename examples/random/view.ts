@@ -98,11 +98,35 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onTileSelected = (tile: TileData) => {
         // uncover tiles around selection
-        setFogAround(mapView, tile, 2, false, false)
+        setFogAround(mapView, tile,  2, false, false)
+        createUnit(mapView, tile)
     }
 
     return mapView
 }
+
+/**
+ * @param fog whether there should be fog on this tile making it appear darker
+ * @param clouds whether there should be "clouds", i.e. an opaque texture, hiding the tile
+ * @param range number of tiles around the given tile that should be updated
+ * @param tile tile around which fog should be updated
+ */
+function createUnit(mapView: MapView, tile: TileData) {
+    console.log("create unit?")
+    mapView.addUnitToTile(tile);
+}
+
+// function moveUnitToHex(q, r) {
+//     const targetHex = hexMap.getHex(q, r); // Get the hex at q, r
+//     if (targetHex) {
+//         unit.position.set(targetHex.x, targetHex.y, targetHex.z + 0.5); // Adjust Z for height
+//     } else {
+//         console.warn("Target hex not found!");
+//     }
+// }
+
+// // Example move to a hex at q = 2, r = -1
+// moveUnitToHex(2, -1);
 
 /**
  * @param fog whether there should be fog on this tile making it appear darker
