@@ -1,7 +1,7 @@
-import { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Vector2, Object3D } from 'three';
+import { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D } from 'three';
 import {generateRandomMap} from "./map-generator"
 import MapMesh from "./MapMesh"
-import { TextureAtlas, TileData, TileDataSource, QR } from './interfaces';
+import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater } from './interfaces';
 import {loadFile} from "./util"
 import { screenToWorld } from './camera-utils';
 import Grid from './Grid';
@@ -13,7 +13,9 @@ import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './MapMesh';
-import Unit from './Units';
+import Unit  from './Units';
+// import { Group as TweenGroup, Tween } from "tweenjs"
+
 
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
@@ -34,7 +36,9 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _controller: MapViewController = new DefaultMapViewController()
     private _selectedTile: TileData
 
-    private _units: Group = new Group() 
+    // private _tween_group: TweenGroup = new TweenGroup()
+    private _units_models: Group = new Group() 
+    private _units: Map<string, Unit> = new Map();
     private _onTileSelected: (tile: TileData) => void
     private _onLoaded: () => void
     private _onAnimate: (dtS: number) => void = (dtS) => {}
@@ -120,7 +124,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     constructor(canvasElementQuery: string = "canvas") {
         const canvas = this._canvas = document.querySelector(canvasElementQuery) as HTMLCanvasElement
-        const camera = this._camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 10000)
+        const camera = this._camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 2, 10000)
         const scene = this._scene = new Scene()
         const renderer = this._renderer = new WebGLRenderer({
             canvas: canvas,
@@ -142,13 +146,12 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.focus(0, 0)
 
         // tile selector
-        this._tileSelector.position.setZ(0.1)
+        this._tileSelector.position.setZ(0.01)
         this._scene.add(this._tileSelector)
         this._tileSelector.visible = true        
 
-
-        this._scene.add(this._units)
-
+        // units
+        this._scene.add(this._units_models)
 
         // start rendering loop
         this.animate(0)        
@@ -182,26 +185,45 @@ export default class MapView implements MapViewControls, TileDataSource {
 
 
     addUnitToTile(tile: TileData) {
-        // Create a unit (a sphere in this case)
-        const unitGeometry = new THREE.BoxBufferGeometry(1, 1, 1); // Adjust size to fit the hex tile
-        const unitMaterial = new THREE.MeshStandardMaterial({ color: 'blue' });
-        const unit = new THREE.Mesh(unitGeometry, unitMaterial);
+        // Bad Cases
+        if (tile.unit !== undefined) {
+            console.log("cannot add unit; already occupied");
+            return;
+        }
+        if (isMountain(tile.height)) {
+            console.log("cannot place on mountain");
+            return;
+        }
+        if (isWater(tile.height)) {
+            console.log("cannot place in water");
+            return;
+        }
 
+        const unitModel = new Mesh(
+            new BoxBufferGeometry(1, 1, 1),
+            new MeshBasicMaterial({ 
+                color: 0xf00000,
+            })
+        );
+        const worldPos = qrToWorld(tile.q, tile.r);
+        unitModel.position.set(worldPos.x, worldPos.y, 0.2);
 
-        // const unit = new Unit()
+        const owner = 1
 
-        // const geometry = new RingGeometry(5.85, 1, 6, 2)
-        // const material = new MeshBasicMaterial({
-        //     color: 0xff0000
-        // })
-        // const unit = new Mesh(geometry, material)
+        const warrior: Unit = {
+            id: `${owner}_${unitModel.uuid}`,
+            type: "warrior",
+            health: 100,
+            movement: 2,
+            owner: "player-1",
+            model: unitModel,
+        };
+        this._units.set(warrior.id, warrior);
+        tile.unit = warrior
 
-        const worldPos = qrToWorld(tile.q, tile.r)
-        unit.position.set(worldPos.x, worldPos.y, 0.8);
-        this._units.add(unit);
-        console.log(this)
         console.log(this._units)
 
+        this._units_models.add(unitModel);        
     }
 
     getTile(q: number, r: number) {
@@ -221,8 +243,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         this._onAnimate(dtS)
-
+    
         this._renderer.render(this._scene, camera);
+        // this._tween_group.update();
         requestAnimationFrame(this.animate);
         this._lastTimestamp = timestamp
     }
@@ -275,10 +298,31 @@ export default class MapView implements MapViewControls, TileDataSource {
     selectTile(tile: TileData) {        
         const worldPos = qrToWorld(tile.q, tile.r)
         this._tileSelector.position.set(worldPos.x, worldPos.y, 0.1)
+        this._selectedTile = tile
         if (this._onTileSelected) {
             this._onTileSelected(tile)
         }
     }
+
+    actionTile(tile: TileData) {        
+        // check if a unit is selected
+        if (this.selectedTile.unit !== undefined) {
+            console.log("yo")
+            const unit = this.selectedTile.unit
+
+            const worldPos = qrToWorld(tile.q, tile.r);
+            // const t = new Tween(unit.model)
+            // this._tween_group.add(t)
+            unit.model.position.set(worldPos.x, worldPos.y, 0.2);
+            tile.unit = unit
+
+            this.selectedTile.unit = undefined 
+
+            // make this the new selcted tile
+            this.selectTile(tile)
+        }
+    }
+
 
     pickTile(worldPos: Vector3): TileData | null {
         var x = worldPos.x

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "tsc && webpack",
-    "dev": "concurrently \"tsc --watch\" \"npm start\"",
+    "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
     "test": "echo \"No tests yet.\" && exit 0"
   },
   "repository": {
@@ -26,8 +26,10 @@
   "license": "MIT",
   "homepage": "https://github.com/Bunkerbewohner/threejs-hex-map",
   "dependencies": {
+    "@tweenjs/tween.js": "^25.0.0",
     "concurrently": "^9.1.2",
-    "three": "^0.84.0"
+    "three": "^0.84.0",
+    "uuid": "^11.0.4"
   },
   "devDependencies": {
     "@types/three": "0.0.24",

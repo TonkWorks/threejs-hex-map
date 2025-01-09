@@ -48,6 +48,9 @@ export function initInput(mapView: MapView) {
 
     const scrollHandler = onMouseWheelHandler(mapView)
     mapView.canvas.addEventListener("wheel", scrollHandler, false)
+
+    const rightClickHandler = onRightClickHandler(mapView);
+    mapView.canvas.addEventListener("contextmenu", rightClickHandler, false);
 }
 
 function onMouseWheelHandler(mapView: MapView) {
@@ -59,4 +62,10 @@ function onMouseWheelHandler(mapView: MapView) {
 
         mapView.setZoom(zoom)
     }
+}
+
+function onRightClickHandler(mapView: MapView) {
+    return (event: MouseEvent) => {
+        event.preventDefault(); // Prevent the default browser context menu
+    };
 }

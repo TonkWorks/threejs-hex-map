@@ -17,6 +17,11 @@ export interface MapViewControls {
     selectTile(tile: TileData): void;
 
     /**
+     * Move the tile selector to the given tile's position
+    */
+    actionTile(tile: TileData): void;
+
+    /**
      * Return the camera used by the map view.
      */
     getCamera(): Camera;

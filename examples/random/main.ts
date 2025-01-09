@@ -3,8 +3,8 @@ import { initInput } from "input"
 import { paramInt, paramFloat } from './util';
 import { qrRange, range } from '../../src/util';
 
-const mapSize = paramInt("size", 20)
-const zoom = paramFloat("zoom", 25)
+const mapSize = paramInt("size", 40)
+const zoom = paramFloat("zoom", 40)
 
 async function init() {
     const mapView = await initView(mapSize, zoom)

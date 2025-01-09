@@ -1,14 +1,16 @@
 {
     "compilerOptions": {
-        "module": "amd",
-        "target": "es5",
+        "module": "AMD",
+        "target": "es6",
         "noImplicitAny": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
         "sourceMap": true,
         "outDir": "lib/",
         "declaration": true,
         "lib": [
-            "es2015.promise", "es5", "dom"
-        ]
+            "es2015.promise", "es6", "dom",
+        ],
     },
     "exclude": [
         "node_modules",

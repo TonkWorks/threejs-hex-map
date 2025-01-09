@@ -1,4 +1,10 @@
-import { Object3D } from "three";
-export default class Unit extends Object3D {
-    constructor();
+import { Mesh } from "three";
+interface Unit {
+    id: string;
+    type: string;
+    health: number;
+    movement: number;
+    owner: string;
+    model?: Mesh;
 }
+export default Unit;

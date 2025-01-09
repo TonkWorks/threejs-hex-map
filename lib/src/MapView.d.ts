@@ -20,6 +20,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _tileSelector;
     private _controller;
     private _selectedTile;
+    private _units_models;
     private _units;
     private _onTileSelected;
     private _onLoaded;
@@ -59,5 +60,6 @@ export default class MapView implements MapViewControls, TileDataSource {
     focus(q: number, r: number): void;
     focusWorldPos(v: Vector3): void;
     selectTile(tile: TileData): void;
+    actionTile(tile: TileData): void;
     pickTile(worldPos: Vector3): TileData | null;
 }
