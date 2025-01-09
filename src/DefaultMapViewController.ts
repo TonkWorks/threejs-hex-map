@@ -158,7 +158,7 @@ export default class Controller implements MapViewController {
                 if (e.button === 2) {
                     // Handle right-click logic here
                     this.controls.actionTile(tile)
-                    console.log(`Right-click detected on tile ${tile.q}:${tile.r}`);
+                    // console.log(`Right-click detected on tile ${tile.q}:${tile.r}`);
                 }
 
             }        

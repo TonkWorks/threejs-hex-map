@@ -2,11 +2,16 @@ import {Object3D, Texture, Points, PointsMaterial, BufferAttribute, BufferGeomet
     ShaderMaterial, RawShaderMaterial} from "three"
 
 
-interface Unit {
+      
+export interface Unit {
     id: string; // Unique identifier
     type: string; // Unit type (e.g., "warrior", "archer", "settler")
     health: number; // Health points
     movement: number; // Remaining movement points
+    movementOrders?: {
+        q: number;
+        r: number;
+    };
     owner: string; // Player or faction ID
     model?: Mesh; // Reference to the 3D model in the scene
 }

@@ -2201,7 +2201,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                        if (e.button === 2) {
 	                            // Handle right-click logic here
 	                            this.controls.actionTile(tile);
-	                            console.log(`Right-click detected on tile ${tile.q}:${tile.r}`);
+	                            // console.log(`Right-click detected on tile ${tile.q}:${tile.r}`);
 	                        }
 	                    }
 	                }

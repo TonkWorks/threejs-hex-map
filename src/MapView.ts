@@ -13,9 +13,7 @@ import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './MapMesh';
-import Unit  from './Units';
-// import { Group as TweenGroup, Tween } from "tweenjs"
-
+import { Unit }  from './Units';
 
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
@@ -36,7 +34,6 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _controller: MapViewController = new DefaultMapViewController()
     private _selectedTile: TileData
 
-    // private _tween_group: TweenGroup = new TweenGroup()
     private _units_models: Group = new Group() 
     private _units: Map<string, Unit> = new Map();
     private _onTileSelected: (tile: TileData) => void
@@ -106,6 +103,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     set onLoaded(callback: ()=>void) {
+        console.log("yo")
         this._onLoaded = callback
     }
 
@@ -166,7 +164,8 @@ export default class MapView implements MapViewControls, TileDataSource {
             const mesh = this._mapMesh = new MapMesh(tiles.toArray(), options) //, tiles)
             this._scene.add(this._mapMesh)
             mesh.loaded.then(() => {
-                if (this._onLoaded) this._onLoaded()
+                console.log("AW")
+                this._onLoaded()
             })
             console.info("using single MapMesh for " + (tiles.width * tiles.height) + " tiles")
         } else {
@@ -245,7 +244,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._onAnimate(dtS)
     
         this._renderer.render(this._scene, camera);
-        // this._tween_group.update();
         requestAnimationFrame(this.animate);
         this._lastTimestamp = timestamp
     }
@@ -305,22 +303,38 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     actionTile(tile: TileData) {        
-        // check if a unit is selected
-        if (this.selectedTile.unit !== undefined) {
-            console.log("yo")
-            const unit = this.selectedTile.unit
+        // Bad Cases
 
-            const worldPos = qrToWorld(tile.q, tile.r);
-            // const t = new Tween(unit.model)
-            // this._tween_group.add(t)
-            unit.model.position.set(worldPos.x, worldPos.y, 0.2);
-            tile.unit = unit
-
-            this.selectedTile.unit = undefined 
-
-            // make this the new selcted tile
-            this.selectTile(tile)
+        if (tile.unit !== undefined) {
+            console.log("cannot add unit; already occupied");
+            return;
         }
+
+
+        const selectedUnit = this.selectedTile.unit
+        if (selectedUnit === undefined) {
+            console.log("no selected unit");
+            return;
+        }
+        if (isMountain(tile.height)) {
+            console.log("cannot place on mountain");
+            return;
+        }
+        if (isWater(tile.height)) {
+            console.log("cannot place in water");
+            return;
+        }
+
+        selectedUnit.movementOrders = { q:tile.q, r:tile.r }
+        const worldPos = qrToWorld(tile.q, tile.r);
+        animateToPosition(selectedUnit.model, worldPos.x, worldPos.y, 0.2, easeOutQuad, () => {
+            console.log("Reached hex (2, 2). Movement sequence complete.");
+          });
+        tile.unit = selectedUnit
+        this.selectedTile.unit = undefined 
+
+        // make this the new selcted tile
+        this.selectTile(tile)
     }
 
 
@@ -340,4 +354,42 @@ export default class MapView implements MapViewControls, TileDataSource {
         // just look up the coords in our grid
         return this._tileGrid.get(roundedAxialPos.q, roundedAxialPos.r)        
     }
+}
+
+// Tween Function
+function animateToPosition(
+    object: THREE.Object3D,
+    targetX: number,
+    targetY: number,
+    duration: number,
+    easing: (t: number) => number,
+    onComplete?: () => void // Callback function to run after movement
+  ) {
+    const startX = object.position.x;
+    const startY = object.position.y;
+    const startTime = performance.now();
+  
+    function animate() {
+      const currentTime = performance.now();
+      const elapsed = (currentTime - startTime) / 1000; // Convert to seconds
+      const t = Math.min(elapsed / duration, 1); // Normalize time to range [0, 1]
+      const easedT = easing(t);
+  
+      // Interpolate x and y positions
+      object.position.x = startX + (targetX - startX) * easedT;
+      object.position.y = startY + (targetY - startY) * easedT;
+  
+      // Continue the animation if not complete
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        if (onComplete) {
+            onComplete();
+        }
+      }
+    }
+    animate();
+}
+function easeOutQuad(t: number): number {
+    return t * (2 - t);
 }

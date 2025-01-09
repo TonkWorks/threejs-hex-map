@@ -92,8 +92,9 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
+        setFogAround(mapView, mapView.selectedTile, 100, true, true)
         setFogAround(mapView, mapView.selectedTile, 10, true, false)
-        setFogAround(mapView, mapView.selectedTile, 5, false, false)
+        setFogAround(mapView, mapView.selectedTile, 2, false, false)
     }
 
     mapView.onTileSelected = (tile: TileData) => {
@@ -112,7 +113,6 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
  * @param tile tile around which fog should be updated
  */
 function createUnit(mapView: MapView, tile: TileData) {
-    console.log("create unit?")
     mapView.addUnitToTile(tile);
 }
 
