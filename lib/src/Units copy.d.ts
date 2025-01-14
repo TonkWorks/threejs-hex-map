@@ -5,7 +5,6 @@ export interface Unit {
     type: string;
     health: number;
     health_max: number;
-    name: string;
     image: string;
     movement_max: number;
     attack: number;

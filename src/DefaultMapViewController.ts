@@ -72,7 +72,7 @@ export default class Controller implements MapViewController {
         }, false)
         canvas.addEventListener("touchend", (e) => this.onMouseUp(e.touches[0] || e.changedTouches[0] as any), false)
         
-        setInterval(() => this.showDebugInfo(), 200)
+        // setInterval(() => this.showDebugInfo(), 200)
 
         this.controls.setOnAnimateCallback(this.onAnimate)
     }
@@ -153,7 +153,6 @@ export default class Controller implements MapViewController {
                 if (e.button === 0) {
                     this.controls.selectTile(tile)
                     this.selectedQR = tile
-                    this.showDebugInfo()
                 }
                 if (e.button === 2) {
                     // Handle right-click logic here
@@ -171,21 +170,6 @@ export default class Controller implements MapViewController {
     onMouseOut = (e: MouseEvent) => {
         this.mouseDownPos = null // end drag
         this.controls.setScrollDir(0, 0)
-    }
-
-    showDebugInfo() {
-        if (this.debugText == null) {
-            return;
-        }
-
-        const tileQR = this.selectedQR
-        const tileXYZ = qrToWorld(tileQR.q, tileQR.r) // world space
-        const camPos = this.controls.getViewCenter() //  this.controls.getCamera().position        
-        const tile = this.controls.pickTile(tileXYZ)
-
-        this.debugText.innerHTML = `Selected Tile: QR(${tileQR.q}, ${tileQR.r}), 
-            XY(${tileXYZ.x.toFixed(2)}, ${tileXYZ.y.toFixed(2)})
-            &nbsp; &bull; &nbsp; Camera Looks At (Center): XYZ(${camPos.x.toFixed(2)}, ${camPos.y.toFixed(2)}, ${camPos.z.toFixed(2)})`
     }
 
     panCameraTo(qr: QR, durationMs: number) {

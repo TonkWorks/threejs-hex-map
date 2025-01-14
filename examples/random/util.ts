@@ -8,7 +8,11 @@ export const KEY_CODES = {
     SHIFT: 16,
     Q: 81,
     E: 69,
-    G: 71
+    G: 71,
+    A: 65,
+    S: 83,
+    Z: 90,
+    X: 88,
 }
 
 export interface KeyActions {

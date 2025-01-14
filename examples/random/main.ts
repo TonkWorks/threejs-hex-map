@@ -5,7 +5,6 @@ import { qrRange, range } from '../../src/util';
 
 const mapSize = paramInt("size", 40)
 const zoom = paramFloat("zoom", 40)
-
 async function init() {
     const mapView = await initView(mapSize, zoom)
     initInput(mapView)

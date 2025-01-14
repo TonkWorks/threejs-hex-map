@@ -42,7 +42,7 @@ async function generateMap(mapSize: number) {
         const terrain = terrainAt(q, r, height)
         const trees = isMountain(height) || isWater(height) || terrain == "desert" ? undefined :
             (varying(true, false, false) ? treeAt(q, r, terrain) : undefined)
-        return {q, r, height, terrain, treeIndex: trees, rivers: null, fog: false, clouds: false }
+        return {q, r, height, terrain, treeIndex: trees, rivers: null, locked: false, fog: false, clouds: false }
     })
 }
 
@@ -88,32 +88,34 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
     mapView.load(map, options)
 
     const controller = mapView.controller as DefaultMapViewController
-    controller.debugOutput = document.getElementById("debug") as HTMLElement
+    mapView.resourcePanel = document.getElementById("resource-info") as HTMLElement
+    mapView.unitInfoPanel = document.getElementById("unit-info") as HTMLElement
+    mapView.gameStatePanel = document.getElementById("game-info") as HTMLElement
+    mapView.menuPanel = document.getElementById("menu") as HTMLElement
+    mapView.actionPanel = document.getElementById("action") as HTMLElement
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
         setFogAround(mapView, mapView.selectedTile, 100, true, true)
         setFogAround(mapView, mapView.selectedTile, 10, true, false)
         setFogAround(mapView, mapView.selectedTile, 2, false, false)
+        mapView.initGameSetup();
+        mapView.updateResourcePanel();
+        mapView.updateGameStatePanel();
+        mapView.setActionPanel("End Turn")
+        document.getElementById("action").addEventListener('click', (event) => {
+            event.stopPropagation();
+            mapView.actionPanelClicked();
+        });
     }
 
     mapView.onTileSelected = (tile: TileData) => {
         // uncover tiles around selection
         setFogAround(mapView, tile,  2, false, false)
-        createUnit(mapView, tile)
+        // update unit window
     }
 
     return mapView
-}
-
-/**
- * @param fog whether there should be fog on this tile making it appear darker
- * @param clouds whether there should be "clouds", i.e. an opaque texture, hiding the tile
- * @param range number of tiles around the given tile that should be updated
- * @param tile tile around which fog should be updated
- */
-function createUnit(mapView: MapView, tile: TileData) {
-    mapView.addUnitToTile(tile);
 }
 
 // function moveUnitToHex(q, r) {

@@ -9,7 +9,7 @@
         "outDir": "lib/",
         "declaration": true,
         "lib": [
-            "es2015.promise", "es6", "dom",
+            "es2017", "es6", "dom",
         ],
     },
     "exclude": [

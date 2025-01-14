@@ -20,6 +20,5 @@ export default class Controller implements MapViewController {
     onMouseMove: (e: MouseEvent) => void;
     onMouseUp: (e: MouseEvent) => void;
     onMouseOut: (e: MouseEvent) => void;
-    showDebugInfo(): void;
     panCameraTo(qr: QR, durationMs: number): void;
 }

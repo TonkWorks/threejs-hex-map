@@ -1,5 +1,5 @@
 import { Texture } from 'three';
-import Unit from './Units';
+import { Unit, Improvement } from './Units';
 /**
  * Height between -1.0 and 1.0:
  * [-1.00,-0.25) == deep water
@@ -17,7 +17,9 @@ export interface TileData {
     fog: boolean;
     clouds: boolean;
     terrain: string;
+    locked: boolean | false;
     unit?: Unit | null;
+    improvement?: Improvement | null;
     rivers?: {riverIndex: number; riverTileIndex: number}[];
     treeIndex?: number; // index of tree texture, optional
 }

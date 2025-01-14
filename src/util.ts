@@ -1,4 +1,4 @@
-import {XHRLoader, TextureLoader, Texture} from "three"
+import {XHRLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial} from "three"
 import {QR} from "./interfaces"
 
 const fileLoader = new XHRLoader()
@@ -86,6 +86,14 @@ export function range(minOrMax: number, max?: number): number[] {
     }
 }
 
+export function getRandomInt(min: number, max: number) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+
+
 export function flatMap<T, R>(items: T[], map: (item: T, index?: number) => R[]): R[] {
     return [].concat.apply([], items.map(map))
 }
@@ -114,4 +122,14 @@ export function isInteger(value: number): boolean {
 
 export function flatten<T>(items: T[][]): T[] {
     return [].concat.apply([], items)
+}
+
+/// three.js and animations
+export function updateMaterialColor(material: THREE.Material, color: string) {
+    if (material instanceof MeshBasicMaterial ||
+        material instanceof MeshStandardMaterial) {
+        material.color.set(color);
+    } else {
+        console.warn('Material does not support color property:', material);
+    }
 }

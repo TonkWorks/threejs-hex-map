@@ -916,6 +916,12 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        }
 	    }
 	    exports.range = range;
+	    function getRandomInt(min, max) {
+	        min = Math.ceil(min);
+	        max = Math.floor(max);
+	        return Math.floor(Math.random() * (max - min + 1)) + min;
+	    }
+	    exports.getRandomInt = getRandomInt;
 	    function flatMap(items, map) {
 	        return [].concat.apply([], items.map(map));
 	    }
@@ -948,6 +954,17 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        return [].concat.apply([], items);
 	    }
 	    exports.flatten = flatten;
+	    /// three.js and animations
+	    function updateMaterialColor(material, color) {
+	        if (material instanceof three_1.MeshBasicMaterial ||
+	            material instanceof three_1.MeshStandardMaterial) {
+	            material.color.set(color);
+	        }
+	        else {
+	            console.warn('Material does not support color property:', material);
+	        }
+	    }
+	    exports.updateMaterialColor = updateMaterialColor;
 	}.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
 	//# sourceMappingURL=util.js.map
 
@@ -2196,7 +2213,6 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                        if (e.button === 0) {
 	                            this.controls.selectTile(tile);
 	                            this.selectedQR = tile;
-	                            this.showDebugInfo();
 	                        }
 	                        if (e.button === 2) {
 	                            // Handle right-click logic here
@@ -2233,23 +2249,11 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                e.preventDefault();
 	            }, false);
 	            canvas.addEventListener("touchend", (e) => this.onMouseUp(e.touches[0] || e.changedTouches[0]), false);
-	            setInterval(() => this.showDebugInfo(), 200);
+	            // setInterval(() => this.showDebugInfo(), 200)
 	            this.controls.setOnAnimateCallback(this.onAnimate);
 	        }
 	        addAnimation(animation) {
 	            this.animations.push(animation);
-	        }
-	        showDebugInfo() {
-	            if (this.debugText == null) {
-	                return;
-	            }
-	            const tileQR = this.selectedQR;
-	            const tileXYZ = coords_1.qrToWorld(tileQR.q, tileQR.r); // world space
-	            const camPos = this.controls.getViewCenter(); //  this.controls.getCamera().position        
-	            const tile = this.controls.pickTile(tileXYZ);
-	            this.debugText.innerHTML = `Selected Tile: QR(${tileQR.q}, ${tileQR.r}), 
-	            XY(${tileXYZ.x.toFixed(2)}, ${tileXYZ.y.toFixed(2)})
-	            &nbsp; &bull; &nbsp; Camera Looks At (Center): XYZ(${camPos.x.toFixed(2)}, ${camPos.y.toFixed(2)}, ${camPos.z.toFixed(2)})`;
 	        }
 	        panCameraTo(qr, durationMs) {
 	            const from = this.controls.getCamera().position.clone();

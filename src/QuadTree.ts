@@ -1,6 +1,6 @@
-import {Vector2} from "three";
-import {BoundingBox} from "./BoundingBox";
+import {Vector2, Object3D} from "three";
 
+import {BoundingBox} from "./BoundingBox";
 export default class QuadTree<T> {
     private northWest: QuadTree<T>;
     private northEast: QuadTree<T>;
