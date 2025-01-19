@@ -1,6 +1,11 @@
 import { Player } from './GameState';
+import { TileData } from './interfaces';
 import MapView from './MapView';
 export declare function takeTurn(mapView: MapView, player: Player): Promise<void>;
-export declare function determineStrategy(): void;
-export declare function buildEconomy(): void;
+export declare function determineStrategy(player: Player): void;
+export declare function buildEconomy(player: Player): void;
+export declare function buildArmy(mapView: MapView, player: Player): void;
+export declare function placeACity(mapView: MapView, player: Player): boolean;
+export declare function findACityLocation(mapView: MapView, player: Player, radius: number): TileData | null;
+export declare function attack(mapView: MapView, player: Player, targets: TileData[]): void;
 export default determineStrategy;

@@ -10,6 +10,10 @@ export interface MapViewControls {
     pickTile(worldPos: Vector3): TileData | null;
     /**
      * Move the tile selector to the given tile's position
+    */
+    hoverTile(tile: TileData): void;
+    /**
+     * Move the tile selector to the given tile's position
      */
     selectTile(tile: TileData): void;
     /**

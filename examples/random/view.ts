@@ -3,9 +3,9 @@ import { loadFile, loadJSON, loadTexture } from '../../src/util';
 import { TextureAtlas, isMountain, isWater, TileData } from '../../src/interfaces';
 import {generateRandomMap} from "../../src/map-generator"
 import { varying } from './util';
-import { TextureLoader, Color } from 'three'
+import { TextureLoader, Color } from 'three';
 import { MapMeshOptions } from '../../src/MapMesh';
-import DefaultMapViewController from "../../src/DefaultMapViewController"
+import DefaultMapViewController from "../../src/DefaultMapViewController";
 
 function asset(relativePath: string): string {
     return "../../assets/" + relativePath
@@ -96,16 +96,42 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
-        setFogAround(mapView, mapView.selectedTile, 100, true, true)
-        setFogAround(mapView, mapView.selectedTile, 10, true, false)
-        setFogAround(mapView, mapView.selectedTile, 2, false, false)
         mapView.initGameSetup();
+        mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
+        setFogAround(mapView, mapView.selectedTile, 100, true, true)
+        setFogAround(mapView, mapView.selectedTile, 5, true, false)
+        setFogAround(mapView, mapView.selectedTile, 2, false, false)
         mapView.updateResourcePanel();
         mapView.updateGameStatePanel();
-        mapView.setActionPanel("End Turn")
-        document.getElementById("action").addEventListener('click', (event) => {
-            event.stopPropagation();
-            mapView.actionPanelClicked();
+        mapView.showEndTurnInActionPanel();
+        // document.getElementById("action").addEventListener('click', (event) => {
+        //     event.stopPropagation();
+        //     mapView.actionPanelClicked();
+        // });
+        document.body.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+            if (target && target.classList.contains('player-negotiation')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-name');
+                mapView.playerNegotiation(dataAttribute);
+            }
+            if (target && target.classList.contains('player-diplomatic-menu')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-name');
+                const dataTarget = target.getAttribute('data-target');
+
+                mapView.playerDiplmaticAction(dataAttribute, dataTarget);
+            }
+            if (target && target.classList.contains('city-menu')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-name');
+                mapView.cityMenuAction(dataAttribute);
+            }
+            if (target && target.classList.contains('action-menu')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-name');
+                mapView.actionPanelClicked(dataAttribute);
+            }
         });
     }
 

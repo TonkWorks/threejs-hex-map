@@ -13,6 +13,11 @@ export interface MapViewControls {
 
     /**
      * Move the tile selector to the given tile's position
+    */
+    hoverTile(tile: TileData): void;
+
+    /**
+     * Move the tile selector to the given tile's position
      */
     selectTile(tile: TileData): void;
 

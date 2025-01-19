@@ -142,6 +142,11 @@ export default class Controller implements MapViewController {
                 this.controls.setScrollDir(0, 0)
             }
         }
+
+        //
+        const mousePos = screenToWorld(e.clientX, e.clientY, this.controls.getCamera())
+        const tile = this.controls.pickTile(mousePos)
+        this.controls.hoverTile(tile)
     }
 
     onMouseUp = (e: MouseEvent) => {

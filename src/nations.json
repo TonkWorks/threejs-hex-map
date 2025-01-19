@@ -1,0 +1,93 @@
+{
+  "The Luminari": {
+    "nation": "Queen Lyara",
+    "city_names": [
+      "Auroralith",
+      "Starlight Haven",
+      "Radiant Spire",
+      "Luminark",
+      "Celestara",
+      "Gleaming Cove",
+      "Solstice Keep",
+      "Astral Crown",
+      "Beacon's Rest",
+      "Illumindor"
+    ],
+    "quotes": {
+      "greeting": ["Welcome, traveler. Do you seek the wisdom of the stars?"],
+      "farewell": ["May your path shine ever brighter."],
+      "victory": ["The light of the Luminari outshines all!"],
+      "insulted": ["You dare to challenge the brilliance of the Luminari?"],
+      "defeat": ["Even in defeat, the stars remain constant."]
+    }
+  },
+  "USA": {
+    "nation": "President Trump",
+    "city_names": [
+      "Washington",
+      "New York",
+      "Los Angeles",
+      "Chicago",
+      "Houston",
+      "Philadelphia",
+      "Phoenix",
+      "San Diego",
+      "Dallas",
+      "Seattle"
+    ],
+    "quotes": {
+      "greeting": ["Welcome to the land of liberty and opportunity."],
+      "farewell": ["Keep striving for greatness."],
+      "victory": ["Democracy has triumphed once again!"],
+      "insulted": ["You underestimate the strength of our nation? Think again.",
+          "We will make America strong again. We will make America proud again. We will make America safe again. And we will make America great again!",
+          "Sometimes by losing a battle you find a new way to win the war."
+      ],
+      "defeat": ["Even in loss, our ideals endure."],
+    }
+  },
+  "Soviet Union": {
+    "nation": "Premier Volkov",
+    "city_names": [
+      "Moscow",
+      "Leningrad",
+      "Stalingrad",
+      "Novosibirsk",
+      "Kiev",
+      "Minsk",
+      "Tashkent",
+      "Riga",
+      "Vilnius",
+      "Murmansk"
+    ],
+    "quotes": {
+      "greeting": ["Comrade, let us discuss the future of the proletariat."],
+      "farewell": ["The revolution continues.", "Do svidaniya."],
+      "victory": ["The workers of the world have united in triumph!"],
+      "insulted": ["Foolish to challenge the might of the Union."],
+      "defeat": ["The struggle persists, even in defeat."]
+    }
+  },
+  "China": {
+    "nation": "Chairman Wei",
+    "city_names": [
+      "Beijing",
+      "Shanghai",
+      "Guangzhou",
+      "Shenzhen",
+      "Chengdu",
+      "Xi'an",
+      "Wuhan",
+      "Hangzhou",
+      "Nanjing",
+      "Tianjin"
+    ],
+    "quotes": {
+      "greeting": ["Greetings from the Middle Kingdom."],
+      "farewell": ["May your endeavors bring prosperity."],
+      "victory": ["China rises above all challenges!"],
+      "insulted": ["Your actions disrupt the harmony of our relations."],
+      "defeat": ["The dragon endures, even when wounded."]
+    }
+  }
+}

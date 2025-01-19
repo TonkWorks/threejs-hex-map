@@ -2204,6 +2204,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                        this.controls.setScrollDir(0, 0);
 	                    }
 	                }
+	                //
+	                const mousePos = coords_1.screenToWorld(e.clientX, e.clientY, this.controls.getCamera());
+	                const tile = this.controls.pickTile(mousePos);
+	                this.controls.hoverTile(tile);
 	            };
 	            this.onMouseUp = (e) => {
 	                if (!this.lastDrag || this.lastDrag.length() < 0.1) {

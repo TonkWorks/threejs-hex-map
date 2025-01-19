@@ -1,6 +1,6 @@
 import { KeyActions, KEY_CODES } from './util';
 import MapView from '../../src/MapView';
-import { CreateUnit, CreateCity } from '../../src/Units';
+import { CreateRifleman, CreateCity } from '../../src/Units';
 
 export function initInput(mapView: MapView) {
     const keyActions: KeyActions = {
@@ -33,7 +33,7 @@ export function initInput(mapView: MapView) {
         [KEY_CODES.A]: {
             down: () => {
                 const player = mapView.getPlayer("player-1")
-                const unit = CreateUnit(player)
+                const unit = CreateRifleman(player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
                 mapView.selectTile(tile);
@@ -41,8 +41,8 @@ export function initInput(mapView: MapView) {
         },
         [KEY_CODES.S]: {
             down: () => {
-                const player = mapView.getPlayer("player-2")
-                const unit = CreateUnit(player)
+                const player = mapView.getPlayer("Gandhi")
+                const unit = CreateRifleman(player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
                 mapView.selectTile(tile);
@@ -59,7 +59,7 @@ export function initInput(mapView: MapView) {
         },
         [KEY_CODES.X]: {
             down: () => {
-                const player = mapView.getPlayer("player-2")
+                const player = mapView.getPlayer("Gandhi")
                 const improvement = CreateCity(player)
                 const tile = mapView.selectedTile
                 mapView.addImprovementToMap(improvement, tile);
