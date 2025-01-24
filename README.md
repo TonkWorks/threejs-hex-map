@@ -13,6 +13,9 @@ A simple 3D hexagonal terrain map based on three.js.
 * blending mask texture for transitions between tiles
 * two-tier fog of war like in Civilization
 
+# Flag stickers
+https://icons8.com/icon/set/flags/stickers
+
 ## Usage
 
 For an example check out the code in `examples/random`. To test it in the browser

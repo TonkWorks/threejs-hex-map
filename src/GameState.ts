@@ -1,10 +1,12 @@
 export interface Player {
     name: string;
+    nation: string;
     gold: number;
     color: string;
     isDefeated: boolean;
     image: string;
     taxRate: number;
+    cityIndex: number;
     units: {  [key: string]: any };
     improvements: {  [key: string]: any};
     diplomatic_actions: { [key: string]: any};
@@ -38,8 +40,10 @@ export function nextTurn(gameState: GameState) {
 function createPlayer(): Player {
     return {
         name: "",
+        nation: "",
         color: "",
         gold: 0,
+        cityIndex: 0,
         taxRate: 0.1,
         image: "",
         isDefeated: false,
@@ -52,17 +56,20 @@ function createPlayer(): Player {
 export function InitGameState(): GameState {
 
     let player1 = createPlayer();
-    player1.name = "player-1";
+    player1.name = "USA";
+    player1.nation = "USA";
     player1.color = "#FFFF00";
     player1.image = "/assets/rifleman.webp";
 
     let player2 = createPlayer();
-    player2.name = "Gandhi";
+    player2.name = "China";
+    player2.nation = "China";
     player2.color = "#FF0000";
     player2.image = "/assets/rifleman.webp";    
 
     let player3 = createPlayer();
-    player3.name = "Putin";
+    player3.name = "Soviet Union";
+    player3.nation = "Soviet Union";
     player3.color = "#0000FF";
     player3.image = "/assets/rifleman.webp";    
 

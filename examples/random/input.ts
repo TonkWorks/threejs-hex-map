@@ -32,7 +32,7 @@ export function initInput(mapView: MapView) {
         // debug
         [KEY_CODES.A]: {
             down: () => {
-                const player = mapView.getPlayer("player-1")
+                const player = mapView.getPlayer("USA")
                 const unit = CreateRifleman(player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
@@ -41,7 +41,7 @@ export function initInput(mapView: MapView) {
         },
         [KEY_CODES.S]: {
             down: () => {
-                const player = mapView.getPlayer("Gandhi")
+                const player = mapView.getPlayer("China")
                 const unit = CreateRifleman(player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
@@ -50,7 +50,7 @@ export function initInput(mapView: MapView) {
         },
         [KEY_CODES.Z]: {
             down: () => {
-                const player = mapView.getPlayer("player-1")
+                const player = mapView.getPlayer("USA")
                 const improvement = CreateCity(player)
                 const tile = mapView.selectedTile
                 mapView.addImprovementToMap(improvement, tile);
@@ -59,7 +59,7 @@ export function initInput(mapView: MapView) {
         },
         [KEY_CODES.X]: {
             down: () => {
-                const player = mapView.getPlayer("Gandhi")
+                const player = mapView.getPlayer("China")
                 const improvement = CreateCity(player)
                 const tile = mapView.selectedTile
                 mapView.addImprovementToMap(improvement, tile);

@@ -96,9 +96,9 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
+        setFogAround(mapView, mapView.selectedTile, 100, true, true)
         mapView.initGameSetup();
         mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
-        setFogAround(mapView, mapView.selectedTile, 100, true, true)
         setFogAround(mapView, mapView.selectedTile, 5, true, false)
         setFogAround(mapView, mapView.selectedTile, 2, false, false)
         mapView.updateResourcePanel();

@@ -40,7 +40,9 @@
         }
 
         #resource-info {
-            background-color: rgb(0, 0, 0);
+            display: flex;
+            align-items:center;
+            background-color: rgb(34, 0, 44, .85);
             padding-top: 5px;
             font-size: 1em;
             top: 0;
@@ -51,15 +53,23 @@
         }
 
         #game-info {
+            display: flex;
+            align-items:center;
+            justify-content: flex-end;
             padding-top: 5px;
             font-size: 1em;
             top: 0;
             right: 0;
-            max-width: 50%;
+            width: 100%;
             text-align: right;
         }
+
+        .game-info-turn {
+            color: goldenrod;
+            font-weight: bold;
+        }
         #action {
-            background-color: rgb(34, 0, 44);
+            background-color: rgb(34, 0, 44, .85);
             top: auto;
             bottom: 250px;
             left: 0;
@@ -88,6 +98,24 @@
         .toastify {
             z-index: 1000;
         }
+
+        .city-label {
+            display: flex;
+            align-items:center;
+            justify-content: flex-end;
+            padding: 7px 24px;
+            background-color:rgba(84, 18, 138, 0.75);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            border-radius: 5px;
+            font-size: 20px;
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        }
+        .city-label-enemy {
+            background-color:rgba(156, 21, 28, 0.75);
+        }
+
         #menu {
             visibility: hidden;
             position: fixed;
@@ -248,7 +276,7 @@
     <canvas></canvas>
 
     <div id="resource-info"></div>    
-    <div id="text">Manifest Desitny</div>
+    <div id="text">Rising Powers</div>
     <div id="action"></div>
     <div id="unit-info"></div>
     <div id="game-info"></div>
