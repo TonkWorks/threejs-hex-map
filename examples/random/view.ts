@@ -133,6 +133,11 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.actionPanelClicked(dataAttribute);
             }
+            if (target && target.classList.contains('research')) {
+                event.stopPropagation();
+                mapView.pickResearch();
+            }
+
         });
     }
 

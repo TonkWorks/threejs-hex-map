@@ -23,6 +23,7 @@ import { takeTurn } from './AI';
 
 import Toastify from './toastify';
 import { Nations } from './Nations';
+import { RenderTechTree, Technologies, Technology } from './Research';
 
 declare const tsParticles: any;
 
@@ -179,6 +180,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         minimapRenderer.domElement.style.bottom = '0px';
         minimapRenderer.domElement.style.left = '0px';
         minimapRenderer.domElement.style.zIndex = '1000';
+        minimapRenderer.domElement.id = 'minimap';
         document.body.appendChild(minimapRenderer.domElement);
 
         window.addEventListener('resize', (e) => this.onWindowResize(e), false);
@@ -321,7 +323,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         // }
 
         const worldPos = qrToWorld(tile.q, tile.r);
-        console.log(worldPos)
         if ((tile.fog || tile.clouds) && unit.owner !== this.gameState.currentPlayer) {
             unit.model.visible = false;
         }
@@ -538,6 +539,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         return this._camera
     }
 
+
+    getMiniMapCamera(): Camera {
+        return this._minimap_camera
+    }
+
     /**
      * Returns the world space position on the Z plane (the plane with the tiles) at the center of the view.
      */
@@ -635,6 +641,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.updateUnitInfoForTile(tile);
         
         // hide menu; TODO do this better
+        document.getElementById('menu').innerHTML = "";
         document.getElementById('menu').style.visibility='hidden';
 
         if (this.placingCity) {
@@ -662,11 +669,12 @@ export default class MapView implements MapViewControls, TileDataSource {
 
 
         const worldPos = qrToWorld(tile.q, tile.r);
+
         this.particleSystems.push(new ParticleSystem(this._scene, {
             type: 'confetti',
             maxParticles: 1000,
             particleSize: 3,
-            lifetime: .5,
+            lifetime: 50,
             duration: .2,
             spawnPosition: { x: worldPos.x, y: worldPos.y, z: worldPos.z },
             spawnRate: 1000,
@@ -968,6 +976,17 @@ export default class MapView implements MapViewControls, TileDataSource {
         });
     }
 
+    pickResearch() {
+        const currentPlayer = this.getPlayer(this.gameState.currentPlayer);
+        RenderTechTree(currentPlayer.research.current, currentPlayer.research.researched, (tech: Technology)=>{
+            currentPlayer.research.current = tech.id;
+            currentPlayer.research.progress = 0;
+            this.updateResourcePanel();
+            this.menuPanel.innerHTML = "";
+            this.menuPanel.style.visibility = "hidden";
+        });
+    }
+
     pickTile(worldPos: Vector3): TileData | null {
         var x = worldPos.x
         var y = worldPos.y
@@ -1175,6 +1194,25 @@ export default class MapView implements MapViewControls, TileDataSource {
             player.gold += ResourceMap[key].gold;
         }
 
+        // calculate research for player 
+        player.research.progress += 25;
+        if (player.research.progress >= 100 && player.research.current !== "") {
+            player.research.progress -= 100;
+            player.research.researched.add(player.research.current);
+            const tech = Technologies.get(player.research.current);
+            const mm = this;
+            this.toast({ 
+                icon: "/assets/map_icons/star.png",
+                text: `${tech.name} research complete!`, 
+                onClick: function() {
+                    mm.pickResearch();
+                }
+            });
+
+            player.research.current = "";
+
+        }
+
         // refresh units movement / health if in city/terittories (todo)
         for (const [key, unit] of Object.entries(player.units)) {
             unit.movement = unit.movement_max;
@@ -1223,10 +1261,21 @@ export default class MapView implements MapViewControls, TileDataSource {
         let taxes_icon = `<img src="/assets/ui/taxes.png" style="padding-left: 5px; padding-right: 5px; width: 25px; height: 25px;"/>`
         let research_icon = `<img src="/assets/ui/research.png" style="padding-left: 5px; padding-right: 5px; width: 25px; height: 25px;"/>`
         let research_amount = "(+5) (2 turns)"
-        let research_percentage = "70%";
-        let research = "Steam Power";
+        let research_percentage = `${player.research.progress}%`;
 
-        let info = `${gold_icon} ${player.gold} (+${goldPerTurn}) | ${pop_icon} ${population} (+${populationPerTurn}) | ${taxes_icon} ${taxRate} | ${research_icon} ${research_percentage} ${research} ${research_amount} |${resourcesString}`;
+        let tech_name = '';
+        if (Technologies.has(player.research.current)) {
+            let tech = Technologies.get(player.research.current);
+            tech_name = tech.name;
+            research_amount = "(+5) (2 turns)"
+            research_percentage = `${player.research.progress}%`;
+        } else {
+            tech_name = "Pick a technology to research";
+            research_amount = ""
+            research_percentage = '';
+        }
+        let research = `<span class="research highlight-hover">${research_percentage} ${tech_name} ${research_amount}</span>`
+        let info = `${gold_icon} ${player.gold} (+${goldPerTurn}) | ${pop_icon} ${population} (+${populationPerTurn}) | ${taxes_icon} ${taxRate} | ${research_icon} ${research} |${resourcesString}`;
         this.resourcePanel.innerHTML = info;
       }
 

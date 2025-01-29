@@ -32,6 +32,11 @@ export interface MapViewControls {
     getCamera(): Camera;
 
     /**
+     * Return the camera used by the map view.
+     */
+    getMiniMapCamera(): Camera;
+
+    /**
      * Returns the world space position at the center of the view on the Z plane (the plane with the tiles).
      */
     getViewCenter(): Vector3;

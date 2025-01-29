@@ -55,6 +55,26 @@ export function screenToWorld(x: number, y: number, camera: Camera): Vector3 | n
 }
 
 /**
+ * Transforms screen coordinates into world space, assuming that the game view spans the entire window.
+ */
+export function screenToWorldMiniMap(x: number, y: number, camera: Camera): Vector3 | null {
+    // Convert screen coordinates to minimap-local coordinates
+    const box = document.getElementById("minimap").getBoundingClientRect();
+    const localY = y - box.top;
+    const localX = x - box.left;
+
+    // Convert to Normalized Device Coordinates (NDC)
+    const ndcX = (localX / box.width) * 2 - 1;
+    const ndcY = -(localY / box.height) * 2 + 1;
+
+    const mv = new Vector3(ndcX, ndcY, 0.5);
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera(mv, camera);
+    const intersection = raycaster.ray.intersectPlane(Z_PLANE, new Vector3());
+    return intersection ? intersection : null;
+}
+
+/**
  * Transforms world coordinates into screen space.
  */
 export function worldToScreen(pos: Vector3, camera: Camera): Vector3 {

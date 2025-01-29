@@ -1,4 +1,9 @@
-import { Scene, Vector3, Color, BufferGeometry, BufferAttribute, ShaderMaterial, Points, AdditiveBlending } from 'three';
+import {
+    Scene, Vector3, Color,
+    BufferGeometry, BufferAttribute,
+    ShaderMaterial, Points,
+    AdditiveBlending
+} from 'three';
 
 export type ParticleType = 'fire' | 'explosion' | 'fireworks' | 'confetti';
 
@@ -22,7 +27,10 @@ export interface ParticleSystemOptions {
     shape?: 'square' | 'cloud';
     duration?: number;
     fireworkColors?: Color[];
-    confettiColors?: Color[]; // New option for confetti colors
+    confettiColors?: Color[];
+    explosionBurstSize?: number;
+    fireworkRocketLifetime?: number;
+    fireworkBurstSize?: number;
 }
 
 export interface Particle {
@@ -37,6 +45,9 @@ export interface Particle {
     angularVelocity: number;
     shapeType: number;
     isFireworkTrail?: boolean;
+
+    isFireworkRocket?: boolean;  // rocket phase
+    hasBurst?: boolean;          // track if the rocket has bursted
 }
 
 export class ParticleSystem {
@@ -58,27 +69,37 @@ export class ParticleSystem {
         this.scene = scene;
         this.particles = [];
         this.geometry = new BufferGeometry();
-        
+
         this.options = {
-            maxParticles: options.maxParticles || 2000,
-            particleSize: options.particleSize || 5,
-            lifetime: options.lifetime || 2,
-            spawnRate: options.spawnRate || 50,
-            spawnPosition: options.spawnPosition || { x: 0, y: 0, z: 0 },
-            spawnArea: options.spawnArea || { x: 0, y: 0, z: 0 },
-            gravity: options.gravity || -9.8,
-            type: options.type || 'fire',
-            shape: options.shape || 'square',
-            duration: options.duration || 0,
-            fireworkColors: options.fireworkColors || [
-                new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff),
-                new Color(0xffff00), new Color(0xff00ff)
-            ],
-            confettiColors: options.confettiColors || [
-                new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff),
-                new Color(0xffff00), new Color(0xff00ff), new Color(0x00ffff),
-                new Color(0xffaa00)
-            ]
+            // Fallback with ternary checks instead of "??"
+            maxParticles: options.maxParticles !== undefined ? options.maxParticles : 2000,
+            particleSize: options.particleSize !== undefined ? options.particleSize : 5,
+            lifetime: options.lifetime !== undefined ? options.lifetime : 2,
+            spawnRate: options.spawnRate !== undefined ? options.spawnRate : 50,
+            spawnPosition: options.spawnPosition !== undefined ? options.spawnPosition : { x: 0, y: 0, z: 0 },
+            spawnArea: options.spawnArea !== undefined ? options.spawnArea : { x: 0, y: 0, z: 0 },
+            gravity: options.gravity !== undefined ? options.gravity : -9.8,
+            type: options.type !== undefined ? options.type : 'fire',
+            shape: options.shape !== undefined ? options.shape : 'square',
+            duration: options.duration !== undefined ? options.duration : 0,
+            fireworkColors: options.fireworkColors !== undefined
+                ? options.fireworkColors
+                : [
+                    new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff),
+                    new Color(0xffff00), new Color(0xff00ff)
+                ],
+            confettiColors: options.confettiColors !== undefined
+                ? options.confettiColors
+                : [
+                    new Color(0xff0000), new Color(0x00ff00), new Color(0x0000ff),
+                    new Color(0xffff00), new Color(0xff00ff), new Color(0x00ffff),
+                    new Color(0xffaa00)
+                ],
+
+            // NEW: also fallback with ternaries
+            explosionBurstSize: options.explosionBurstSize !== undefined ? options.explosionBurstSize : 40,
+            fireworkRocketLifetime: options.fireworkRocketLifetime !== undefined ? options.fireworkRocketLifetime : .35,
+            fireworkBurstSize: options.fireworkBurstSize !== undefined ? options.fireworkBurstSize : 40,
         };
 
         const maxParticles = this.options.maxParticles;
@@ -109,6 +130,7 @@ export class ParticleSystem {
                 vShapeType = shapeType;
                 
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                // Basic perspective size attenuation
                 gl_PointSize = size * (300.0 / -mvPosition.z);
                 gl_Position = projectionMatrix * mvPosition;
             }
@@ -174,93 +196,295 @@ export class ParticleSystem {
         this.scene.add(this.particleSystem);
     }
 
-    private spawnParticle(): void {
+    /**
+     * Make a big explosion burst at a certain position.
+     */
+    private triggerExplosion(position: Vector3) {
+        const burstSize = this.options.explosionBurstSize;
+        for (let i = 0; i < burstSize; i++) {
+            if (this.particles.length >= this.options.maxParticles) break;
+
+            // Spherical outward velocity
+            const speed = 3 + Math.random() * 6;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+
+            const p: Partial<Particle> = {
+                position: position.clone(),
+                velocity: new Vector3(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.cos(phi),
+                    speed * Math.sin(phi) * Math.sin(theta)
+                ),
+                startColor: new Color(1, 0.8, 0), // bright orange
+                endColor: new Color(1, 0, 0),     // red fade
+                size: this.options.particleSize * 2.5,
+                age: 0,
+                lifetime: 1.2 + Math.random() * 0.5,
+                rotation: Math.random() * Math.PI * 2,
+                angularVelocity: (Math.random() - 0.5) * Math.PI * 4,
+                shapeType: 0 // circle
+            };
+
+            this.particles.push(p as Particle);
+        }
+    }
+
+    /**
+     * Spawn a rocket that will ascend and eventually burst.
+     */
+    private spawnFireworkRocket(): void {
         if (this.particles.length >= this.options.maxParticles) return;
 
-        const particle: Partial<Particle> = {
+        const rocket: Partial<Particle> = {
             position: new Vector3(
                 this.options.spawnPosition.x + (Math.random() - 0.5) * this.options.spawnArea.x,
                 this.options.spawnPosition.y + (Math.random() - 0.5) * this.options.spawnArea.y,
                 this.options.spawnPosition.z + (Math.random() - 0.5) * this.options.spawnArea.z
             ),
-            velocity: new Vector3(),
-            startColor: new Color(),
-            endColor: new Color(),
+            velocity: new Vector3(
+                (Math.random() - 0.5) * 2,
+                18 + Math.random() * 8,   // strong upward
+                (Math.random() - 0.5) * 2
+            ),
+            startColor: new Color(1, 1, 1),
+            endColor: new Color(1, 0.6, 0.3),
             size: this.options.particleSize,
             age: 0,
-            lifetime: this.options.lifetime * (0.7 + Math.random() * 0.6),
-            rotation: Math.random() * Math.PI * 2,
-            angularVelocity: (Math.random() - 0.5) * Math.PI * 4,
-            shapeType: Math.floor(Math.random() * 3) // 0-2 for circle, rectangle, slim rectangle
+            lifetime: this.options.fireworkRocketLifetime,
+            rotation: 0,
+            angularVelocity: 0,
+            shapeType: 2, // slim rectangle for a "flame" look
+            isFireworkRocket: true,
+            hasBurst: false
         };
 
+        this.particles.push(rocket as Particle);
+    }
+
+    /**
+     * Firework rocket bursts into many colored sparks.
+     */
+    private triggerFireworkBurst(position: Vector3): void {
+        const burstCount = this.options.fireworkBurstSize;
+        for (let i = 0; i < burstCount; i++) {
+            if (this.particles.length >= this.options.maxParticles) break;
+
+            // pick random color from array
+            const colorIndex = Math.floor(Math.random() * this.options.fireworkColors.length);
+            const c = this.options.fireworkColors[colorIndex];
+
+            // outward velocity
+            const speed = 8 + Math.random() * 8;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+
+            const p: Partial<Particle> = {
+                position: position.clone(),
+                velocity: new Vector3(
+                    speed * Math.sin(phi) * Math.cos(theta),
+                    speed * Math.cos(phi),
+                    speed * Math.sin(phi) * Math.sin(theta)
+                ),
+                startColor: c.clone(),
+                endColor: c.clone().multiplyScalar(0.2),
+                size: this.options.particleSize * 1.4 * (0.7 + Math.random() * 0.5),
+                age: 0,
+                lifetime: 1.5 + Math.random() * 1.0,
+                rotation: Math.random() * Math.PI * 2,
+                angularVelocity: (Math.random() - 0.5) * Math.PI * 4,
+                shapeType: 0 // circle or any shape
+            };
+
+            this.particles.push(p as Particle);
+        }
+    }
+
+    /**
+     * Continually spawn small trail particles behind a rocket.
+     */
+    private spawnFireworkTrail(position: Vector3): void {
+        // spawn just a few small particles each frame
+        for (let i = 0; i < 3; i++) {
+            if (this.particles.length >= this.options.maxParticles) return;
+
+            const p: Partial<Particle> = {
+                position: position.clone(),
+                velocity: new Vector3(
+                    (Math.random() - 0.5) * 0.3,
+                    -1 - Math.random(), // slight downward flicker
+                    (Math.random() - 0.5) * 0.3
+                ),
+                startColor: new Color(1, 1, 1),
+                endColor: new Color(1, 0.5, 0.2),
+                size: this.options.particleSize * 0.5,
+                age: 0,
+                lifetime: 0.3 + Math.random() * 0.2,
+                rotation: Math.random() * Math.PI * 2,
+                angularVelocity: (Math.random() - 0.5) * Math.PI * 4,
+                shapeType: 2,  // slim rectangle
+                isFireworkTrail: true
+            };
+
+            this.particles.push(p as Particle);
+        }
+    }
+
+    /**
+     * Modified spawnParticle():
+     * Dispatches to either 'triggerExplosion' or 'spawnFireworkRocket'.
+     */
+    private spawnParticle(): void {
+        if (this.particles.length >= this.options.maxParticles) return;
+
         switch (this.options.type) {
-            case 'confetti':
+            case 'explosion':
+                // Instead of making a single particle, make an entire explosion burst
+                this.triggerExplosion(new Vector3(
+                    this.options.spawnPosition.x + (Math.random() - 0.5) * this.options.spawnArea.x,
+                    this.options.spawnPosition.y + (Math.random() - 0.5) * this.options.spawnArea.y,
+                    this.options.spawnPosition.z + (Math.random() - 0.5) * this.options.spawnArea.z
+                ));
+                break;
+
+            case 'fireworks':
+                // Spawn a single rocket
+                this.spawnFireworkRocket();
+                break;
+
+            case 'confetti': {
+                // Keep your existing confetti logic
                 const color = this.options.confettiColors[
                     Math.floor(Math.random() * this.options.confettiColors.length)
                 ];
-                particle.startColor = color.clone();
-                particle.endColor = color.clone().multiplyScalar(0.7);
-                particle.velocity.set(
-                    (Math.random() - 0.5) * 8,
-                    8 + Math.random() * 4,
-                    (Math.random() - 0.5) * 8
-                );
-                particle.size = this.options.particleSize * (0.6 + Math.random() * 0.4);
-                particle.lifetime = Math.random() * 5;
-                particle.shapeType = Math.floor(Math.random() * 2) + 1//Math.floor(Math.random() * 4); // 0-3 shapes
+
+                const p: Partial<Particle> = {
+                    position: new Vector3(
+                        this.options.spawnPosition.x + (Math.random() - 0.5) * this.options.spawnArea.x,
+                        this.options.spawnPosition.y + (Math.random() - 0.5) * this.options.spawnArea.y,
+                        this.options.spawnPosition.z + (Math.random() - 0.5) * this.options.spawnArea.z
+                    ),
+                    velocity: new Vector3(
+                        (Math.random() - 0.5) * 8,
+                        8 + Math.random() * 4,
+                        (Math.random() - 0.5) * 8
+                    ),
+                    startColor: color.clone(),
+                    endColor: color.clone().multiplyScalar(0.7),
+                    size: this.options.particleSize * (0.6 + Math.random() * 0.4),
+                    age: 0,
+                    lifetime: Math.random() * 5,
+                    rotation: Math.random() * Math.PI * 2,
+                    angularVelocity: (Math.random() - 0.5) * Math.PI * 4,
+                    shapeType: Math.floor(Math.random() * 2) + 1
+                };
+                this.particles.push(p as Particle);
                 break;
+            }
 
-            // Other particle types remain similar...
+            default: {
+                // Example fallback: single generic particle
+                const p: Partial<Particle> = {
+                    position: new Vector3(
+                        this.options.spawnPosition.x + (Math.random() - 0.5) * this.options.spawnArea.x,
+                        this.options.spawnPosition.y + (Math.random() - 0.5) * this.options.spawnArea.y,
+                        this.options.spawnPosition.z + (Math.random() - 0.5) * this.options.spawnArea.z
+                    ),
+                    velocity: new Vector3(
+                        (Math.random() - 0.5) * 2,
+                        2 + Math.random() * 2,
+                        (Math.random() - 0.5) * 2
+                    ),
+                    startColor: new Color(1, 0.8, 0),
+                    endColor: new Color(1, 0.4, 0),
+                    size: this.options.particleSize,
+                    age: 0,
+                    lifetime: this.options.lifetime,
+                    rotation: Math.random() * Math.PI * 2,
+                    angularVelocity: (Math.random() - 0.5) * Math.PI * 2,
+                    shapeType: 0 // circle
+                };
+                this.particles.push(p as Particle);
+                break;
+            }
         }
-
-        this.particles.push(particle as Particle);
     }
 
     public update(deltaTime: number): void {
-        if  (deltaTime <= 0) return;
-        if  (deltaTime >= .1) return;
+        if (deltaTime <= 0) return;
+        // Avoid large delta spikes
+        if (deltaTime >= 0.1) return;
 
         this.systemAge += deltaTime;
+
+        // Duration logic
         let shouldSpawn = true;
         if (this.options.duration > 0 && this.systemAge >= this.options.duration) {
             shouldSpawn = false;
         }
-        if (this.options.duration > 0 && this.systemAge >= this.options.duration + 10*this.options.lifetime) {
+        if (
+            this.options.duration > 0 &&
+            this.systemAge >= this.options.duration + 10 * this.options.lifetime
+        ) {
             this.active = false;
         }
-        // Spawn particles
+
+        // Spawn new particles (or bursts/rockets)
         const spawnCount = Math.min(
             Math.floor(this.options.spawnRate * deltaTime),
             this.options.maxParticles - this.particles.length
         );
         if (shouldSpawn) {
-            for (let i = 0; i < spawnCount; i++) this.spawnParticle();
+            for (let i = 0; i < spawnCount; i++) {
+                this.spawnParticle();
+            }
         }
 
-        // Update particles
+        // Update existing particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.age += deltaTime;
 
+            // If rocket, spawn small trailing sparks
+            if (p.isFireworkRocket && !p.hasBurst) {
+                this.spawnFireworkTrail(p.position.clone());
+
+                // if rocket lifetime is over or velocity goes downward, trigger burst
+                if (p.age >= p.lifetime || p.velocity.y <= 0) {
+                    this.triggerFireworkBurst(p.position.clone());
+                    p.hasBurst = true; // so we don't burst multiple times
+                    this.particles.splice(i, 1); // remove the rocket
+                    continue; // move on
+                }
+            }
+
+            // Normal lifetime check
             if (p.age >= p.lifetime) {
                 this.particles.splice(i, 1);
                 continue;
             }
-
+            // if (p.position.z < 0) {
+            //     this.particles.splice(i, 1);
+            //     continue;
+            // }
             // Physics update
-            p.velocity.y += this.options.gravity * deltaTime;
-            if (this.options.type === 'confetti') {
-                p.velocity.multiplyScalar(1 - 0.1 * deltaTime); // Air resistance
+            p.velocity.z += this.options.gravity * deltaTime/1.5
+            p.velocity.y += this.options.gravity * deltaTime/1.5;
+
+            // Confetti air resistance (and for small trails, if desired)
+            if (this.options.type === 'confetti' || p.isFireworkTrail) {
+                p.velocity.multiplyScalar(1 - 0.1 * deltaTime);
             }
-            p.position.add(p.velocity.clone().multiplyScalar(deltaTime));
+
+            // Position, rotation
+            p.position.addScaledVector(p.velocity, deltaTime);
             p.rotation += p.angularVelocity * deltaTime;
 
-            // Color transition
+            // Color interpolation
             const lifeRatio = p.age / p.lifetime;
             p.startColor.lerp(p.endColor, lifeRatio);
 
-            // Update buffers
+            // Update GPU buffers
             const idx = i * 3;
             this.positions[idx] = p.position.x;
             this.positions[idx + 1] = p.position.y;
@@ -270,24 +494,23 @@ export class ParticleSystem {
             this.colors[idx + 1] = p.startColor.g;
             this.colors[idx + 2] = p.startColor.b;
 
+            // Slight size shrink near the end
             this.sizes[i] = p.size * (1 - lifeRatio * 0.2);
             this.rotations[i] = p.rotation;
             this.shapeTypes[i] = p.shapeType;
+
         }
 
-            // Hide particles that are beyond the current count
+        // Hide unused particles
         for (let i = this.particles.length; i < this.options.maxParticles; i++) {
             const idx = i * 3;
-            // Optionally reset position to avoid artifacts
             this.positions[idx] = 0;
             this.positions[idx + 1] = 0;
             this.positions[idx + 2] = 0;
-            // Set size to 0 to make the particle invisible
             this.sizes[i] = 0;
         }
 
-
-        // Update geometry
+        // Mark attributes as dirty
         this.geometry.attributes.position.needsUpdate = true;
         this.geometry.attributes.color.needsUpdate = true;
         this.geometry.attributes.size.needsUpdate = true;
@@ -301,5 +524,7 @@ export class ParticleSystem {
         this.material.dispose();
     }
 
-    public isActive(): boolean { return this.active; }
+    public isActive(): boolean {
+        return this.active;
+    }
 }

@@ -19,7 +19,7 @@
             background-color: cornflowerblue;
         }
 
-        #text, #debug, #unit-info, #game-info, #action, #resource-info, .text-info {
+        #title, #debug, #unit-info, #game-info, #action, #resource-info, .text-info {
             position: absolute;
             top: 0;
             width: 100%;
@@ -59,10 +59,14 @@
             font-size: 1em;
             top: 0;
             right: 0;
-            width: 100%;
+            width: 50%;
             text-align: right;
         }
-
+        #title {
+            margin-top: -8px;
+            z-index: 12;
+            pointer-events: none;
+        }
         .game-info-turn {
             color: goldenrod;
             font-weight: bold;
@@ -187,6 +191,34 @@
             color: rgb(104, 104, 104);
         }
 
+
+        .tech-node {
+            position: absolute;
+            border: 2px solid #333;
+            border-radius: 5px;
+            padding: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color:rgba(84, 18, 138, 0.75);
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+            font-size: .5em;
+            text-align: center;
+            color: white;
+            text-shadow: 0 0 1px black;
+            box-sizing: border-box;
+
+        }
+        .tech-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+        
+        .tech-content {
+            pointer-events: none;
+        }
+
         /*!
         * Toastify js 1.12.0
         * https://github.com/apvarun/toastify-js
@@ -285,8 +317,8 @@
 
     <canvas></canvas>
 
+    <div id="title" class="text">Rising Powers</div>
     <div id="resource-info"></div>    
-    <div id="text">Rising Powers</div>
     <div id="action"></div>
     <div id="unit-info"></div>
     <div id="game-info"></div>

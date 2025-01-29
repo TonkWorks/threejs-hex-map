@@ -1,6 +1,6 @@
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
-import { screenToWorld, pickingRay, qrToWorld } from './coords';
+import { screenToWorld, screenToWorldMiniMap, pickingRay, qrToWorld } from './coords';
 import { TileData, QR } from './interfaces';
 import { Vector3, Camera, Vector2 } from 'three';
 
@@ -73,7 +73,8 @@ export default class Controller implements MapViewController {
         canvas.addEventListener("touchend", (e) => this.onMouseUp(e.touches[0] || e.changedTouches[0] as any), false)
         
         // setInterval(() => this.showDebugInfo(), 200)
-
+        document.getElementById("minimap").addEventListener("mouseup", this.onMouseUpMini, false)
+        console.log(document.getElementById("minimap"))
         this.controls.setOnAnimateCallback(this.onAnimate)
     }
 
@@ -110,7 +111,7 @@ export default class Controller implements MapViewController {
     onMouseDown = (e: MouseEvent) => {
         this.pickingCamera = this.controls.getCamera().clone()
         this.mouseDownPos = screenToWorld(e.clientX, e.clientY, this.pickingCamera)
-        this.dragStartCameraPos = this.controls.getCamera().position.clone()                
+        this.dragStartCameraPos = this.controls.getCamera().position.clone()
     }
 
     onMouseEnter = (e: MouseEvent) => {
@@ -185,4 +186,16 @@ export default class Controller implements MapViewController {
             this.controls.getCamera().position.copy(from.clone().lerp(to, a))
         }))
     }
+
+    onMouseUpMini = (e: MouseEvent) => {
+        if (!this.lastDrag || this.lastDrag.length() < 0.1) {
+            const mousePos = screenToWorldMiniMap(e.clientX, e.clientY, this.controls.getMiniMapCamera())
+            const tile = this.controls.pickTile(mousePos)
+            this.panCameraTo(tile, 600 /*ms*/)
+        }
+
+        this.mouseDownPos = null // end drag
+        this.lastDrag = null         
+    }
+
 }
