@@ -1,7 +1,7 @@
-import {XHRLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial} from "three"
+import {FileLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial} from "three"
 import {QR} from "./interfaces"
 
-const fileLoader = new XHRLoader()
+const fileLoader = new FileLoader()
 const textureLoader = new TextureLoader()
 
 export function loadTexture(url: string, onProgress?: (percent: number, totalBytes: number, loadedBytes: number) => void): Promise<Texture> {
@@ -24,16 +24,15 @@ export function loadTexture(url: string, onProgress?: (percent: number, totalByt
     })
 }
 
-export function loadFile(path: string): Promise<string> {
-    // TODO: Remove cache buster
-    const url = path// + "?cachebuster=" + Math.random() * 9999999
+export async function loadFile(url: string): Promise<any> {
     return new Promise((resolve, reject) => {
-        fileLoader.load(url, (result) => {
-            resolve(result)
-        }, undefined, (error) => {
-            reject(error)
-        })
-    })
+        fileLoader.load(
+            url,
+            (result) => resolve(result),
+            undefined,
+            (error) => reject(error)
+        );
+    });
 }
 
 export async function loadJSON<T>(path: string): Promise<T> {

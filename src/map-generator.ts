@@ -21,7 +21,7 @@ function randomHeight(q: number, r: number) {
  * @param terrainAt
  */
 export async function generateMap(size: number, tile: (q: number, r: number) => TileData): Promise<Grid<TileData>> {
-    const grid = new Grid<TileData>(size, size).mapQR((q, r) => tile(q, r))
+    const grid = new Grid<TileData>(size*1.3, size).mapQR((q, r) => tile(q, r))
     const withRivers = generateRivers(grid)
     return withRivers
 }

@@ -1,5 +1,5 @@
 import { createHexagon } from './hexagon';
-import { RingGeometry, RingBufferGeometry, MeshBasicMaterial, Mesh, QuadraticBezierCurve3, TubeGeometry, ConeGeometry, CurvePath, Vector3, CatmullRomCurve3, Shape, ExtrudeGeometry } from "three"
+import { TextureLoader, RingBufferGeometry, MeshBasicMaterial, Mesh, QuadraticBezierCurve3, NearestFilter, FrontSide, CurvePath, Vector3, CatmullRomCurve3, Shape, ExtrudeGeometry } from "three"
 
 export const hoverSelectorMaterial = new MeshBasicMaterial({
     opacity: 0.0,
@@ -14,13 +14,14 @@ DefaultTileHoverSelector.rotateZ(Math.PI/2)
 
 
 export class AttackArrow {
-    private curve: THREE.QuadraticBezierCurve3;
+    private curve: QuadraticBezierCurve3;
     private rectangleWidth: number;
     private rectangleHeight: number;
     private steps: number;
     private color: number;
-    private arrowHeight: number;
-
+    private arrowHeadWidth: number;
+    private arrowHeadLength: number;
+    
     constructor(
         start: Vector3,
         arrowHeight: number,
@@ -34,13 +35,14 @@ export class AttackArrow {
         this.rectangleHeight = 0.05,
         this.steps = 50,
         this.color = 0xff0000
+        this.arrowHeadWidth = 0.4;
     }
 
     public createCurveMesh(): Mesh {
         // Generate curve points
         const points = this.curve.getPoints(this.steps);
 
-        // Create a rectangular shape
+        // // Create a rectangular shape
         const shape = new Shape();
         shape.moveTo(-this.rectangleWidth / 2, -this.rectangleHeight / 2);
         shape.lineTo(this.rectangleWidth / 2, -this.rectangleHeight / 2);
@@ -48,15 +50,22 @@ export class AttackArrow {
         shape.lineTo(-this.rectangleWidth / 2, this.rectangleHeight / 2);
         shape.lineTo(-this.rectangleWidth / 2, -this.rectangleHeight / 2);
 
-
+        
+        // const textureLoader = new TextureLoader()
+        // const texture = textureLoader.load("../../assets/ui/arrow.png")
         const curveGeometry = new ExtrudeGeometry(shape, {
             steps: this.steps,
             bevelEnabled: false,
-            extrudePath: new CatmullRomCurve3(points.slice(0, -5)), // Stop before the final point
+            extrudePath: new CatmullRomCurve3(points.slice(0, -1)), // Stop before the final point
         });
 
         // Create material and mesh
-        const curveMaterial = new MeshBasicMaterial({ color: this.color });
+        const curveMaterial =  new MeshBasicMaterial({ 
+            color: this.color,
+            // map: texture,
+            // transparent: true,
+            side: FrontSide,
+        })
         return new Mesh(curveGeometry, curveMaterial);
     }
 }

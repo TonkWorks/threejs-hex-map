@@ -35,19 +35,23 @@ export function pickingRay(vector: Vector3, camera: Camera): Raycaster {
 /**
  * Transforms mouse coordinates into world space, assuming that the game view spans the entire window.
  */
-export function mouseToWorld(e: MouseEvent | {clientX: number, clientY: number}, camera: Camera): Vector3 {
-  const mv = new Vector3((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1, 0.5 )
-  const raycaster = pickingRay(mv, camera);
-  return raycaster.ray.intersectPlane(Z_PLANE)
-}
-
+export function mouseToWorld(e: MouseEvent | {clientX: number, clientY: number}, camera: Camera): Vector3 | null {
+    const mv = new Vector3((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1, 0.5);
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera(mv, camera);
+    const intersection = raycaster.ray.intersectPlane(Z_PLANE, new Vector3());
+    return intersection ? intersection : null;
+  }
+  
 /**
  * Transforms screen coordinates into world space, assuming that the game view spans the entire window.
  */
-export function screenToWorld(x: number, y: number, camera: Camera): Vector3 {
-    const mv = new Vector3((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5 );
-    const raycaster = pickingRay(mv, camera);
-    return raycaster.ray.intersectPlane(Z_PLANE)
+export function screenToWorld(x: number, y: number, camera: Camera): Vector3 | null {
+    const mv = new Vector3((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera(mv, camera);
+    const intersection = raycaster.ray.intersectPlane(Z_PLANE, new Vector3());
+    return intersection ? intersection : null;
 }
 
 /**

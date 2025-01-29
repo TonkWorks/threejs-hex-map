@@ -4,6 +4,9 @@ import { CreateRifleman, CreateCity } from '../../src/Units';
 
 export function initInput(mapView: MapView) {
     const keyActions: KeyActions = {
+        [KEY_CODES.ESC]: {
+            up: () => document.getElementById('menu').style.visibility='hidden'
+        },
         [KEY_CODES.LEFT_ARROW]: {
             down: () => mapView.scrollDir.x = -1,
             up: () => mapView.scrollDir.x = 0 

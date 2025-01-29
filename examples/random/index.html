@@ -5,7 +5,6 @@
     <title>Hex-Map</title>
     <meta name="viewport" content="width=device-width, user-scalable=no" />
 
-    <script src="../../node_modules/three/build/three.min.js"></script>
 <style type="text/css">
         html, body {
             margin: 0;
@@ -72,7 +71,7 @@
             background-color: rgb(34, 0, 44, .85);
             top: auto;
             bottom: 250px;
-            left: 0;
+            right: 0;
             width: 450px;
             min-height: 50px;
             text-align: center;
@@ -88,7 +87,7 @@
             font-size: 1em;
             top: auto;
             bottom: 0;
-            left: 0;
+            right: 0;
             width: 450px;
             min-height: 250px;
             max-height: 250px;
@@ -96,7 +95,7 @@
         }
 
         .toastify {
-            z-index: 1000;
+            z-index: 1049;
         }
 
         .city-label {
@@ -144,12 +143,22 @@
             margin-top: 20px;
         }
         #menu-leader-img {
+            min-width: 40%;
             width: 40%;
         }
 
         .highlight-hover:hover {
             background-color: #666;
             cursor: pointer;
+        }
+
+        .leader-name {
+            display: flex;
+            color: white;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 30px;
         }
 
         #leader-text {
@@ -159,7 +168,6 @@
             justify-content: center;
             text-align: center;
             font-size: 0.75em;
-
         }
         #menu .options button {
             background-color: #444;
@@ -198,11 +206,13 @@
             position: fixed;
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
-            border-radius: 2px;
+            border-radius: 10px;
             cursor: pointer;
             text-decoration: none;
-            max-width: calc(50% - 20px);
-            z-index: 2147483647;
+            min-width: 350px;
+            width: 350px;
+            max-width: 350px;
+            z-index: 1049;
         }
 
         .toastify.on {
@@ -282,14 +292,13 @@
     <div id="game-info"></div>
     <div id="menu"></div>
 
-
-<script>
+<script >
     var require = {
         baseUrl: "../../lib/examples/random",
         paths: {
-            "three": "../../../node_modules/three/build/three",
+            "three": "../../../src/three",
         }
-    }
+    } 
 </script>
 <script data-main="main" src="../../node_modules/requirejs/require.js"></script>
 

@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D } from 'three';
+import THREE, { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, SpotLight, CylinderGeometry, AdditiveBlending, DoubleSide } from 'three';
 import {generateRandomMap} from "./map-generator"
 import MapMesh from "./MapMesh"
 import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater } from './interfaces';
@@ -7,28 +7,33 @@ import { screenToWorld } from './camera-utils';
 import Grid from './Grid';
 import DefaultTileSelector from "./DefaultTileSelector"
 import {AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial} from "./DefaultTileHoverSelector"
-import DefaultUnit, { CreateArtillary, CreateCavalry, CreateResourceModel, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates } from "./Units"
+import DefaultUnit, { CreateArtillary, CreateBoat, CreateCavalry, createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates } from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './MapMesh';
+import { ParticleSystem } from './ParticleSystem';
 import { Unit, Improvement, CreateCity, CreateRifleman }  from './Units';
 import { DeclarePeaceBetweenPlayers, DeclareWarBetweenPlayers, GameState, InitGameState, Player } from './GameState';
 import { CSS2DRenderer, CSS2DObject } from './CSS2DRenderer';
 import { CSS3DRenderer, CSS3DObject } from './CSS3DRenderer';
-
 import { takeTurn } from './AI';
+
 import Toastify from './toastify';
 import { Nations } from './Nations';
+
+declare const tsParticles: any;
 
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
 
     private _camera: PerspectiveCamera
+    private _minimap_camera: PerspectiveCamera
     private _scene: Scene
     private _renderer: WebGLRenderer
+    private _minimap_renderer: WebGLRenderer
     private _labelRenderer: CSS3DRenderer
     private _scrollDir = new Vector3(0, 0, 0)    
     private _lastTimestamp = Date.now()
@@ -52,6 +57,12 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _onTileSelected: (tile: TileData) => void
     private _onLoaded: () => void
     private _onAnimate: (dtS: number) => void = (dtS) => {}
+
+    private _minimap_aspect_width = 400;
+    private _minimap_aspect_height = 275;
+    private particleSystems: ParticleSystem[] = null;
+    private spotlight: SpotLight = null;
+    
     unitInfoPanel: HTMLElement = null;
     unitInfoCache = "";
     unitInfoIndex = "";
@@ -147,18 +158,28 @@ export default class MapView implements MapViewControls, TileDataSource {
     constructor(canvasElementQuery: string = "canvas") {
         const canvas = this._canvas = document.querySelector(canvasElementQuery) as HTMLCanvasElement
         const camera = this._camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 2, 10000)
+        const minimap_camera = this._minimap_camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 2, 10000)
         const scene = this._scene = new Scene()
         const renderer = this._renderer = new WebGLRenderer({
             canvas: canvas,
-            devicePixelRatio: window.devicePixelRatio
+            // devicePixelRatio: window.devicePixelRatio
         })        
-
-        if (renderer.extensions.get('ANGLE_instanced_arrays') === false) {
-            throw new Error("Your browser is not supported (missing extension ANGLE_instanced_arrays)")
-        }
 
         renderer.setClearColor(0x6495ED);
         renderer.setSize(window.innerWidth, window.innerHeight)
+
+
+        const minimapRenderer = this._minimap_renderer = new WebGLRenderer({
+            // devicePixelRatio: window.devicePixelRatio
+        }) 
+        minimap_camera.layers.set(10);
+
+        minimapRenderer.setSize(this._minimap_aspect_width, this._minimap_aspect_height); // Set the size of the minimap
+        minimapRenderer.domElement.style.position = 'absolute';
+        minimapRenderer.domElement.style.bottom = '0px';
+        minimapRenderer.domElement.style.left = '0px';
+        minimapRenderer.domElement.style.zIndex = '1000';
+        document.body.appendChild(minimapRenderer.domElement);
 
         window.addEventListener('resize', (e) => this.onWindowResize(e), false);
 
@@ -172,9 +193,41 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // setup camera
         camera.rotation.x = Math.PI / 4.5
+        minimap_camera.rotation.x = 0
         this.setZoom(MapView.DEFAULT_ZOOM)
         this.focus(0, 0)
 
+        this.particleSystems = [];
+
+        // Create spotlight
+        let spotlight = new SpotLight(0xffffff, 2); // Color and intensity
+        spotlight.position.set(0, 10, 0); // Position above the unit
+        spotlight.angle = Math.PI / 8; // Narrow angle for god ray effect (about 22.5 degrees)
+        spotlight.penumbra = 0.1; // Soft edge of the spotlight (0-1)
+        spotlight.decay = 1; // Light decay
+        spotlight.distance = 30; // Maximum range of the light
+        spotlight.castShadow = true; // Enable shadow casting
+
+        // Configure shadow properties for better quality
+        spotlight.shadow.mapSize.width = 1024;
+        spotlight.shadow.mapSize.height = 1024;
+        spotlight.shadow.camera.near = 0.5;
+        spotlight.shadow.camera.far = 30;
+        spotlight.shadow.focus = 1;
+        this.spotlight = spotlight;
+
+        // Create volumetric light cone (optional but adds to the effect)
+        const geometry = new CylinderGeometry(0, 2, 10, 32, 20, true);
+        const material = new MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.1,
+            side: DoubleSide,
+            blending: AdditiveBlending,
+        });
+        const lightCone = new Mesh(geometry, material);
+        lightCone.position.set(0, 5, 0);
+        lightCone.rotation.x = Math.PI;
 
         // hover selector
         this._hoverSelector.position.setZ(0.0001)
@@ -220,9 +273,17 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         for (const tile of tiles) {
             let t = this._tileGrid.get(tile.q, tile.r);
+
             if (t.improvement !== undefined && t.clouds === false) {
                 t.improvement.model.visible = true;
             }
+            if (t.improvementOverlay !== undefined && t.clouds === false) {
+                t.improvementOverlay.visible = true;
+            }
+            if (t.territoryOverlay !== undefined && t.clouds === false) {
+                t.territoryOverlay.visible = true;
+            }
+
             if (t.unit !== undefined && t.fog == false && t.clouds === false) {
                 t.unit.model.visible = true;
             }
@@ -260,11 +321,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         // }
 
         const worldPos = qrToWorld(tile.q, tile.r);
-
+        console.log(worldPos)
         if ((tile.fog || tile.clouds) && unit.owner !== this.gameState.currentPlayer) {
             unit.model.visible = false;
         }
-        unit.model.position.set(worldPos.x, worldPos.y -.2, .3);
+        unit.model.position.set(worldPos.x, worldPos.y -.4, unit.offset + .2);
 
         let player = this.getPlayer(unit.owner);
         player.units[unit.id] = unit;
@@ -295,14 +356,31 @@ export default class MapView implements MapViewControls, TileDataSource {
         player.improvements[improvement.id] = improvement;
 
         const worldPos = qrToWorld(tile.q, tile.r);
-        improvement.model.position.set(worldPos.x, worldPos.y, 0.31);
+        improvement.model.position.set(worldPos.x, worldPos.y, .4);
         improvement.tile = tile
         tile.improvement = improvement
 
+
+        let overlayCity = createCityOverlayModel();
+        this._units_models.add(overlayCity);
+        overlayCity.layers.disable(0);
+        overlayCity.position.set(worldPos.x, worldPos.y, 0.3);
+        overlayCity.layers.enable(10);
+        tile.improvementOverlay = overlayCity;
+
         // update tile ownership of  this and surrounding
         const tiles = this.getTileGrid().neighbors(tile.q, tile.r, 1)
+        tiles.push(tile);
         for (const t of tiles) {
             t.owner = improvement.owner;
+            if (t.territoryOverlay) {
+                t.territoryOverlay.parent.remove(t.territoryOverlay);
+            }
+            t.territoryOverlay = createTerritoryOverlayModel(player);
+            this._units_models.add(t.territoryOverlay);
+            const tworldPos = qrToWorld(t.q, t.r);
+            t.territoryOverlay.position.set(tworldPos.x, tworldPos.y, 0.01);
+            t.territoryOverlay.layers.enable(10);
         }
         const mm = this;
 
@@ -348,7 +426,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     initGameSetup() {
         // set up initial resources
         const resourceNames = Object.keys(ResourceMap);
-        for (let i = 0; i < 400; i++) {
+        for (let i = 0; i < 50; i++) {
             let tile = this.getRandomTile(false);
             if (tile && tile.resource === undefined && !isMountain(tile.height) && !isWater(tile.height)) {
                 // get random from resource map
@@ -407,12 +485,30 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         if (this._chunkedMesh) {
             this._chunkedMesh.updateVisibility(camera)
+            this._chunkedMesh.updateVisibility(this._minimap_camera)
+
         }
 
+        // let center = this.getViewCenter()
+        // this._viewCenter = center
+        this._minimap_camera.position.x = 0
+        this._minimap_camera.position.y = 0;
+
+        this._minimap_camera.position.z = this._tileGrid.length/19
+
         this._onAnimate(dtS)
-    
+
+        for (const ps of this.particleSystems) {
+            ps.update(dtS);
+            if (!ps.isActive()) {
+                this.particleSystems.splice(this.particleSystems.indexOf(ps), 1);
+            }
+        }
+
         this._renderer.render(this._scene, camera);
         this._labelRenderer.render(this._scene, camera);
+
+        this._minimap_renderer.render(this._scene, this._minimap_camera);
 
         requestAnimationFrame(this.animate);
         this._lastTimestamp = timestamp
@@ -422,6 +518,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._camera.aspect = window.innerWidth / window.innerHeight;
         this._camera.updateProjectionMatrix();
         this._renderer.setSize(window.innerWidth, window.innerHeight);
+
+        this._minimap_camera.updateProjectionMatrix();
+        this._minimap_camera.aspect = this._minimap_aspect_width / this._minimap_aspect_height;
+        // this._minimap_renderer.setSize(this._minimap_aspect_width / this._minimap_aspect_height);
+
         this._labelRenderer.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -458,6 +559,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     focus(q: number, r: number) {
         this._camera.position.copy(this.getCameraFocusPosition({q, r}))
+
     }
 
     focusWorldPos(v: Vector3) {
@@ -553,19 +655,33 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     actionTile(tile: TileData) {        
-
         // Bad Cases
         if (this.selectedTile.q === tile.q && this.selectedTile.r === tile.r) {
             return;
         }
+
+
+        const worldPos = qrToWorld(tile.q, tile.r);
+        this.particleSystems.push(new ParticleSystem(this._scene, {
+            type: 'confetti',
+            maxParticles: 1000,
+            particleSize: 3,
+            lifetime: .5,
+            duration: .2,
+            spawnPosition: { x: worldPos.x, y: worldPos.y, z: worldPos.z },
+            spawnRate: 1000,
+            gravity: -10,
+            spawnArea: { x: 0, y: 0, z: 0 },
+        }));
+
         let selectedUnit = this.selectedTile.unit
         if (selectedUnit === undefined) {
             console.log("no selected unit");
             return;
         }
 
-        if (!tile.clouds && (isMountain(tile.height) || isWater(tile.height))) {
-            console.log("cannot move to mountain/water");
+        if (!tile.clouds && (isMountain(tile.height))) {
+            console.log("cannot move to mountain");
             return;
         }
 
@@ -672,7 +788,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         const worldPos = qrToWorld(nextMovementTile.q, nextMovementTile.r);
-        animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y -.2, 0.29, easeOutQuad, () => {
+        animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y, .2, easeOutQuad, () => {
             this.moveUnit(nextMovementTile, targetTile)
         });
     }
@@ -753,8 +869,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     battleCity(currentTile: TileData, targetTile: TileData) {
         const player = this.getPlayer(currentTile.unit.owner);
-        const targetPlayer = this.getPlayer(targetTile.improvement.owner);
-
+        const targetPlayer = this.getPlayer(targetTile.improvement.owner);        
         if (!this.checkForClearanceToAttack(player, targetPlayer)) {
             return;
         }
@@ -802,9 +917,40 @@ export default class MapView implements MapViewControls, TileDataSource {
                     let p2 = this.getPlayer(currentTile.unit.owner);
                     targetTile.improvement.owner = currentTile.unit.owner;
                     p2.improvements[targetTile.improvement.id] = targetTile.improvement;
-                    updateMaterialColor(targetTile.improvement.model.material, p2.color);
+
+
+                    const tiles = this.getTileGrid().neighbors(targetTile.q, targetTile.r, 1)
+                    tiles.push(targetTile);
+                    for (const t of tiles) {
+                        t.owner = currentTile.unit.owner;
+                        if (t.territoryOverlay) {
+                            t.territoryOverlay.parent.remove(t.territoryOverlay);
+                        }
+                        t.territoryOverlay = createTerritoryOverlayModel(p2);
+                        this._units_models.add(t.territoryOverlay);
+                        const tworldPos = qrToWorld(t.q, t.r);
+                        t.territoryOverlay.position.set(tworldPos.x, tworldPos.y, 0.01);
+                        t.territoryOverlay.layers.enable(10);
+                    }
+                    const mm = this;
+                    this.toast({ 
+                        icon: "/assets/map_icons/star.png",
+                        text: `${targetTile.improvement.name} captured by ${player.name}`, 
+                        onClick: function() {
+                            mm.selectTile(targetTile);
+                            mm.focus(mm.selectedTile.q + 1, mm.selectedTile.r -3)
+                        }
+                    });
+
+                    // updateMaterialColor(targetTile.improvement.model.material, p2.color);
                     this.updateResourcePanel();
                     this.updateGameStatePanel();
+
+                    const nation = Nations[p2.name];
+                    const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
+                    const roundedPopulation = Math.floor(targetTile.improvement.population);
+                    const label = `<span class="city-label">${img} ${targetTile.improvement.name} (${roundedPopulation})</span>`
+                    updateLabel(targetTile.improvement.id, label);
 
                     currentTile.unit.kills += 1;
                     currentTile.locked = false;
@@ -852,9 +998,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                 return randomTile;
             }
         }
-        const q = getRandomInt(-1*(this._tileGrid.width/2)+2, this._tileGrid.width/2-2);
-        const r = getRandomInt(-1*(this._tileGrid.width/2)+2, this._tileGrid.height/2-2);
-        const randomTile = this._tileGrid.get(getRandomInt(0, q), getRandomInt(0, r));
+        const q = getRandomInt(-1*(this._tileGrid.width/2), this._tileGrid.width/2);
+        const r = getRandomInt(-1*(this._tileGrid.width/2), this._tileGrid.height/2);
+        const randomTile = this._tileGrid.get(q, r);
         return randomTile;        
     }
 
@@ -940,13 +1086,20 @@ export default class MapView implements MapViewControls, TileDataSource {
           if (tt === undefined) {
             continue
           }
-          if (isMountain(tt.height) || isWater(tt.height)) {
+          if (isMountain(tt.height)) {
             continue
           }
           if (tt.unit !== undefined && current.unit !== undefined && tt.unit.owner === current.unit.owner) {
             // cant occupy what we already have a unit on
             continue
          }
+         if (current.unit.land == false && !isWater(tt.height)) {
+            continue
+         }
+         if (current.unit.water == false && isWater(tt.height)) {
+            continue
+         }
+         
           const distance = getHexDistance(tt, target);
 
           if (distance < shortestDistance) {
@@ -1221,8 +1374,13 @@ export default class MapView implements MapViewControls, TileDataSource {
             <div style="text-align: center;">
                 <img id="menu-leader-img" src="${player2nation.leader_images["default"][0]}" alt="${player2.name}">
             </div>
+            <div class="leader-name" style="display: flex; text-align: center;">
+                <img src="${player2nation.flag_image}">
+                ${player2nation.leader}
+            </div>
+
             <div id="leader-text">
-                <p>${player2nation.leader} "What do you want to discuss?"</p>
+                <p>"What do you want to discuss?"</p>
             </div>
             <div class="options">
         `;
@@ -1277,7 +1435,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <button class="city-menu" data-name="buy_rifleman">Buy Rifleman ($100)</button>
                 <button class="city-menu" data-name="buy_calvary">Buy Calvary ($200)</button>
                 <button class="city-menu" data-name="buy_artillary">Buy Artillary ($300)</button>
-            </div>
+                <button class="city-menu" data-name="buy_warship">Buy Warship ($500)</button>
+                </div>
         `;
         this.menuPanel.innerHTML = info;
         this.menuPanel.style.visibility = "visible";
@@ -1363,6 +1522,14 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.getClosestUnoccupiedTile(tile)
             );
         }
+        if (name === "buy_warship") {
+            const unit = CreateBoat(player);
+            player.gold -= unit.cost;
+            this.addUnitToMap(
+                unit, 
+                this.getClosestUnoccupiedTile(tile)
+            );
+        }
         this.updateResourcePanel();
         this.updateGameStatePanel();
         this.updateUnitInfoForTile(tile);
@@ -1404,7 +1571,20 @@ export default class MapView implements MapViewControls, TileDataSource {
         for (const [key, player] of Object.entries(this._gameState.players)) {
             if (player.isDefeated === false && Object.keys(player.improvements).length === 0) {
                 player.isDefeated = true
+
+                const index = this.gameState.playerOrder.indexOf(player.name);
+                if (index > -1) {
+                    this.gameState.playerOrder.splice(index, 1);
+                }
                 // TODO remove all units
+
+                const mm = this;
+                this.toast({ 
+                    icon: "/assets/map_icons/star.png",
+                    text: `${player.name} has been defeated!`, 
+                    onClick: function() {}
+                });
+
                 this.updateGameStatePanel();
             } 
         }

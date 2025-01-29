@@ -61,11 +61,11 @@ export function createHexagon(radius: number, numSubdivisions: number): BufferGe
     }
 
     var geometry = new BufferGeometry()
-    geometry.addAttribute("position", new BufferAttribute(positions, 3))
-    geometry.addAttribute("uv", new BufferAttribute(texcoords, 2))
+    geometry.setAttribute("position", new BufferAttribute(positions, 3))
+    geometry.setAttribute("uv", new BufferAttribute(texcoords, 2))
 
     // 1.0 = border vertex, 0.0 otherwise
-    geometry.addAttribute("border", new BufferAttribute(border, 1))
+    geometry.setAttribute("border", new BufferAttribute(border, 1))
 
     return geometry
 }

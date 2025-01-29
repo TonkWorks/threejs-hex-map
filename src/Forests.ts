@@ -163,7 +163,7 @@ class Trees extends Object3D {
         })
 
         const posAttr = new BufferAttribute(new Float32Array(positions.length * 3), 3).copyVector3sArray(positions)
-        geometry.addAttribute("position", posAttr)
+        geometry.setAttribute("position", posAttr)
 
         // tree parameters
         const cols = this._options.spritesheetSubdivisions
@@ -181,7 +181,7 @@ class Trees extends Object3D {
             return ps
         })
         this._alphaAttr = new BufferAttribute(new Float32Array(positions.length * 3), 3).copyVector3sArray(params)
-        geometry.addAttribute("params", this._alphaAttr)
+        geometry.setAttribute("params", this._alphaAttr)
 
         return geometry
     }

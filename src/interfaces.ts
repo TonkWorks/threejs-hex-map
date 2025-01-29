@@ -1,4 +1,4 @@
-import { Texture } from 'three';
+import { Mesh, Texture } from 'three';
 import { Unit, Improvement, Resource } from './Units';
 /**
  * Height between -1.0 and 1.0:
@@ -21,6 +21,8 @@ export interface TileData {
     owner?: string | null;
     unit?: Unit | null;
     improvement?: Improvement | null;
+    improvementOverlay?: Mesh | null;
+    territoryOverlay?: Mesh | null;
     resource?: Resource | null;
     rivers?: {riverIndex: number; riverTileIndex: number}[];
     treeIndex?: number; // index of tree texture, optional

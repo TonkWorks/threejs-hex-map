@@ -206,46 +206,36 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                    uniforms: {
 	                        sineTime: { value: 0.0 },
 	                        showGrid: { value: this._showGrid ? 1.0 : 0.0 },
-	                        camera: { type: "v3", value: new three_1.Vector3(0, 0, 0) },
-	                        texture: { type: "t", value: this.options.terrainAtlasTexture },
+	                        camera: { value: new three_1.Vector3(0, 0, 0) },
+	                        texture: { value: this.options.terrainAtlasTexture },
 	                        textureAtlasMeta: {
-	                            type: "4f",
 	                            value: new three_1.Vector4(atlas.width, atlas.height, atlas.cellSize, atlas.cellSpacing)
 	                        },
 	                        hillsNormal: {
-	                            type: "t",
 	                            value: this.options.hillsNormalTexture
 	                        },
 	                        coastAtlas: {
-	                            type: "t",
 	                            value: this.options.coastAtlasTexture
 	                        },
 	                        riverAtlas: {
-	                            type: "t",
 	                            value: this.options.riverAtlasTexture
 	                        },
 	                        mapTexture: {
-	                            type: "t",
 	                            value: this.options.undiscoveredTexture
 	                        },
 	                        transitionTexture: {
-	                            type: "t",
 	                            value: this.options.transitionTexture
 	                        },
 	                        lightDir: {
-	                            type: "v3",
 	                            value: new three_1.Vector3(0.5, 0.6, -0.5).normalize()
 	                        },
 	                        gridColor: {
-	                            type: "c",
 	                            value: typeof this.options.gridColor != "undefined" ? this.options.gridColor : new three_1.Color(0xffffff)
 	                        },
 	                        gridWidth: {
-	                            type: "f",
 	                            value: typeof this.options.gridWidth != "undefined" ? this.options.gridWidth : 0.02
 	                        },
 	                        gridOpacity: {
-	                            type: "f",
 	                            value: typeof this.options.gridOpacity != "undefined" ? this.options.gridOpacity : 0.33
 	                        }
 	                    },
@@ -257,6 +247,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                });
 	                this.land = new three_1.Mesh(geometry, material);
 	                this.land.frustumCulled = false;
+	                this.land.layers.enable(10);
 	                this.add(this.land);
 	            });
 	        }
@@ -268,34 +259,27 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                    uniforms: {
 	                        sineTime: { value: 0.0 },
 	                        showGrid: { value: this._showGrid ? 1.0 : 0.0 },
-	                        camera: { type: "v3", value: new three_1.Vector3(0, 0, 0) },
-	                        texture: { type: "t", value: this.options.terrainAtlasTexture },
+	                        camera: { value: new three_1.Vector3(0, 0, 0) },
+	                        texture: { value: this.options.terrainAtlasTexture },
 	                        textureAtlasMeta: {
-	                            type: "4f",
 	                            value: new three_1.Vector4(atlas.width, atlas.height, atlas.cellSize, atlas.cellSpacing)
 	                        },
 	                        hillsNormal: {
-	                            type: "t",
 	                            value: this.options.hillsNormalTexture
 	                        },
 	                        mapTexture: {
-	                            type: "t",
 	                            value: this.options.undiscoveredTexture
 	                        },
 	                        lightDir: {
-	                            type: "v3",
 	                            value: new three_1.Vector3(0.5, 0.6, -0.5).normalize()
 	                        },
 	                        gridColor: {
-	                            type: "c",
 	                            value: typeof this.options.gridColor != "undefined" ? this.options.gridColor : new three_1.Color(0xffffff)
 	                        },
 	                        gridWidth: {
-	                            type: "f",
 	                            value: typeof this.options.gridWidth != "undefined" ? this.options.gridWidth : 0.02
 	                        },
 	                        gridOpacity: {
-	                            type: "f",
 	                            value: typeof this.options.gridOpacity != "undefined" ? this.options.gridOpacity : 0.33
 	                        }
 	                    },
@@ -307,6 +291,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                });
 	                this.mountains = new three_1.Mesh(geometry, material);
 	                this.mountains.frustumCulled = false;
+	                this.mountains.layers.enable(10);
 	                this.add(this.mountains);
 	            });
 	        }
@@ -317,15 +302,15 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        const hexagon = hexagon_1.createHexagon(scale, numSubdivisions);
 	        const geometry = new three_1.InstancedBufferGeometry();
 	        const textureAtlas = options.terrainAtlas;
-	        geometry.maxInstancedCount = tiles.length;
-	        geometry.addAttribute("position", hexagon.attributes.position);
-	        geometry.addAttribute("uv", hexagon.attributes.uv);
-	        geometry.addAttribute("border", hexagon.attributes.border);
+	        // geometry.maxInstancedCount = tiles.length
+	        geometry.setAttribute("position", hexagon.attributes.position);
+	        geometry.setAttribute("uv", hexagon.attributes.uv);
+	        geometry.setAttribute("border", hexagon.attributes.border);
 	        // positions for each hexagon tile
 	        const tilePositions = tiles.map((tile) => coords_1.qrToWorld(tile.q, tile.r, scale));
-	        const posAttr = new three_1.InstancedBufferAttribute(new Float32Array(tilePositions.length * 2), 2, 1);
+	        const posAttr = new three_1.InstancedBufferAttribute(new Float32Array(tilePositions.length * 2), 2, false);
 	        posAttr.copyVector2sArray(tilePositions);
-	        geometry.addAttribute("offset", posAttr);
+	        geometry.setAttribute("offset", posAttr);
 	        //----------------
 	        const cellSize = textureAtlas.cellSize;
 	        const cellSpacing = textureAtlas.cellSpacing;
@@ -350,14 +335,14 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            tile.bufferIndex = index;
 	            return new three_1.Vector4(cellIndex, style, coastIdx, riverIdx);
 	        });
-	        const styleAttr = new three_1.InstancedBufferAttribute(new Float32Array(tilePositions.length * 4), 4, 1);
+	        const styleAttr = new three_1.InstancedBufferAttribute(new Float32Array(tilePositions.length * 4), 4, false);
 	        styleAttr.copyVector4sArray(styles);
-	        geometry.addAttribute("style", styleAttr);
+	        geometry.setAttribute("style", styleAttr);
 	        // surrounding tile terrain represented as two consecutive Vector3s
 	        // 1. [tileIndex + 0] = NE, [tileIndex + 1] = E, [tileIndex + 2] = SE
 	        // 2. [tileIndex + 0] = SW, [tileIndex + 1] = W, [tileIndex + 2] = NW
-	        const neighborsEast = new three_1.InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, 1);
-	        const neighborsWest = new three_1.InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, 1);
+	        const neighborsEast = new three_1.InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, false);
+	        const neighborsWest = new three_1.InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, false);
 	        for (let i = 0; i < tiles.length; i++) {
 	            const neighbors = grid.surrounding(tiles[i].q, tiles[i].r);
 	            for (let j = 0; j < neighbors.length; j++) {
@@ -368,8 +353,8 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                array[3 * i + j % 3] = neighbor ? terrainCellIndex(neighbor.terrain) : -1;
 	            }
 	        }
-	        geometry.addAttribute("neighborsEast", neighborsEast);
-	        geometry.addAttribute("neighborsWest", neighborsWest);
+	        geometry.setAttribute("neighborsEast", neighborsEast);
+	        geometry.setAttribute("neighborsWest", neighborsWest);
 	        return geometry;
 	    }
 	    function computeCoastTextureIndex(grid, tile) {
@@ -514,10 +499,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            border[e++] = vertices[i].length() >= inradius - 0.1 ? 1.0 : 0.0;
 	        }
 	        var geometry = new three_1.BufferGeometry();
-	        geometry.addAttribute("position", new three_1.BufferAttribute(positions, 3));
-	        geometry.addAttribute("uv", new three_1.BufferAttribute(texcoords, 2));
+	        geometry.setAttribute("position", new three_1.BufferAttribute(positions, 3));
+	        geometry.setAttribute("uv", new three_1.BufferAttribute(texcoords, 2));
 	        // 1.0 = border vertex, 0.0 otherwise
-	        geometry.addAttribute("border", new three_1.BufferAttribute(border, 1));
+	        geometry.setAttribute("border", new three_1.BufferAttribute(border, 1));
 	        return geometry;
 	    }
 	    exports.createHexagon = createHexagon;
@@ -620,8 +605,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	     */
 	    function mouseToWorld(e, camera) {
 	        const mv = new three_1.Vector3((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1, 0.5);
-	        const raycaster = pickingRay(mv, camera);
-	        return raycaster.ray.intersectPlane(Z_PLANE);
+	        const raycaster = new three_1.Raycaster();
+	        raycaster.setFromCamera(mv, camera);
+	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, new three_1.Vector3());
+	        return intersection ? intersection : null;
 	    }
 	    exports.mouseToWorld = mouseToWorld;
 	    /**
@@ -629,8 +616,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	     */
 	    function screenToWorld(x, y, camera) {
 	        const mv = new three_1.Vector3((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
-	        const raycaster = pickingRay(mv, camera);
-	        return raycaster.ray.intersectPlane(Z_PLANE);
+	        const raycaster = new three_1.Raycaster();
+	        raycaster.setFromCamera(mv, camera);
+	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, new three_1.Vector3());
+	        return intersection ? intersection : null;
 	    }
 	    exports.screenToWorld = screenToWorld;
 	    /**
@@ -833,7 +822,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	!(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__, exports, __webpack_require__(4)], __WEBPACK_AMD_DEFINE_RESULT__ = function (require, exports, three_1) {
 	    "use strict";
 	    Object.defineProperty(exports, "__esModule", { value: true });
-	    const fileLoader = new three_1.XHRLoader();
+	    const fileLoader = new three_1.FileLoader();
 	    const textureLoader = new three_1.TextureLoader();
 	    function loadTexture(url, onProgress) {
 	        return new Promise((resolve, reject) => {
@@ -852,14 +841,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        });
 	    }
 	    exports.loadTexture = loadTexture;
-	    function loadFile(path) {
-	        // TODO: Remove cache buster
-	        const url = path; // + "?cachebuster=" + Math.random() * 9999999
-	        return new Promise((resolve, reject) => {
-	            fileLoader.load(url, (result) => {
-	                resolve(result);
-	            }, undefined, (error) => {
-	                reject(error);
+	    function loadFile(url) {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            return new Promise((resolve, reject) => {
+	                fileLoader.load(url, (result) => resolve(result), undefined, (error) => reject(error));
 	            });
 	        });
 	    }
@@ -1501,7 +1486,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                return vs;
 	            });
 	            const posAttr = new three_1.BufferAttribute(new Float32Array(positions.length * 3), 3).copyVector3sArray(positions);
-	            geometry.addAttribute("position", posAttr);
+	            geometry.setAttribute("position", posAttr);
 	            // tree parameters
 	            const cols = this._options.spritesheetSubdivisions;
 	            const params = util_1.flatMap(this._tiles, tile => {
@@ -1515,7 +1500,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                return ps;
 	            });
 	            this._alphaAttr = new three_1.BufferAttribute(new Float32Array(positions.length * 3), 3).copyVector3sArray(params);
-	            geometry.addAttribute("params", this._alphaAttr);
+	            geometry.setAttribute("params", this._alphaAttr);
 	            return geometry;
 	        }
 	        createMaterial() {
@@ -1654,7 +1639,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	     */
 	    function generateMap(size, tile) {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            const grid = new Grid_1.default(size, size).mapQR((q, r) => tile(q, r));
+	            const grid = new Grid_1.default(size * 1.3, size).mapQR((q, r) => tile(q, r));
 	            const withRivers = generateRivers(grid);
 	            return withRivers;
 	        });

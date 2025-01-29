@@ -17,7 +17,7 @@ export function screenToWorld(x: number, y: number, camera: Camera): Vector3 {
     var mv = new Vector3(x, y, 0.5)
     var raycaster = pickingRay(mv, camera)
     var planeZ = new Plane(new Vector3(0, 0, 1), 0)
-    return raycaster.ray.intersectPlane(planeZ)
+    return raycaster.ray.intersectPlane(planeZ, new Vector3());
 }
 
 export function mouseToWorld(mouseEvent: {clientX: number, clientY: number}, camera: Camera): Vector3 {

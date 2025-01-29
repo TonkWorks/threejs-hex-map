@@ -12,7 +12,6 @@ import {
     Mesh,
     Group,
     TextureLoader,
-    XHRLoader,
     BufferAttribute,
     Sphere,
     Color,
@@ -346,46 +345,36 @@ export default class MapMesh extends Group implements TileDataSource {
             uniforms: {
                 sineTime: {value: 0.0},
                 showGrid: {value: this._showGrid ? 1.0 : 0.0},
-                camera: {type: "v3", value: new Vector3(0, 0, 0)},
-                texture: {type: "t", value: this.options.terrainAtlasTexture},
+                camera: { value: new Vector3(0, 0, 0) },
+                texture: { value: this.options.terrainAtlasTexture },
                 textureAtlasMeta: {
-                    type: "4f",
                     value: new Vector4(atlas.width, atlas.height, atlas.cellSize, atlas.cellSpacing)
                 },
                 hillsNormal: {
-                    type: "t",
                     value: this.options.hillsNormalTexture
                 },
                 coastAtlas: {
-                    type: "t",
                     value: this.options.coastAtlasTexture
                 },
                 riverAtlas: {
-                    type: "t",
                     value: this.options.riverAtlasTexture
                 },
                 mapTexture: {
-                    type: "t",
                     value: this.options.undiscoveredTexture
                 },
                 transitionTexture: {
-                    type: "t",
                     value: this.options.transitionTexture
                 },
                 lightDir: {
-                    type: "v3",
                     value: new Vector3(0.5, 0.6, -0.5).normalize()
                 },
                 gridColor: {
-                    type: "c",
                     value: typeof this.options.gridColor != "undefined" ? this.options.gridColor : new Color(0xffffff)
                 },
                 gridWidth: {
-                    type: "f",
                     value: typeof this.options.gridWidth != "undefined" ? this.options.gridWidth : 0.02
                 },
                 gridOpacity: {
-                    type: "f",
                     value: typeof this.options.gridOpacity != "undefined" ? this.options.gridOpacity : 0.33
                 }
             },
@@ -398,6 +387,7 @@ export default class MapMesh extends Group implements TileDataSource {
 
         this.land = new Mesh(geometry, material)
         this.land.frustumCulled = false
+        this.land.layers.enable(10)
 
         this.add(this.land)
     }
@@ -409,34 +399,27 @@ export default class MapMesh extends Group implements TileDataSource {
             uniforms: {
                 sineTime: {value: 0.0},
                 showGrid: {value: this._showGrid ? 1.0 : 0.0},
-                camera: {type: "v3", value: new Vector3(0, 0, 0)},
-                texture: {type: "t", value: this.options.terrainAtlasTexture},
+                camera: { value: new Vector3(0, 0, 0) },
+                texture: { value: this.options.terrainAtlasTexture },
                 textureAtlasMeta: {
-                    type: "4f",
                     value: new Vector4(atlas.width, atlas.height, atlas.cellSize, atlas.cellSpacing)
                 },
                 hillsNormal: {
-                    type: "t",
                     value: this.options.hillsNormalTexture
                 },
                 mapTexture: {
-                    type: "t",
                     value: this.options.undiscoveredTexture
                 },
                 lightDir: {
-                    type: "v3",
                     value: new Vector3(0.5, 0.6, -0.5).normalize()
                 },
                 gridColor: {
-                    type: "c",
                     value: typeof this.options.gridColor != "undefined" ? this.options.gridColor : new Color(0xffffff)
                 },
                 gridWidth: {
-                    type: "f",
                     value: typeof this.options.gridWidth != "undefined" ? this.options.gridWidth : 0.02
                 },
                 gridOpacity: {
-                    type: "f",
                     value: typeof this.options.gridOpacity != "undefined" ? this.options.gridOpacity : 0.33
                 }
             },
@@ -449,7 +432,7 @@ export default class MapMesh extends Group implements TileDataSource {
 
         this.mountains = new Mesh(geometry, material)
         this.mountains.frustumCulled = false            
-
+        this.mountains.layers.enable(10)
         this.add(this.mountains)
     }
 }
@@ -460,16 +443,16 @@ function createHexagonTilesGeometry(tiles: MapMeshTile[], grid: Grid<TileData>, 
     const geometry = new InstancedBufferGeometry()
     const textureAtlas = options.terrainAtlas
 
-    geometry.maxInstancedCount = tiles.length
-    geometry.addAttribute("position", (hexagon.attributes as any).position)
-    geometry.addAttribute("uv", (hexagon.attributes as any).uv)
-    geometry.addAttribute("border", (hexagon.attributes as any).border)
+    // geometry.maxInstancedCount = tiles.length
+    geometry.setAttribute("position", (hexagon.attributes as any).position)
+    geometry.setAttribute("uv", (hexagon.attributes as any).uv)
+    geometry.setAttribute("border", (hexagon.attributes as any).border)
 
     // positions for each hexagon tile
     const tilePositions: Vector3[] = tiles.map((tile) => qrToWorld(tile.q, tile.r, scale))
-    const posAttr = new InstancedBufferAttribute(new Float32Array(tilePositions.length * 2), 2, 1)
+    const posAttr = new InstancedBufferAttribute(new Float32Array(tilePositions.length * 2), 2, false);
     posAttr.copyVector2sArray(tilePositions)
-    geometry.addAttribute("offset", posAttr)
+    geometry.setAttribute("offset", posAttr)
 
     //----------------
     const cellSize = textureAtlas.cellSize
@@ -502,15 +485,15 @@ function createHexagonTilesGeometry(tiles: MapMeshTile[], grid: Grid<TileData>, 
         return new Vector4(cellIndex, style, coastIdx, riverIdx)
     })
 
-    const styleAttr = new InstancedBufferAttribute(new Float32Array(tilePositions.length * 4), 4, 1)
+    const styleAttr = new InstancedBufferAttribute(new Float32Array(tilePositions.length * 4), 4, false)
     styleAttr.copyVector4sArray(styles)
-    geometry.addAttribute("style", styleAttr)
+    geometry.setAttribute("style", styleAttr)
 
     // surrounding tile terrain represented as two consecutive Vector3s
     // 1. [tileIndex + 0] = NE, [tileIndex + 1] = E, [tileIndex + 2] = SE
     // 2. [tileIndex + 0] = SW, [tileIndex + 1] = W, [tileIndex + 2] = NW
-    const neighborsEast = new InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, 1)
-    const neighborsWest = new InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, 1)
+    const neighborsEast = new InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, false)
+    const neighborsWest = new InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3, false)
 
     for (let i = 0; i < tiles.length; i++) {
         const neighbors = grid.surrounding(tiles[i].q, tiles[i].r)
@@ -525,8 +508,8 @@ function createHexagonTilesGeometry(tiles: MapMeshTile[], grid: Grid<TileData>, 
         }
     }
 
-    geometry.addAttribute("neighborsEast", neighborsEast)
-    geometry.addAttribute("neighborsWest", neighborsWest)
+    geometry.setAttribute("neighborsEast", neighborsEast)
+    geometry.setAttribute("neighborsWest", neighborsWest)
 
     return geometry
 }

@@ -6,6 +6,7 @@ export const KEY_CODES = {
     RIGHT_ARROW: 39,
     DOWN_ARROW: 40,
     SHIFT: 16,
+    ESC: 27,
     Q: 81,
     E: 69,
     G: 71,

@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, RingBufferGeometry, CanvasTexture, Sprite, SpriteMaterial, LinearFilter, TextureLoader, FrontSide, NearestFilter } from 'three';
+import { PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, RingBufferGeometry, CanvasTexture, Sprite, SpriteMaterial, LinearFilter, TextureLoader, FrontSide, NearestFilter, PlaneBufferGeometry, Plane } from 'three';
 import { CSS2DRenderer, CSS2DObject } from './CSS2DRenderer';
 import { CSS3DRenderer, CSS3DObject } from './CSS3DRenderer';
 
@@ -21,7 +21,9 @@ export interface Unit {
     cost: number; // Production cost
     attack: number; // Attack points
     defence: number; // Defence points
-
+    offset: number;
+    land: boolean;
+    water: boolean;
     movement: number; // Remaining movement points
     movementOrders?: {
         q: number;
@@ -29,7 +31,7 @@ export interface Unit {
     };
     kills: number; // Number of kills
     owner: string; // Player or faction ID
-    model?: Mesh | CSS3DObject; // Reference to the 3D model in the scene
+    model?: Mesh; // Reference to the 3D model in the scene
     tile?: TileData; // Reference to the tile the unit is on
 }
 
@@ -62,8 +64,8 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     labelDiv.style.fontFamily = 'Arial, sans-serif';
 
     const unitLabel = new CSS3DObject(labelDiv);
-    unitLabel.position.set(0, .9, 0);
-    unitLabel.scale.set(.006, .006, .006);
+    unitLabel.position.set(0, .5, 0);
+    unitLabel.scale.set(.004, .004, .004);
     
     unitModel.add(unitLabel);
 
@@ -75,7 +77,7 @@ export function CreateRifleman(player: Player): Unit {
     const texture = textureLoader.load("../../assets/units/rifleman.png")
     // texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
-        new BoxBufferGeometry(2, 1, .001),
+        new PlaneBufferGeometry(4/3, 2/3),
         new MeshBasicMaterial({ 
             // color: player.color,
             map: texture,
@@ -87,7 +89,8 @@ export function CreateRifleman(player: Player): Unit {
     unitModel.castShadow = false;
     unitModel.receiveShadow = false;
 
-    unitModel.rotateX(Math.PI / 6);
+    unitModel.rotateX(Math.PI / 4.5);
+    
     // const unitModel = createUnitModel("/assets/unit_icons/rifleman.png");
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     const name = "Rifleman Company " + toRoman(1);
@@ -106,6 +109,9 @@ export function CreateRifleman(player: Player): Unit {
         attack: 3,
         defence: 0,
         kills: 0,
+        land: true,
+        water: false,
+        offset: .29,
         image: "/assets/rifleman.webp",
         owner: player.name,
         model: unitModel,
@@ -119,7 +125,7 @@ export function CreateCavalry(player: Player): Unit {
     const texture = textureLoader.load("../../assets/units/cavalry.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
-        new BoxBufferGeometry(2.6, 1.3, .001),
+        new PlaneBufferGeometry(2.6*2/3, 1.3*2/3),
         new MeshBasicMaterial({ 
             // color: player.color,
             map: texture,
@@ -129,7 +135,7 @@ export function CreateCavalry(player: Player): Unit {
     );
     unitModel.castShadow = false;
     unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 6);
+    unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     this.AddUnitLabel(unitModel, unitID, "/assets/map_icons/horse.png", player.color);
@@ -148,7 +154,10 @@ export function CreateCavalry(player: Player): Unit {
         attack: 3,
         defence: 0,
         kills: 0,
-        image: "/assets/rifleman.webp",
+        land: true,
+        water: false,
+        offset: .29,
+        image: "/assets/map_icons/horse.png",
         owner: player.name,
         model: unitModel,
     };
@@ -162,7 +171,7 @@ export function CreateArtillary(player: Player): Unit {
     const texture = textureLoader.load("../../assets/units/artillary.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
-        new BoxBufferGeometry(1.1, 1.1, .001),
+        new PlaneBufferGeometry(1.1*2/3, 1.1*2/3),
         new MeshBasicMaterial({ 
             // color: player.color,
             map: texture,
@@ -172,7 +181,7 @@ export function CreateArtillary(player: Player): Unit {
     );
     unitModel.castShadow = false;
     unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 6);
+    unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     this.AddUnitLabel(unitModel, unitID, "/assets/map_icons/artillary.png", player.color);
@@ -191,7 +200,57 @@ export function CreateArtillary(player: Player): Unit {
         attack: 3,
         defence: 0,
         kills: 0,
-        image: "/assets/rifleman.webp",
+        land: true,
+        water: false,
+        offset: .29,
+        image: "/assets/map_icons/artillary.png",
+        owner: player.name,
+        model: unitModel,
+    };
+    return unit;
+}
+
+export function CreateBoat(player: Player): Unit {
+    const unitType = "boat"
+
+    const textureLoader = new TextureLoader()
+    const texture = textureLoader.load("../../assets/units/boat.png")
+    texture.magFilter = NearestFilter;
+    const unitModel = new Mesh(
+        new PlaneBufferGeometry(1.5, 1.5),
+        new MeshBasicMaterial({ 
+            // color: player.color,
+            map: texture,
+            transparent: true,
+            side: FrontSide,
+        })
+    );
+    unitModel.castShadow = false;
+    unitModel.receiveShadow = false;
+    unitModel.rotateX(Math.PI / 4.5);
+    unitModel
+
+    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
+    this.AddUnitLabel(unitModel, unitID, "/assets/map_icons/boat.png", player.color);
+
+    const name = "SS FAFO";
+    let unit = {
+        id: `${player.name}_${unitType}_${unitModel.uuid}`,
+        type: unitType,
+        name: name,
+        health: 10,
+        health_max: 10,
+        cost: 500,
+        movement: 10,
+        movement_max: 10,
+        attack_range: 6,
+        attack: 10,
+        defence: 0,
+        kills: 0,
+        land: false,
+        water: true,
+        offset: .5,
+        image: "/assets/units/boat.png",
         owner: player.name,
         model: unitModel,
     };
@@ -262,10 +321,10 @@ export function CreateCity(player: Player): Improvement {
     // );
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/units/city.png")
+    const texture = textureLoader.load("../../assets/units/city2.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
-        new RingBufferGeometry(0.001, 1.3, 6, .001),
+        new PlaneBufferGeometry(1.5, 1.5),
         new MeshBasicMaterial({ 
             // color: player.color,
             map: texture,
@@ -275,7 +334,7 @@ export function CreateCity(player: Player): Improvement {
     );
     unitModel.castShadow = false;
     unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 6);
+    unitModel.rotateX(Math.PI / 4.5);
 
 
     const unitID = `${player.name}_${placeType}_${unitModel.uuid}`;
@@ -310,6 +369,38 @@ export function CreateCity(player: Player): Improvement {
     }
     updatePopulationAndProductionRates(player, city);
     return city;
+}
+
+export function createTerritoryOverlayModel(player: Player) {
+    const geom = new RingBufferGeometry(0.001, 1, 6, 1)
+    geom.rotateZ(Math.PI/2)
+    const model = new Mesh(
+        geom,
+        new MeshBasicMaterial({ 
+            color: player.color,
+            opacity: .45,
+            transparent: true,
+            side: FrontSide,
+        })
+    );
+    model.visible = false;
+    return model;
+}
+
+export function createCityOverlayModel() {
+    const geom = new RingBufferGeometry(0.001, .4, 6, 1)
+    geom.rotateZ(Math.PI/2)
+    const model = new Mesh(
+        geom,
+        new MeshBasicMaterial({ 
+            color: "white",
+            opacity: 1,
+            transparent: true,
+            side: FrontSide,
+        })
+    );
+    model.visible = false;
+    return model;
 }
 
 export function updateLabel(domID: string, content: string) {
@@ -394,7 +485,7 @@ export function CreateResourceModel(resource: Resource): Resource {
     const texture = textureLoader.load(`../../${resource.image}`)
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
-        new BoxBufferGeometry(.6, .6, .001),
+        new BoxBufferGeometry(.4, .4, .001),
         new MeshBasicMaterial({ 
             // color: player.color,
             map: texture,

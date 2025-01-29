@@ -47,7 +47,7 @@ class Toastify {
         oldestFirst: true,
         text: "Toastify is awesome!",
         node: undefined,
-        duration: 3000,
+        duration: 20,
         selector: undefined,
         callback: function () {},
         destination: undefined,
@@ -77,16 +77,16 @@ class Toastify {
 
     public static reposition(): typeof Toastify {
         const topLeftOffsetSize = {
-            top: 15,
-            bottom: 15,
+            top: 10,
+            bottom: 10,
         };
         const topRightOffsetSize = {
-            top: 15,
-            bottom: 15,
+            top: 10,
+            bottom: 10,
         };
         const offsetSize = {
-            top: 15,
-            bottom: 15,
+            top: 10,
+            bottom: 10,
         };
 
         const allToasts = document.getElementsByClassName("toastify");
@@ -102,7 +102,7 @@ class Toastify {
             }
 
             const height = toast.offsetHeight;
-            const offset = 15;
+            const offset = 0;
             const width = window.innerWidth > 0 ? window.innerWidth : screen.width;
 
             if (width <= 360) {
