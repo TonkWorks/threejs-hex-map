@@ -6,6 +6,7 @@ import { varying } from './util';
 import { TextureLoader, Color } from 'three';
 import { MapMeshOptions } from '../../src/MapMesh';
 import DefaultMapViewController from "../../src/DefaultMapViewController";
+import { Grid } from '../../dist/threejs-hex-map';
 
 function asset(relativePath: string): string {
     return "../../assets/" + relativePath
@@ -80,13 +81,10 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
             } // no options for tropical forests (index = 3)
         ]
     }
-    const [map, atlas] = await Promise.all([generateMap(mapSize), loadTextureAtlas()])
-    options.terrainAtlas = atlas
+
 
     const mapView = new MapView()
     mapView.zoom = initialZoom
-    mapView.load(map, options)
-
     const controller = mapView.controller as DefaultMapViewController
     mapView.resourcePanel = document.getElementById("resource-info") as HTMLElement
     mapView.unitInfoPanel = document.getElementById("unit-info") as HTMLElement
@@ -94,21 +92,51 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
     mapView.menuPanel = document.getElementById("menu") as HTMLElement
     mapView.actionPanel = document.getElementById("action") as HTMLElement
 
+
+    // const url = '/assets/game_maps/random.json';
+    // await fetch(url)
+    // .then(response => {
+    //   // Check if the request was successful
+    //   if (!response.ok) {
+    //       throw new Error('Network response was not ok');
+    //   }
+    //   return response.json(); // Parse JSON from the response
+    // })
+    // .then(data => {
+    //   console.log('JSON data:', data); // Handle the JSON data
+    //   mapView.loadFromJSON(data)
+    // })
+    let makeNew = true;
+    const savedGameName = localStorage.getItem('load_game');
+    console.log(localStorage);
+    if (savedGameName) {
+        const savedGame = localStorage.getItem(savedGameName);
+        if (savedGame) {
+            mapView.loadFromJSON(JSON.parse(savedGame));
+            localStorage.removeItem('load_game');
+            makeNew = false;
+        } else {
+            console.error('Failed to load saved game');
+        }
+    }
+    if (makeNew) {
+        const [map, atlas] = await Promise.all([generateMap(mapSize), loadTextureAtlas()])
+        options.terrainAtlas = atlas
+        mapView.load(map, options)
+    }
+
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
-        setFogAround(mapView, mapView.selectedTile, 100, true, true)
+//        setFogAround(mapView, mapView.selectedTile, 100, true, true)
         mapView.initGameSetup();
-        // mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
-        mapView.focus(0,0);
-        setFogAround(mapView, mapView.selectedTile, 5, true, false)
-        setFogAround(mapView, mapView.selectedTile, 2, false, false)
+        mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
+        // setFogAround(mapView, mapView.selectedTile, 5, true, false)
+        setFogAround(mapView, mapView.selectedTile, 50, false, false)
         mapView.updateResourcePanel();
         mapView.updateGameStatePanel();
         mapView.showEndTurnInActionPanel();
-        // document.getElementById("action").addEventListener('click', (event) => {
-        //     event.stopPropagation();
-        //     mapView.actionPanelClicked();
-        // });
+
+
         document.body.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
             if (target && target.classList.contains('player-negotiation')) {
@@ -120,8 +148,17 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 event.stopPropagation();
                 const dataAttribute = target.getAttribute('data-name');
                 const dataTarget = target.getAttribute('data-target');
-
                 mapView.playerDiplmaticAction(dataAttribute, dataTarget);
+            }
+            if (target && target.classList.contains('main-menu')) {
+                console.log('main-menu clicked');
+                event.stopPropagation();
+                mapView.mainMenu();
+            }
+            if (target && target.classList.contains('main-menu-option')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-name');
+                mapView.mainMenuOption(dataAttribute);
             }
             if (target && target.classList.contains('city-menu')) {
                 event.stopPropagation();
@@ -137,8 +174,12 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 event.stopPropagation();
                 mapView.pickResearch();
             }
-
+            if (target && target.classList.contains('taxes')) {
+                event.stopPropagation();
+                mapView.updateTaxes();
+            }
         });
+
     }
 
     mapView.onTileSelected = (tile: TileData) => {

@@ -21,7 +21,7 @@ export async function takeTurn(mapView: MapView, player: Player) {
     for (const playerName in player.diplomatic_actions) {
         if ("war" in player.diplomatic_actions[playerName]) {
             atWar = true;
-            targets.push(...findAlltargetTiles(mapView.gameState.players[playerName]));
+            targets.push(...findAlltargetTiles(mapView, mapView.gameState.players[playerName]));
         }
     }
 
@@ -34,7 +34,7 @@ export async function takeTurn(mapView: MapView, player: Player) {
     buildArmy(mapView, player);
 
     if (atWar) {
-        attack(mapView, player, targets);
+        await attack(mapView, player, targets);
     }
 
     mapView.endTurn();
@@ -52,7 +52,7 @@ export function buildArmy(mapView: MapView, player: Player) {
     const randomIndex = Math.floor(Math.random() * cityKeys.length);
     const randomCityKey = cityKeys[randomIndex];
     const city = player.improvements[randomCityKey];
-    const tile = city.tile;
+    const tile = mapView.getTile(city.tileInfo.q, city.tileInfo.r);
 
     // must do something with money?
     let maxActions = 6;
@@ -79,7 +79,7 @@ export function buildArmy(mapView: MapView, player: Player) {
         if (unit) {
             mapView.addUnitToMap(
                 unit, 
-                mapView.getClosestUnoccupiedTile(tile)
+                mapView.getClosestUnoccupiedTile(tile, "land")
             );
         }
     }
@@ -116,7 +116,7 @@ export function findACityLocation(mapView: MapView, player: Player, radius: numb
     const randomIndex = Math.floor(Math.random() * cityKeys.length);
     const randomCityKey = cityKeys[randomIndex];
     const city = player.improvements[randomCityKey];
-    const tile = city.tile;
+    const tile = mapView.getTile(city.tileInfo.q, city.tileInfo.r);
 
     const tiles = mapView.getTileGrid().neighbors(tile.q, tile.r, radius)
     const randomTileIndex = Math.floor(Math.random() * tiles.length);
@@ -129,25 +129,32 @@ export function findACityLocation(mapView: MapView, player: Player, radius: numb
 
 }
 
-function findAlltargetTiles(player: Player) {
+function findAlltargetTiles(mapView: MapView, player: Player) {
     const targets = [];
     for (const tt of Object.values(player.units)) {
-        targets.push(tt.tile);
+        const t = mapView.getTile(tt.tileInfo.q, tt.tileInfo.r);
+        targets.push(t);
     }
     for (const tt of Object.values(player.improvements)) {
-        targets.push(tt.tile);
+        const t = mapView.getTile(tt.tileInfo.q, tt.tileInfo.r);
+        targets.push(t);
     }
     return targets;
 }
 
 
-export function attack(mapView: MapView, player: Player, targets: TileData[]) {
+export async function attack(mapView: MapView, player: Player, targets: TileData[]) {
     for (const unit of Object.values(player.units)) {
-        let targetTile = findTargetForUnit(unit.tile, targets);
+        const t = mapView.getTile(unit.tileInfo.q, unit.tileInfo.r);
+        let targetTile = findTargetForUnit(t, targets);
         if (!targetTile) {
             return;
         }
-        mapView.moveUnit(unit.tile, targetTile);
+        if (targetTile.locked) {
+            await sleep(1500); // Sleep to see if we unlock
+        }
+        mapView.moveUnit(t, targetTile);
+
         // Attack the nearest enemy unit
         // For now, just attack the first enemy unit we find
     }
@@ -156,10 +163,10 @@ export function attack(mapView: MapView, player: Player, targets: TileData[]) {
 function findTargetForUnit(currentTile: TileData, targets: TileData[]) {
     // spice it up by removing a random target
     // TODO: add more spice (maybe first, second, third closest?)
-    if (targets.length > 1) {
-        const randomIndex = Math.floor(Math.random() * targets.length);
-        targets.splice(randomIndex, 1);
-    }
+    // if (targets.length > 2) {
+    //     const randomIndex = Math.floor(Math.random() * targets.length);
+    //     targets.splice(randomIndex, 1);
+    // }
 
     // get closest?
     return getClosestTile(currentTile, targets);
@@ -175,7 +182,7 @@ function getClosestTile(currentTile: TileData, targets: TileData[]): TileData | 
 
     for (const target of targets) {
         const distance = getDistance(currentTile, target);
-        if (distance < shortestDistance) {
+        if (distance <= shortestDistance) {
             closestTile = target;
             shortestDistance = distance;
         }

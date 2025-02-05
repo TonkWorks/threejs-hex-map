@@ -19,7 +19,7 @@
             background-color: cornflowerblue;
         }
 
-        #title, #debug, #unit-info, #game-info, #action, #resource-info, .text-info {
+        #title, #debug, #unit-info, #game-info, #action, #resource-info, #tooltip, .text-info {
             position: absolute;
             top: 0;
             width: 100%;
@@ -62,6 +62,19 @@
             width: 50%;
             text-align: right;
         }
+
+        #tooltip {
+            display: block;
+            position: absolute;
+            top: 0px;
+            background-color: rgb(49, 49, 49);
+            align-items:center;
+            padding-top: 5px;
+            font-size: 1em;
+            width: 300px;
+            text-align: left;
+        }
+
         #title {
             margin-top: -8px;
             z-index: 12;
@@ -84,6 +97,21 @@
             background-color: #491d3e;
             cursor: pointer;
         }
+
+        .action {
+            background-color: rgb(34, 0, 44, .85);
+            top: auto;
+            bottom: 250px;
+            right: 0;
+            width: 450px;
+            min-height: 50px;
+            text-align: center;
+        }
+        .action:hover {
+            background-color: #491d3e;
+            cursor: pointer;
+        }
+
 
         #unit-info {
             background-color: rgb(49, 49, 49);
@@ -122,11 +150,14 @@
         #menu {
             visibility: hidden;
             position: fixed;
+            color: white;
+            align-items:center;
+            text-align: center;
             top: 35px;
-            left: 20%;
-            width: 60%;
+            left: 15%;
+            width: 70%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+            background-color: rgba(0, 0, 0, 0.9); /* Semi-transparent black */
             z-index: 1050; /* Higher than Bootstrap's default modal z-index */
             align-items: center;
             justify-content: center;
@@ -146,9 +177,38 @@
         #menu .options {
             margin-top: 20px;
         }
+
+        #menu .options button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            width: 100%;
+            font-size: 0.5em;
+            justify-content: center;
+            align-items: center;
+            display: flex;
+        }
+        #menu-research-img {
+            max-height: 600px;
+            max-width: 100%;
+        }
         #menu-leader-img {
             min-width: 40%;
             width: 40%;
+        }
+        #menu-unit-img {
+            width: 50px;
+            padding-right: 10px;
+        }
+        #menu-unit-cost {
+            width: 25px;
+            padding-right: 10px;
+        }
+        .city-menu {
+            display: flex;
         }
 
         .highlight-hover:hover {
@@ -173,16 +233,13 @@
             text-align: center;
             font-size: 0.75em;
         }
-        #menu .options button {
-            background-color: #444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 10px 0;
-            cursor: pointer;
-            width: 100%;
-            font-size: 0.5em;
-            display: block;
+        .research_benefit_compact {
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: .75em;
         }
         #menu .options button:hover {
             background-color: #666;
@@ -323,6 +380,7 @@
     <div id="unit-info"></div>
     <div id="game-info"></div>
     <div id="menu"></div>
+    <div id="tooltip"></div>
 
 <script >
     var require = {

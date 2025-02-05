@@ -1,5 +1,5 @@
 import {FileLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial} from "three"
-import {QR} from "./interfaces"
+import {QR, TextureAtlas} from "./interfaces"
 
 const fileLoader = new FileLoader()
 const textureLoader = new TextureLoader()
@@ -62,6 +62,11 @@ export function forEachRange(min: number, max: number, f: (n: number) => void) {
     }
 }
 
+export function capitalize(str: string): string {
+    if (!str) return str; // Handle empty string case
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export function shuffle<T>(a: T[]): T[] {
     var j: number, x: T, i: number;
     for (i = a.length; i; i--) {
@@ -121,6 +126,20 @@ export function isInteger(value: number): boolean {
 
 export function flatten<T>(items: T[][]): T[] {
     return [].concat.apply([], items)
+}
+
+export function deepCopy<T>(obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+
+export async function loadTextureAtlas() {
+    return loadJSON<TextureAtlas>("../../assets/land-atlas.json")
+}
+
+
+export function asset(relativePath: string): string {
+    return "../../assets/" + relativePath
 }
 
 /// three.js and animations

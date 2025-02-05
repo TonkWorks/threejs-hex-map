@@ -812,6 +812,44 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                return this.get(q + qr.q, r + qr.r);
 	            });
 	        }
+	        //
+	        exportData(excludedProperties = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]) {
+	            const items = util_1.deepCopy(this.toArray())
+	                .filter((item) => item !== undefined)
+	                .map(item => {
+	                const copy = {};
+	                Object.keys(item).forEach((key) => {
+	                    if (!excludedProperties.includes(key)) {
+	                        copy[key] = item[key];
+	                    }
+	                    if (key === "resource") {
+	                        delete copy.resource.model;
+	                        delete copy.resource.image;
+	                    }
+	                    if (key === "clouds" && item.clouds === false) {
+	                        delete copy.clouds;
+	                    }
+	                    if (key === "fog" && item.fog === false) {
+	                        delete copy.fog;
+	                    }
+	                    if (key === "rivers" && item.rivers === null) {
+	                        delete copy.rivers;
+	                    }
+	                });
+	                return copy;
+	            });
+	            return {
+	                width: this.width,
+	                height: this.height,
+	                items: items
+	            };
+	        }
+	        static fromJSON(json) {
+	            const parsed = json;
+	            const grid = new Grid(parsed.grid.width, parsed.grid.height);
+	            grid.init(parsed.grid.items);
+	            return grid;
+	        }
 	    }
 	    Grid.NEIGHBOR_QRS = [
 	        { q: 1, r: -1 },
@@ -895,6 +933,12 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        }
 	    }
 	    exports.forEachRange = forEachRange;
+	    function capitalize(str) {
+	        if (!str)
+	            return str; // Handle empty string case
+	        return str.charAt(0).toUpperCase() + str.slice(1);
+	    }
+	    exports.capitalize = capitalize;
 	    function shuffle(a) {
 	        var j, x, i;
 	        for (i = a.length; i; i--) {
@@ -957,6 +1001,20 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        return [].concat.apply([], items);
 	    }
 	    exports.flatten = flatten;
+	    function deepCopy(obj) {
+	        return JSON.parse(JSON.stringify(obj));
+	    }
+	    exports.deepCopy = deepCopy;
+	    function loadTextureAtlas() {
+	        return __awaiter(this, void 0, void 0, function* () {
+	            return loadJSON("../../assets/land-atlas.json");
+	        });
+	    }
+	    exports.loadTextureAtlas = loadTextureAtlas;
+	    function asset(relativePath) {
+	        return "../../assets/" + relativePath;
+	    }
+	    exports.asset = asset;
 	    /// three.js and animations
 	    function updateMaterialColor(material, color) {
 	        if (material instanceof three_1.MeshBasicMaterial ||
@@ -2210,7 +2268,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                //
 	                const mousePos = coords_1.screenToWorld(e.clientX, e.clientY, this.controls.getCamera());
 	                const tile = this.controls.pickTile(mousePos);
-	                this.controls.hoverTile(tile);
+	                this.controls.hoverTile(tile, e.clientX, e.clientY);
 	            };
 	            this.onMouseUp = (e) => {
 	                if (!this.lastDrag || this.lastDrag.length() < 0.1) {
@@ -2233,6 +2291,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            };
 	            this.onMouseOut = (e) => {
 	                this.mouseDownPos = null; // end drag
+	                this.controls.hoverTile(undefined, e.clientX, e.clientY);
 	                this.controls.setScrollDir(0, 0);
 	            };
 	            this.onMouseUpMini = (e) => {
@@ -2267,7 +2326,6 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            canvas.addEventListener("touchend", (e) => this.onMouseUp(e.touches[0] || e.changedTouches[0]), false);
 	            // setInterval(() => this.showDebugInfo(), 200)
 	            document.getElementById("minimap").addEventListener("mouseup", this.onMouseUpMini, false);
-	            console.log(document.getElementById("minimap"));
 	            this.controls.setOnAnimateCallback(this.onAnimate);
 	        }
 	        addAnimation(animation) {

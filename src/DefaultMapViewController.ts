@@ -74,7 +74,6 @@ export default class Controller implements MapViewController {
         
         // setInterval(() => this.showDebugInfo(), 200)
         document.getElementById("minimap").addEventListener("mouseup", this.onMouseUpMini, false)
-        console.log(document.getElementById("minimap"))
         this.controls.setOnAnimateCallback(this.onAnimate)
     }
 
@@ -147,7 +146,7 @@ export default class Controller implements MapViewController {
         //
         const mousePos = screenToWorld(e.clientX, e.clientY, this.controls.getCamera())
         const tile = this.controls.pickTile(mousePos)
-        this.controls.hoverTile(tile)
+        this.controls.hoverTile(tile, e.clientX, e.clientY)
     }
 
     onMouseUp = (e: MouseEvent) => {
@@ -175,6 +174,7 @@ export default class Controller implements MapViewController {
 
     onMouseOut = (e: MouseEvent) => {
         this.mouseDownPos = null // end drag
+        this.controls.hoverTile(undefined, e.clientX, e.clientY)
         this.controls.setScrollDir(0, 0)
     }
 

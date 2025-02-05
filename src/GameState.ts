@@ -10,7 +10,7 @@ export interface Player {
     units: {  [key: string]: any };
     improvements: {  [key: string]: any};
     diplomatic_actions: { [key: string]: any};
-    research: { current: string, researched: Set<string>, progress: number };
+    research: { current: string, researched: { [key: string]: boolean }, progress: number };
 }
 
 
@@ -51,7 +51,7 @@ function createPlayer(): Player {
         units: {},
         improvements: {},
         diplomatic_actions: {},
-        research: { current: 'pottery', researched: new Set(['agriculture']), progress: 0 },
+        research: { current: 'agriculture', researched: {}, progress: 0 },
     };
 }
 

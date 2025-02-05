@@ -1,5 +1,5 @@
 import { QR } from './interfaces';
-import {qrRange, range, isInteger} from './util';
+import {qrRange, range, isInteger, deepCopy} from './util';
 import { Vector3 } from 'three';
 
 export default class Grid<T extends QR> {
@@ -152,5 +152,53 @@ export default class Grid<T extends QR> {
         return Grid.NEIGHBOR_QRS.map(qr => {
             return this.get(q + qr.q, r + qr.r)
         })
+    }
+
+
+    //
+    exportData(excludedProperties: string[] = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]): { width: number, height: number, items: T[] } {
+        
+        const items = deepCopy(this.toArray())
+            .filter((item): item is T => item !== undefined)
+            .map(item => {
+                const copy: Partial<T> = {} as T;
+                Object.keys(item).forEach((key: string) => {
+                    if (!excludedProperties.includes(key)) {
+                        (copy as any)[key] = (item as any)[key];
+                    }
+                    if (key === "resource") {
+                        delete (copy as any).resource.model;
+                        delete (copy as any).resource.image;
+                    }
+                    if (key === "clouds" && (item as any).clouds === false) {
+                        delete (copy as any).clouds;
+                    }
+                    if (key === "fog" && (item as any).fog === false) {
+                        delete (copy as any).fog;
+                    }
+                    if (key === "rivers" && (item as any).rivers === null) {
+                        delete (copy as any).rivers;
+                    }
+                });
+                return copy as T;
+            });
+
+        return {
+            width: this.width,
+            height: this.height,
+            items: items
+        };
+    }
+
+
+    static fromJSON<T extends QR>(json: any): Grid<T> {
+        const parsed: {
+            grid: { width: number; height: number; items: T[] };
+            units: any[]; 
+        } = json;
+        
+        const grid = new Grid<T>(parsed.grid.width, parsed.grid.height);
+        grid.init(parsed.grid.items);
+        return grid;
     }
 }

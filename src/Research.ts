@@ -1,35 +1,61 @@
 export interface Technology {
     id: string;
     name: string;
+    image: string;
+    quote: string;
+    quote_audio?: string;
+    population_growth_multiplier?: number;
+    gold_growth_multiplier?: number;
+    unlocks?: string[];
     dependencies: string[];
     depth?: number;
     x?: number;
     y?: number;
+    
 }
 
 interface TechTree {
     technologies: Map<string, Technology>;
-    playerTechs: Set<string>;
+    playerTechs: { [key: string]: boolean };
 }
 
 export const Technologies = new Map<string, Technology>([
-    ['agriculture', { id: 'agriculture', name: 'Agriculture', dependencies: [] }],
-    ['pottery', { id: 'pottery', name: 'Pottery', dependencies: ['agriculture'] }],
-    ['mining', { id: 'mining', name: 'Mining', dependencies: ['agriculture'] }],
-    ['writing', { id: 'writing', name: 'Writing', dependencies: ['pottery'] }],
-    ['iron_working', { id: 'iron_working', name: 'Iron Working', dependencies: ['mining'] }],
-    ['mathematics', { id: 'mathematics', name: 'Mathematics', dependencies: ['writing', 'iron_working'] }],
-    ['engineering', { id: 'engineering', name: 'Engineering', dependencies: ['mathematics'] }],
-    ['engineering2', { id: 'engineering2', name: 'Engineering2', dependencies: ['engineering'] }],
-    ['engineering3', { id: 'engineering3', name: 'Engineering3', dependencies: ['engineering2'] }],
-    ['engineering4', { id: 'engineering4', name: 'Engineering4', dependencies: ['engineering3'] }],
-    ['engineering5', { id: 'engineering5', name: 'Engineering5', dependencies: ['engineering4'] }],
-    ['engineering6', { id: 'engineering6', name: 'Engineering6', dependencies: ['engineering5'] }],
+    ['agriculture', { id: 'agriculture', name: 'Agriculture', dependencies: [], population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "/assets/research/agriculture.webp" }],
+    ['pottery', { id: 'pottery', name: 'Pottery', dependencies: ['agriculture'], population_growth_multiplier: 20, quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "/assets/research/agriculture.webp" }],
+    ['writing', { id: 'writing', name: 'Writing', dependencies: ['pottery'], population_growth_multiplier: 20, quote: "Writing: because history isn't going to exaggerate itself!", image: "/assets/research/embassy.webp" }],
+    ['mathematics', { id: 'mathematics', name: 'Mathematics', dependencies: ['iron_working',], gold_growth_multiplier: 20, quote: "Mathematics: where numbers go to have a party and leave their logic behind.", image: "/assets/research/mining.webp" }],
+    ['engineering', { id: 'engineering', name: 'Engineering', dependencies: ['writing', 'mathematics'], quote: "Engineering: the art of fixing problems you didn't know you had, in ways you don't understand.", image: "/assets/research/mining.webp" }],
+
+    ['mining', { id: 'mining', name: 'Mining', dependencies: [], gold_growth_multiplier: 20, quote: "Mining: giving rocks a chance to see the sun, one explosion at a time.", image: "/assets/research/mining.webp" }],
+    ['iron_working', { id: 'iron_working', name: 'Iron Working', dependencies: ['mining'], gold_growth_multiplier: 20, quote: "Iron Working: because stabbing someone with a bronze sword was so last millennium.", image: "/assets/research/mining.webp" }],
+
+
+
+    ['rifles', { id: 'rifles', name: 'Rifle Upgrades', dependencies: [], quote: "Rifles: because sometimes you just need to reach out and touch someone.", image: "/assets/research/rifles.webp" }],
+    ['infantry', { id: 'infantry', name: 'Infrantry', dependencies: ["rifles"], unlocks: ["infantry"], quote: "Infantry: because sometimes you just need to take the fight to the ground.", image: "/assets/research/rifles.webp" }],
+
+
+    ['warships', { id: 'warships', name: 'Warships', dependencies: [], unlocks: ["warship"], quote: "Warship: because sometimes you just need to take the fight to the sea.", image: "/assets/research/warship.webp" }],
+
+    ['tractors', { id: 'tractors', name: 'Tractors', dependencies: ["engineering"], population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "/assets/research/tractors.webp" }],
+    ['rail_roads', { id: 'rail_roads', name: 'Railroads', dependencies: ["engineering"], gold_growth_multiplier: 40, quote: "Railroads: choochoo", image: "/assets/research/railroads.webp" }],
+    ['blimps', { id: 'blimps', name: 'Blimps', dependencies: ["engineering"], quote: "Blimps: because sometimes you just need to take the fight to the sky.", image: "/assets/research/blimps.webp" }],
+    ['destroyer', { id: 'destroyer', name: 'Destroyers', dependencies: ['warships', 'engineering'], unlocks: ["destoyer"], quote: "Destroyer: because sometimes you just need to take the fight to the sea.", image: "/assets/research/destroyer.webp" }],
+    ['tank', { id: 'tank', name: 'Tanks', dependencies: ['engineering'], unlocks: ["tank"], quote: "Tanks: because walking into battle is so last century.", image: "/assets/research/tank.webp" }],
+    ['nuke', { id: 'nuke', name: 'Nukes', dependencies: ['engineering'], unlocks: ["missile"], quote: "Nuke: because sometimes you just need to take the fight to the sea.", image: "/assets/research/nuke.webp" }],
+
+    ['gmos', { id: 'tractors', name: 'GMOs', dependencies: ["tractors"], population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "/assets/research/tractors.webp" }],
+    ['planes', { id: 'tractors', name: 'Planes', dependencies: ["rail_roads"], gold_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "/assets/research/tractors.webp" }],
+
+    ['gunships', { id: 'gunships', name: 'Gunships', dependencies: ["blimps"], unlocks: ["gunship"], quote: "Gunships: because sometimes you just need to take the fight to the sky.", image: "/assets/research/gunship.webp" }],
+
+
+    
 ]);
 
 const techTree: TechTree = {
     technologies:Technologies,
-    playerTechs: new Set<string>()
+    playerTechs: {},
 };
 
 const xSpacing = 300;
@@ -64,7 +90,7 @@ function calculateLayout(): { width: number; height: number } {
 
     Array.from(tiers.entries()).forEach(([depth, techs]) => {
         const x = 50 + (depth * xSpacing);
-        const verticalStart = (window.innerHeight * 0.4) - ((techs.length * ySpacing) / 2);
+        const verticalStart = (window.innerHeight * 0.1);
 
         techs.forEach((tech, i) => {
             tech.x = x;
@@ -128,7 +154,7 @@ function setupDragScroll(container: HTMLElement): void {
 
 export function RenderTechTree(
     currentlyResearching: string, 
-    researchedTechs: Set<string>, 
+    researchedTechs: { [key: string]: boolean }, 
     onTechClick: (tech: Technology) => void
 ): void {
     const container = document.getElementById('menu');
@@ -220,7 +246,7 @@ export function RenderTechTree(
         techDiv.style.height = `${nodeHeight}px`;
 
         // Update styling based on researched and currently researching tech
-        if (researchedTechs.has(tech.id)) {
+        if (tech.id in researchedTechs) {
             techDiv.style.color = 'goldenrod';
             techDiv.style.backgroundColor = 'rgba(84, 18, 138, 0.75)';
         } else if (currentlyResearching === tech.id) {
@@ -236,7 +262,9 @@ export function RenderTechTree(
 
         techDiv.innerHTML = `
         <div class="tech-content">
+            </br>
             <strong>${tech.name}</strong>
+            <p class="research_benefit_compact">${BenefitCompact(tech)}</p>
         </div>
         `;
 
@@ -254,6 +282,70 @@ export function RenderTechTree(
 }
 
 function canUnlock(tech: Technology): boolean {
-    return tech.dependencies.every(d => techTree.playerTechs.has(d)) &&
-        !techTree.playerTechs.has(tech.id);
+    return tech.dependencies.every(d => d in techTree.playerTechs) &&
+        !(tech.id in techTree.playerTechs);
+}
+
+export function AIChooseResearch(): Technology {
+    const techs = Array.from(techTree.technologies.values());
+    const unlockedTechs = techs.filter(t => canUnlock(t));
+    return unlockedTechs[Math.floor(Math.random() * unlockedTechs.length)];
+}
+
+export function BenefitCompact(tech: Technology): string {
+    let benefit = "";
+    if (tech.population_growth_multiplier) {
+        let pop_icon = `<img src="/assets/ui/resources/population.png" style="height: 35px; padding-right: 10px;"/>`
+        benefit += `${pop_icon} +${tech.population_growth_multiplier}%`;
+    }
+    if (tech.gold_growth_multiplier) {
+        let gold_icon = `<img src="/assets/ui/resources/gold.png" style="height: 35px; padding-right: 10px;"/>`
+        benefit += `${gold_icon} +${tech.gold_growth_multiplier}%`;
+    }
+    if (tech.unlocks) {
+        for (let i = 0; i < tech.unlocks.length; i++) {
+            let t = tech.unlocks[i]
+            t = t.charAt(0).toUpperCase() + t.slice(1); // captialize
+            benefit += `Unlocks: ${t}`;
+        }
+    }
+    return benefit;
+}
+export function DisplayResearchFinished(tech: Technology): void {
+    let benefit = "";
+    if (tech.population_growth_multiplier) {
+        let pop_icon = `<img src="/assets/ui/resources/population.png" style="height: 35px;"/>`
+        benefit += `${pop_icon} +${tech.population_growth_multiplier}% population growth in all cities.`;
+    }
+    if (tech.gold_growth_multiplier) {
+        let gold_icon = `<img src="/assets/ui/resources/gold.png" style="height: 35px;"/>`
+        benefit += `${gold_icon} +${tech.gold_growth_multiplier}% gold production in all cities.`;
+    }
+    if (tech.unlocks) {
+        for (let i = 0; i < tech.unlocks.length; i++) {
+            let t = tech.unlocks[i]
+            t = t.charAt(0).toUpperCase() + t.slice(1); // captialize
+            benefit += `Unlocks: ${t}`;
+        }
+    }
+    let research = `<span class="research highlight-hover action small">Pick a new research</action>`
+
+    let info = `
+        <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+        <h3>Research Completed: ${tech.name}</h3>
+        <p style="quote">${tech.quote}</p>
+        <div style="text-align: center;">
+            <img id="menu-research-img" src="${tech.image}">
+        </div>
+        <div>
+            <h5>Benefits:</br>
+                ${benefit}
+            </h5>
+        </div>
+        ${research}
+        
+    `;
+    const menuPanel = document.getElementById('menu');
+    menuPanel.innerHTML = info;
+    menuPanel.style.visibility = "visible";
 }

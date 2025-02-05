@@ -14,17 +14,18 @@ export interface TileData {
     q: number;
     r: number;
     height: Height;
-    fog: boolean;
-    clouds: boolean;
+    fog: boolean | false;
+    clouds: boolean | false;
     terrain: string;
     locked: boolean | false;
     owner?: string | null;
     unit?: Unit | null;
+    city?: string | null;
     improvement?: Improvement | null;
     improvementOverlay?: Mesh | null;
     territoryOverlay?: Mesh | null;
     resource?: Resource | null;
-    rivers?: {riverIndex: number; riverTileIndex: number}[];
+    rivers?: {riverIndex: number; riverTileIndex: number}[] | null;
     treeIndex?: number; // index of tree texture, optional
 }
 
