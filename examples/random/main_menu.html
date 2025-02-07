@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rising Powers</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                  url('/../assets/city.webp');
+      background-size: cover;
+      height: 100vh;
+      font-family: 'Trajan Pro', serif;
+      color: #d4af37;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .title {
+      font-size: 4em;
+      text-shadow: 2px 2px 4px #000;
+      margin: 2rem 0;
+      letter-spacing: 3px;
+    }
+
+    .menu-container {
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #d4af37;
+      border-radius: 5px;
+      padding: 2rem;
+      min-width: 400px;
+    }
+
+    .menu-button {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px solid #d4af37;
+      color: #d4af37;
+      font-size: 1.5em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .menu-button:hover {
+      background: rgba(212, 175, 55, 0.2);
+      transform: scale(1.05);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 999;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #d4af37;
+      padding: 2rem;
+      width: 80%;
+      min-width: 500px;
+      color: white;
+      z-index: 1000;
+    }
+
+    .close-btn {
+      position: absolute;
+      right: 1rem;
+      top: 1rem;
+      cursor: pointer;
+      color: #d4af37;
+    }
+
+    .civ-dropdown {
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px solid #d4af37;
+      color: #d4af37;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      width: 200px;
+    }
+
+    .custom-tooltip {
+      display: none;
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #d4af37;
+      padding: 1rem;
+      max-width: 300px;
+      z-index: 2000;
+      pointer-events: none;
+      white-space: pre-line;
+    }
+
+    .volume-slider {
+      width: 100%;
+      margin: 1rem 0;
+    }
+
+    .dropdown-group {
+      margin: 1rem 0;
+    }
+
+    .select .op-select {
+      margin: 1rem 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-backdrop" onclick="closeAllModals()"></div>
+  <div id="custom-tooltip" class="custom-tooltip"></div>
+
+  <h1 class="title">RISING POWERS</h1>
+  
+  <div class="menu-container">
+    <button class="menu-button" onclick="showModal('new-game')">New Game</button>
+    <button class="menu-button" onclick="showModal('load-game')">Load Game</button>
+    <button class="menu-button" onclick="showModal('settings')">Settings</button>
+  </div>
+
+  <!-- New Game Modal -->
+  <div id="new-game" class="modal">
+    <span class="close-btn" onclick="closeModal('new-game')">✕</span>
+    <h2>Player</h2>
+    <div class="dropdown-group">
+      <!-- Human civilization dropdown populated dynamically -->
+      <select class="civ-dropdown" id="human-civ"
+              onmouseover="showCivTooltip(event)" 
+              onmouseout="hideTooltip()">
+      </select>
+      <!-- Human color dropdown; options populated via JavaScript -->
+      <select class="civ-dropdown" id="human-color"></select>
+    </div>
+
+    <h2>Game Setup</h2>
+    <div class="dropdown-group">
+      <label>Map:</label><br>
+      <select class="civ-dropdown op-select" id="map" 
+              title="Random Continents: Mix of large landmasses and oceans">
+        <option>Random Continents</option>
+      </select>
+    </div>
+    <div class="dropdown-group">
+      <label>AI Difficulty:</label><br>
+      <!-- AI difficulty dropdown; options populated via JavaScript -->
+      <select class="civ-dropdown op-select" id="ai-difficulty"
+              title="Higher difficulties give AI players advantages in production and growth"></select>
+    </div>
+
+    <h2>AI Players</h2>
+    <div id="ai-slots"></div>
+    <button class="menu-button" onclick="startNewGame()">Begin Your Journey</button>
+  </div>
+
+  <!-- Load Game Modal -->
+  <div id="load-game" class="modal">
+    <span class="close-btn" onclick="closeModal('load-game')">✕</span>
+    <h2>Saved Games</h2>
+    <div id="save-games-list">
+      <!-- Saved games will be populated here from localStorage -->
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings" class="modal">
+    <span class="close-btn" onclick="closeModal('settings')">✕</span>
+    <h2>Settings</h2>
+    <label>Music Volume:</label>
+    <input type="range" class="volume-slider" id="music-volume" min="0" max="100">
+    
+    <label>Sound Effects Volume:</label>
+    <input type="range" class="volume-slider" id="sfx-volume" min="0" max="100">
+  </div>
+
+  <script>
+    // Nations object for civilization selection
+    const nations = {
+      "USA": {
+        "leader": "President Trump",
+        "description": "A modern powerhouse, championing liberty and opportunity, ever striving for greatness on the world stage."
+      },
+      "The Luminari": {
+        "leader": "Queen Lyara",
+        "description": "A radiant realm guided by celestial wisdom, shining as a beacon of hope and enlightenment."
+      },
+      "Soviet Union": {
+        "leader": "Premier Volkov",
+        "description": "A formidable collective under the Red Banner, forging an industrial and ideological empire of workers."
+      },
+      "China": {
+        "leader": "Chairman Wei",
+        "description": "An enduring civilization blending ancient heritage with modern ambitions, led by the steady hand of Chairman Wei."
+      },
+      "Rome": {
+        "leader": "Emperor Augustus",
+        "description": "The Eternal City stands at the center of civilization, expanding its influence with legions and grand roads."
+      },
+      "Egypt": {
+        "leader": "Pharaoh Cleopatra",
+        "description": "A land of timeless marvels along the Nile, guided by the wisdom and allure of its legendary Pharaoh."
+      },
+      "Greece": {
+        "leader": "King Alexander",
+        "description": "Birthplace of philosophy and strategy, unified under Alexander’s ambition to spread Hellenic culture across the world."
+      },
+      "Britain": {
+        "leader": "Queen Victoria",
+        "description": "A seafaring empire wielding industrial might and colonial ambitions, led by the steadfast Queen Victoria."
+      }
+    };
+    const civilizations = Object.keys(nations);
+
+    // Colors for the dropdowns (using JS list)
+    const colors = [
+      { value: 'red', label: 'Red' },
+      { value: 'gold', label: 'Gold' },
+      { value: 'blue', label: 'Blue' },
+      { value: 'green', label: 'Green' },
+      { value: 'yellow', label: 'Yellow' }
+    ];
+
+    // Difficulty options as a JS list
+    const difficulties = ["Settler", "Chieftain", "Warlord", "King", "Emperor", "Deity"];
+
+    // Populate the human civilization dropdown from nations object
+    function populateHumanCivDropdown() {
+      const humanCivDropdown = document.getElementById('human-civ');
+      humanCivDropdown.innerHTML = civilizations.map(civ => 
+        `<option value="${civ}" title="Leader: ${nations[civ].leader}\n${nations[civ].description}">
+          ${civ}
+        </option>`
+      ).join('');
+    }
+
+    // Populate a dropdown given an element ID and an array of options
+    function populateDropdown(selectId, optionsArray) {
+      const select = document.getElementById(selectId);
+      select.innerHTML = optionsArray.map(opt => `<option value="${opt.value || opt}">${opt.label || opt}</option>`).join('');
+    }
+
+    // Update color swatches when selection changes (if needed)
+    document.querySelectorAll('.civ-dropdown').forEach(dropdown => {
+      dropdown.addEventListener('change', function() {
+        if (this.classList.contains('ai-color') || this.id === 'human-color') {
+          const color = this.options[this.selectedIndex].value;
+          this.style.setProperty('--selected-color', 
+            getComputedStyle(document.documentElement)
+              .getPropertyValue(`--color-${color}`));
+        }
+      });
+    });
+
+    // Modal handling
+    function showModal(modalId) {
+      document.querySelector('.modal-backdrop').style.display = 'block';
+      document.getElementById(modalId).style.display = 'block';
+      if (modalId === 'load-game') {
+        loadSavedGames();
+      }
+    }
+
+    function closeAllModals() {
+      document.querySelector('.modal-backdrop').style.display = 'none';
+      document.querySelectorAll('.modal').forEach(modal => {
+        modal.style.display = 'none';
+      });
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Custom tooltip functions for civilization options
+    function showCivTooltip(event) {
+      const tooltip = document.getElementById('custom-tooltip');
+      const target = event.target;
+      let civKey;
+      // Check if the event target is an OPTION or a SELECT element.
+      if (target.tagName === 'OPTION') {
+        civKey = target.value;
+      } else if (target.tagName === 'SELECT') {
+        civKey = target.options[target.selectedIndex].value;
+      }
+      if (civKey && nations[civKey]) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${event.pageX + 15}px`;
+        tooltip.style.top = `${event.pageY}px`;
+        tooltip.textContent = `Leader: ${nations[civKey].leader}\n${nations[civKey].description}`;
+      }
+    }
+
+    function hideTooltip() {
+      document.getElementById('custom-tooltip').style.display = 'none';
+    }
+
+    // Create an AI slot using nations data.
+    // Added an initial "None" option so that the slot can be left empty.
+    function createAISlot() {
+      const randomCiv = civilizations[Math.floor(Math.random() * civilizations.length)];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      return `
+        <div class="dropdown-group">
+          <select class="civ-dropdown ai-civ"
+                  onmouseover="showCivTooltip(event)" 
+                  onmouseout="hideTooltip()">
+            <option value="">None</option>
+            ${civilizations.map(c => `
+              <option value="${c}" title="Leader: ${nations[c].leader}\n${nations[c].description}"
+                ${c === randomCiv ? 'selected' : ''}>
+                ${c}
+              </option>
+            `).join('')}
+          </select>
+          <select class="civ-dropdown ai-color">
+            ${colors.map(col => `
+              <option value="${col.value}" ${col.value === randomColor.value ? 'selected' : ''}>
+                ${col.label}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+      `;
+    }
+
+    function updateAISlots() {
+      const container = document.getElementById('ai-slots');
+      container.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        container.innerHTML += createAISlot();
+      }
+    }
+
+    // Start game function. Only include AI players with a selected civilization.
+    function startNewGame() {
+      const humanSelection = {
+        civ: document.getElementById('human-civ').value,
+        color: document.getElementById('human-color').value
+      };
+
+      const aiPlayers = [];
+      const aiCivs = document.querySelectorAll('.ai-civ');
+      const aiColors = document.querySelectorAll('.ai-color');
+      
+      for (let i = 0; i < aiCivs.length; i++) {
+        const aiCivValue = aiCivs[i].value;
+        // Only include AI player if a civilization is selected (i.e. value is not empty)
+        if (aiCivValue !== "") {
+          aiPlayers.push({
+            civ: aiCivValue,
+            color: aiColors[i].value,
+            difficulty: document.getElementById('ai-difficulty').value
+          });
+        }
+      }
+
+      console.log('Starting game with:', {
+        human: humanSelection,
+        aiPlayers: aiPlayers,
+        difficulty: document.getElementById('ai-difficulty').value
+      });
+      
+      localStorage.setItem('new_game_settings', JSON.stringify({
+        human: humanSelection,
+        aiPlayers: aiPlayers,
+        map: document.getElementById('map').value,
+        difficulty: document.getElementById('ai-difficulty').value
+      }));
+      window.location.href = '/examples/random/';
+    }
+
+    // Load saved games from localStorage (using key "saved_games")
+    function loadSavedGames() {
+      const list = document.getElementById('save-games-list');
+      list.innerHTML = '';
+      let savedGames = JSON.parse(localStorage.getItem('saved_games') || '[]');
+      if (savedGames.length === 0) {
+        list.innerHTML = '<p>No saved games found.</p>';
+      } else {
+        savedGames.reverse();
+        savedGames.forEach(game => {
+          list.innerHTML += `
+            <div class="save-entry">
+              <button class="menu-button" onclick="loadGame('${game.id}')">${game.name}</button>
+            </div>
+          `;
+        });
+      }
+    }
+
+    function loadGame(game_id) {
+      localStorage.setItem('load_game', game_id);
+        window.location.href = '/examples/random/';
+    }
+
+    // Update settings in localStorage when volume sliders change.
+    function updateVolumeSettings() {
+      const musicVolume = document.getElementById('music-volume').value;
+      const sfxVolume = document.getElementById('sfx-volume').value;
+      const settings = { musicVolume, sfxVolume };
+      localStorage.setItem('settings', JSON.stringify(settings));
+    }
+
+    // Initialize volume slider values from localStorage (if any)
+    function initializeVolumeSliders() {
+      const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+      if (settings.musicVolume !== undefined) {
+        document.getElementById('music-volume').value = settings.musicVolume;
+      }
+      if (settings.sfxVolume !== undefined) {
+        document.getElementById('sfx-volume').value = settings.sfxVolume;
+      }
+    }
+
+    // Attach event listeners to volume sliders
+    document.getElementById('music-volume').addEventListener('input', updateVolumeSettings);
+    document.getElementById('sfx-volume').addEventListener('input', updateVolumeSettings);
+
+    // Initialize save games, dropdowns, and AI slots on window load
+    window.onload = () => {
+      populateHumanCivDropdown();
+      populateDropdown('human-color', colors);
+      populateDropdown('ai-difficulty', difficulties);
+      updateAISlots();
+      initializeVolumeSliders();
+      loadSavedGames();
+    };
+  </script>
+</body>
+</html>

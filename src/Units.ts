@@ -7,6 +7,7 @@ import { Player } from './GameState'; // Adjust the import path as necessary
 import { TileData } from './interfaces';
 import { Nations } from './Nations';
 import { asset } from './util';
+import AnimatedSelector from './Selector';
 
 
       
@@ -32,6 +33,7 @@ export interface Unit {
     kills: number; // Number of kills
     owner: string; // Player or faction ID
     model?: Mesh; // Reference to the 3D model in the scene
+    selector?: AnimatedSelector;
     tileInfo?: {q: Number, r: Number}; // Reference to the tile the unit is on
 }
 
@@ -106,9 +108,9 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     labelDiv.className = 'unit-label';
     labelDiv.id = `${unitID}-label`;
     labelDiv.innerHTML = `
+    <div>
         <img src="${icon}" style="width: 90px; height: 100px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div>
-        ${text}
     `;
     labelDiv.style.fontFamily = 'Arial, sans-serif';
 
@@ -160,7 +162,7 @@ export function CreateRifleman(player: Player): Unit {
         kills: 0,
         land: true,
         water: false,
-        offset: .29,
+        offset: 0,
         image: "/assets/rifleman.webp",
         owner: player.name,
         model: unitModel,
@@ -209,7 +211,7 @@ export function CreateInfantry(player: Player): Unit {
         kills: 0,
         land: true,
         water: false,
-        offset: .29,
+        offset: 0,
         image: "/assets/rifleman.webp",
         owner: player.name,
         model: unitModel,
@@ -422,9 +424,9 @@ export function CreateDestroyer(player: Player): Unit {
     unitModel
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
+    const name = "SS FAFO";
     AddUnitLabel(unitModel, unitID, "/assets/map/icons/destroyer.png", player.color);
 
-    const name = "SS FAFO";
     let unit = {
         id: `${player.name}_${unitType}_${unitModel.uuid}`,
         type: unitType,

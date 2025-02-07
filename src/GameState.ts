@@ -1,3 +1,5 @@
+import { getRandomInt } from "./util";
+
 export interface Player {
     name: string;
     nation: string;
@@ -23,6 +25,7 @@ export interface GameState {
     players: { [key: string]: Player };
     playerOrder: string[];
     playersTurn: string;
+    aiDifficulty: string;
     currentPlayer: string
     turn: number;
 
@@ -56,26 +59,64 @@ function createPlayer(): Player {
 }
 
 export function InitGameState(): GameState {
+    let playersList: Player[] = [];
+    let aiDifficulty = localStorage.getItem("ai_difficulty");
+    if (!aiDifficulty) {
+        aiDifficulty = "easy";
+    }
 
-    let player1 = createPlayer();
-    player1.name = "USA";
-    player1.nation = "USA";
-    player1.color = "#FFFF00";
-    player1.image = "/assets/rifleman.webp";
+    let new_game_settings = localStorage.getItem("new_game_settings");
+    if (new_game_settings) {
+        let settings = JSON.parse(new_game_settings);
 
-    let player2 = createPlayer();
-    player2.name = "China";
-    player2.nation = "China";
-    player2.color = "#FF0000";
-    player2.image = "/assets/rifleman.webp";    
+        let human = settings.human;
+        let player1 = createPlayer();
+        player1.name = human.civ;
+        player1.nation = "USA";
+        player1.color = human.color; //"#FFFF00";
+        player1.image = "/assets/rifleman.webp";
+        playersList.push(player1)
 
-    let player3 = createPlayer();
-    player3.name = "Soviet Union";
-    player3.nation = "Soviet Union";
-    player3.color = "#0000FF";
-    player3.image = "/assets/rifleman.webp";    
+        for (let ai of settings.aiPlayers) {
+            let player = createPlayer();
+            player.name = ai.civ;
+            player.nation = ai.civ;
+            player.color = ai.color; //"#FFFF00";
+            player.image = "/assets/rifleman.webp";
 
-    const playersList: Player[] = [player1, player2, player3];
+            // Check if the name already exists in playersList
+            let originalName = player.name;
+            let i = 2;
+            while (playersList.some(p => p.name === player.name)) {
+                player.name = `${originalName} ${i}`;
+                i++;
+            }
+
+            playersList.push(player);
+        }
+    } else {
+        // default // maybe error
+        let player1 = createPlayer();
+        player1.name = "USA";
+        player1.nation = "USA";
+        player1.color = "#FFFF00";
+        player1.image = "/assets/rifleman.webp";
+    
+        let player2 = createPlayer();
+        player2.name = "China";
+        player2.nation = "China";
+        player2.color = "#FF0000";
+        player2.image = "/assets/rifleman.webp";    
+    
+        let player3 = createPlayer();
+        player3.name = "Soviet Union";
+        player3.nation = "Soviet Union";
+        player3.color = "#0000FF";
+        player3.image = "/assets/rifleman.webp";  
+
+        playersList = [player1, player2, player3];
+    }
+
     const players: { [key: string]: Player } = {};
     for (const player of  playersList) {
         players[player.name] = player;
@@ -90,6 +131,7 @@ export function InitGameState(): GameState {
     const playerNames = playersList.map((player) => player.name);
     return {
         players: players,
+        aiDifficulty: aiDifficulty,
         currentPlayer: playerNames[0],
         playersTurn: playerNames[0],
         playerOrder: playerNames,

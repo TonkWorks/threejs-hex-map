@@ -26,6 +26,7 @@ import { takeTurn } from './AI';
 import Toastify from './toastify';
 import { Nations } from './Nations';
 import { AIChooseResearch, DisplayResearchFinished, RenderTechTree, Technologies, Technology } from './Research';
+import AnimatedSelector, { LightOfGod, Selector, Selectors } from './Selector';
 
 declare const tsParticles: any;
 
@@ -66,7 +67,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     private _minimap_aspect_width = 400;
     private _minimap_aspect_height = 275;
-    private spotlight: SpotLight = null;
     
     unitInfoPanel: HTMLElement = null;
     unitInfoCache = "";
@@ -77,9 +77,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     menuPanel: HTMLElement = null;
     actionPanel: HTMLElement = null;
     resourcePanel: HTMLElement = null;
-    sectionHalo: ParticleSystem = null;
-    private _spotlight: SpotLight;
-    private _spotLightHelper: any;
+    sectionHalo: LightOfGod = null;
 
     get controller() {
         return this._controller
@@ -113,7 +111,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         return this._tileGrid
     }
 
-    getSaveGame(): string {
+    getSaveGame() {
         const gc: Partial<GameState> = deepCopy(this._gameState);
 
         for (const [key, player] of Object.entries(gc.players)) {
@@ -122,6 +120,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
             for (const [unitKey, _] of Object.entries(units)) {
                 units[unitKey].model = null;
+                units[unitKey].selector = undefined;
+
             }
             player.units = units;
             for (const [improvementKey, _] of Object.entries(improvements)) {
@@ -130,11 +130,11 @@ export default class MapView implements MapViewControls, TileDataSource {
             player.improvements = improvements;
         }
         
-        return JSON.stringify({
+        return {
             "gameState": gc,
             "grid": this._tileGrid.exportData(),
             "selectedTile": { q: this._selectedTile.q, r: this._selectedTile.r }
-        });
+        };
     }
 
     get mapMesh(): MapMesh {
@@ -229,40 +229,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         minimap_camera.rotation.x = 0
         this.setZoom(MapView.DEFAULT_ZOOM)
         this.focus(0, 0)
-
-        // Add a spotlight to the scene
-        const spotlight = new SpotLight(0xffffff, 1, 100, Math.PI / 4, 0.5, 2);
-        spotlight.position.set(0, 10, 0); // Adjust the position as needed
-        spotlight.target.position.set(0, 0, 0); // The target is the center of the spotlight
-        this._spotlight = spotlight;
-
-        this._spotlight.color.setHex(0xffffff); // White light
-        this._spotlight.intensity = 5; // Increase the intensity
-        this._spotlight.distance = 5; // Increase the distance
-        this._spotlight.angle = Math.PI / 6; // Narrower cone angle
-        this._spotlight.decay = 1; // No decay
-        this._renderer.shadowMap.enabled = true;
-        this._renderer.shadowMap.type = PCFSoftShadowMap;
-        this._scene.receiveShadow = true;
-        console.log(this._scene);
-        
-        this._spotLightHelper = new SpotLightHelper(spotlight);
-        this._scene.add(this._spotLightHelper);
-
-        // Enable shadows for the spotlight
-        this._spotlight.castShadow = true;
-        
-        // Adjust shadow map properties for better quality
-        this._spotlight.shadow.mapSize.width = 1024;
-        this._spotlight.shadow.mapSize.height = 1024;
-        this._spotlight.shadow.camera.near = 1;
-        this._spotlight.shadow.camera.far = 100;
-
-        this._scene.add(spotlight);
-        this._scene.add(spotlight.target);
-
-        // Store the spotlight in your class for later manipulation
-        this._spotlight = spotlight;
 
         // hover selector
         this._hoverSelector.position.setZ(0.0001)
@@ -576,6 +542,15 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             return;
         }
+
+        let new_game_settings = localStorage.getItem("new_game_settings");
+        if (new_game_settings) {
+            new_game_settings = JSON.parse(new_game_settings);
+            
+            // this._gameState.players = 
+            console.log(new_game_settings);
+            localStorage.removeItem("new_game_settings");
+        }
         // set up initial resources
         const resourceNames = Object.keys(ResourceMap);
         for (let i = 0; i < 50; i++) {
@@ -648,15 +623,16 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         this._onAnimate(dtS)
 
-        this._spotLightHelper.update();
-
         for (const ps of ParticleSystems) {
             ps.update(dtS);
             if (!ps.isActive()) {
                 ps.dispose();
             }
         }
- 
+        for (const ps of Selectors) {
+            ps.update(dtS);
+        }
+
         this._renderer.render(this._scene, camera);
         this._labelRenderer.render(this._scene, camera);
 
@@ -796,17 +772,16 @@ export default class MapView implements MapViewControls, TileDataSource {
         document.getElementById('menu').innerHTML = "";
         document.getElementById('menu').style.visibility='hidden';
 
-        this._spotlight.position.set(worldPos.x, worldPos.y, 4); // Adjust the Y coordinate as needed
-        this._spotlight.target.position.set(worldPos.x, worldPos.y, 0.2);
-        console.log(this._spotlight)
 
+        // Create light of god halo
         if (this.sectionHalo) {
             this.sectionHalo.dispose();
+            this.sectionHalo = undefined;
+        }          
+        if (tile.unit !== undefined && tile.unit.owner === this.gameState.currentPlayer) {
+            this.sectionHalo = new LightOfGod();
+            tile.unit.model.add(this.sectionHalo.group);
         }
-          
-          // Create new halo
-        // this.sectionHalo = createSpotlightEffect(this._scene, worldPos);
-
 
         let player = this.getPlayer(this.gameState.currentPlayer);
         if (this.placingCity) {
@@ -859,6 +834,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         const worldPos = qrToWorld(tile.q, tile.r);
         const from = qrToWorld(this.selectedTile.q, this.selectedTile.r);
+
 
         // new Explosion(from, worldPos, this._scene);
         
@@ -1080,6 +1056,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         nextMovementTile.unit.tileInfo = { q: nextMovementTile.q, r: nextMovementTile.r }
         nextMovementTile.unit.movement -= 1;
         
+        if (nextMovementTile.unit.movement === 0) {
+            if (nextMovementTile.unit.selector !== undefined) {
+                nextMovementTile.unit.selector.dispose();
+                nextMovementTile.unit.selector = undefined;
+            }
+ 
+        }
+
         if (playerInitiated) {
             this.playSound(asset("sounds/units/rifleman2.mp3"), nextMovementTile.unit.model.position);
         }
@@ -1504,15 +1488,17 @@ export default class MapView implements MapViewControls, TileDataSource {
             this._gameState.turn += 1;
         }
 
+
+        const player = this._gameState.players[this._gameState.playersTurn];
+        const nation = Nations[player.nation];
+
         if (this._gameState.playersTurn === this._gameState.currentPlayer) {
             this.showEndTurnInActionPanel();
         } else {
-            this.setActionPanel(`<div class="grey">Waiting for ${this._gameState.playersTurn}..<div>`);
+            this.setActionPanel(`<div class="grey">Waiting for ${player.name}..<div>`);
         }
 
         // calculate new resources for player
-        const player = this._gameState.players[this._gameState.playersTurn];
-        const nation = Nations[player.nation];
         for (const [key, improvement] of Object.entries(player.improvements)) {
             // population
             updatePopulationAndProductionRates(player, improvement);
@@ -1569,6 +1555,21 @@ export default class MapView implements MapViewControls, TileDataSource {
             unit.movement = unit.movement_max;
             // unit.health = unit.health_max;
         }
+
+        // Add selectors for units that have movement
+        if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+            for (const [key, unit] of Object.entries(player.units)) {
+                if (unit.movement > 0) {
+                    const tile = this._tileGrid.get(unit.tileInfo.q, unit.tileInfo.r);
+                    const worldPos = qrToWorld(tile.q, tile.r);
+                    const ps = new AnimatedSelector();
+                    ps.mesh.position.set(0, 0, 0.012);
+                    unit.selector = ps;
+                    unit.model.add(ps.mesh);
+                }
+            }
+        }
+
 
         this.updateResourcePanel();
         this.updateGameStatePanel();
@@ -1753,6 +1754,16 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         if (dataName === "end_turn") {
             this.endTurn();
+
+            // remove all selectors
+            const player = this._gameState.players[this._gameState.currentPlayer];
+            for (const [key, unit] of Object.entries(player.units)) {
+                unit.movement = 0;
+                if (unit.selector) {
+                    unit.selector.dispose();
+                    unit.selector = undefined;
+                }
+            }
             return;
         }
         if (dataName === "create_city_cancel") {
@@ -1883,8 +1894,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     mainMenu() {
         let options: [string, string][] = [
-            ["new_game", "New Game"],
-            ["load_game", "Load Game"],
+            ["main_menu", "Main Menu"],
+            ["load_game", "Load Latest Save"],
             ["save_game", "Save Game"],
         ]
         let option_info = ""
@@ -1902,20 +1913,34 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.menuPanel.style.visibility = "visible";
     }
     async mainMenuOption(name: String) {
-        if (name === "new_game") {
-            location.reload(); // TODO
+        if (name === "main_menu") {
+            window.location.href = '/examples/random/main_menu.html'
         }
         if (name === "load_game") {
-            localStorage.setItem('load_game', 'saved_game');
+            let savedGames = JSON.parse(localStorage.getItem('saved_games') || '[]');
+            let save_id = `saved_game_${savedGames[savedGames.length - 1].name}`;
+            localStorage.setItem('load_game', save_id);
             location.reload(); // TODO (give choice of saved games)
         }
         if (name === "save_game") {
             this.menuPanel.innerHTML = "Saving.."
-            const sg: string = this.getSaveGame();
+            const sg = this.getSaveGame();
             const currentDate = new Date().toISOString(); // Get current date in ISO format
-            localStorage.setItem('saved_game', sg); // Save to localStorage
             console.log('Game saved on:', currentDate);
             // console.log(sg);
+            let savedGames = JSON.parse(localStorage.getItem('saved_games') || '[]');
+            let name = `${currentDate}`;
+            savedGames.push({
+                name: name,
+                id: `saved_game_${name}`
+            });
+            localStorage.setItem(`saved_game_${name}`, JSON.stringify(sg));
+            while (savedGames.length > 10) {
+                let sg_name = savedGames.shift();
+                localStorage.removeItem(sg_name);
+            }
+            localStorage.setItem('saved_games', JSON.stringify(savedGames));
+
             this.toast({ 
                 icon: "/assets/map/icons/star.png",
                 text: `Game saved!`, 

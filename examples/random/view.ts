@@ -108,9 +108,9 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
     // })
     let makeNew = true;
     const savedGameName = localStorage.getItem('load_game');
-    console.log(localStorage);
+    // console.log(localStorage);
     if (savedGameName) {
-        const savedGame = localStorage.getItem(savedGameName);
+        const savedGame = localStorage.getItem(`${savedGameName}`);
         if (savedGame) {
             mapView.loadFromJSON(JSON.parse(savedGame));
             localStorage.removeItem('load_game');
