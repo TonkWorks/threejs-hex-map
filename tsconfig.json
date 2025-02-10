@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "module": "AMD",
+        "moduleResolution": "node",
         "target": "es6",
         "noImplicitAny": true,
         "esModuleInterop": true,
@@ -14,6 +15,7 @@
         ],
     },
     "exclude": [
+        "src/three",
         "node_modules",
         "lib"
     ]

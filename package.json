@@ -27,6 +27,7 @@
   "homepage": "https://github.com/Bunkerbewohner/threejs-hex-map",
   "dependencies": {
     "concurrently": "^9.1.2",
+    "postprocessing": "v6.20",
     "three": "^0.122.0",
     "three-nebula": "^9.0.4",
     "toastify-js": "^1.12.0",

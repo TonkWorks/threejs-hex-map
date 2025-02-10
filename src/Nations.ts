@@ -161,7 +161,7 @@ export const Nations: { [key: string]: any } = {
   "Rome": {
     "name": "Rome",
     "leader": "Emperor Augustus",
-    "flag_image": "/assets/ui/flags/icons8-rome-100.png",
+    "flag_image": "/assets/ui/flags/icons8-italy-100.png",
     "description": "The Eternal City stands at the center of civilization, expanding its influence with legions and grand roads.",
     "cities": [
       "Rome",
@@ -248,7 +248,7 @@ export const Nations: { [key: string]: any } = {
   "Britain": {
     "name": "Britain",
     "leader": "Queen Victoria",
-    "flag_image": "/assets/ui/flags/icons8-uk-100.png",
+    "flag_image": "/assets/ui/flags/icons8-great-britain-100.png",
     "description": "A seafaring empire wielding industrial might and colonial ambitions, led by the steadfast Queen Victoria.",
     "cities": [
       "London",

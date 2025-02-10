@@ -66,8 +66,14 @@
         #tooltip {
             display: block;
             position: absolute;
-            top: 0px;
-            background-color: rgb(49, 49, 49);
+            top: -0px;
+
+
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #d4af37;
+            border-radius: 0px;
+            padding: 1rem;
+
             align-items:center;
             padding-top: 5px;
             font-size: 1em;
@@ -141,10 +147,51 @@
             border-radius: 5px;
             border-radius: 5px;
             font-size: 20px;
-            font-family: 'Trajan Pro', serif;
+            pointer-events: none !important;
         }
         .city-label-enemy {
             background-color:rgba(156, 21, 28, 0.75);
+        }
+
+        #achievement {
+            position: fixed;
+            top: 25%;
+            left: 50%;
+            width: 100%;
+            /* Center the element using translate */
+            transform: translate(-50%, -50%) scale(3); /* start scaled larger */
+            color: gold;
+            opacity: 0;
+            padding: 20px 30px;
+            background: #333;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            border-radius: 8px;
+            /* Transition for both transform and opacity */
+            transition: transform 0.6s cubic-bezier(.25, .8, .25, 1),
+                        opacity 0.6s ease-out;
+            /* Optional: disable pointer events so it doesn’t block clicks */
+            pointer-events: none;
+            border: 2px solid #d4af37;
+            color: #d4af37;
+            font-family: 'Trajan Pro', serif;
+            font-weight: bold;
+            font-size: 3em;
+            border-radius: 5px;
+            padding: 2rem;
+        }
+
+        /* The .show class will trigger the animation */
+        #achievement.show {
+            transform: translate(-50%, -50%) scale(1); /* final size */
+            opacity: 1;
+            z-index: 1049;
+        }
+
+        #achievement.remove {
+            transition: opacity 1s ease-out;
+            opacity: 0;
         }
 
         #menu {
@@ -381,6 +428,8 @@
     <div id="game-info"></div>
     <div id="menu"></div>
     <div id="tooltip"></div>
+    <div id="achievement">Achievement Unlocked!</div>
+
 
 <script >
     var require = {
@@ -389,8 +438,25 @@
             "three": "../../../src/three",
         }
     } 
+
+
+    function showAchievement() {
+        document.getElementById('achievement').classList.add('show');
+        setTimeout(() => { document.getElementById('achievement').classList.add('remove'); }, 2000);
+        setTimeout(() => { document.getElementById('achievement').classList.remove('remove', 'show'); }, 3000);
+    }
+
+      // For demonstration purposes, show the achievement 1 second after page load.
+      window.addEventListener('load', () => {
+        setTimeout(showAchievement, 1000);
+
+        setTimeout(showAchievement, 5000);
+
+    });
+
 </script>
 <script data-main="main" src="../../node_modules/requirejs/require.js"></script>
+
 
 </body>
 </html>

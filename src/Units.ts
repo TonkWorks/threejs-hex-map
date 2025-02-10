@@ -34,6 +34,7 @@ export interface Unit {
     owner: string; // Player or faction ID
     model?: Mesh; // Reference to the 3D model in the scene
     selector?: AnimatedSelector;
+    moving?: boolean;
     tileInfo?: {q: Number, r: Number}; // Reference to the tile the unit is on
 }
 
@@ -117,7 +118,7 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     const unitLabel = new CSS3DObject(labelDiv);
     unitLabel.position.set(0, .5, 0);
     unitLabel.scale.set(.004, .004, .004);
-    
+    labelDiv.style.pointerEvents = 'none';
     unitModel.add(unitLabel);
 
 }
@@ -565,7 +566,7 @@ function getRandomCity(cities: string[]): string {
     return cities[randomIndex];
 }
 
-function getNextCity(player: Player): string {
+export function getNextCityName(player: Player): string {
     const nation = Nations[player.nation];
     if (player.cityIndex >= nation.cities.length) {
         player.cityIndex = 0;
@@ -593,11 +594,14 @@ export interface Improvement {
     tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
 }
 
-export function CreateCity(player: Player): Improvement {
+export function CreateCity(player: Player, name: string = ""): Improvement {
     const placeType = "city"
     const nation = Nations[player.nation];
 
-    const cityName = getNextCity(player);
+    let cityName = name;
+    if (cityName === "") {
+        cityName = getNextCityName(player);
+    }
     player.cityIndex += 1;
 
     // const geom = new RingBufferGeometry(0.001, 1, 6, 1)
@@ -635,9 +639,10 @@ export function CreateCity(player: Player): Improvement {
     const labelDiv = document.createElement('div');
     labelDiv.className = 'city-label';
     labelDiv.id = unitID;
-    
+
     const img = `<img src="${nation.flag_image}" style="padding-right:10px;" height="25px"/>`
     labelDiv.innerHTML = `<span class="city-label">${img} ${cityName} (${population}) </span>`;
+    labelDiv.style.pointerEvents = 'none';
     const cityLabel = new CSS3DObject(labelDiv);
     cityLabel.position.set(0, -.82, .3);
     // cityLabel.rotateX(Math.PI / 6);

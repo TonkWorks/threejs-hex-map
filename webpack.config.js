@@ -8,5 +8,8 @@ module.exports = {
     },
     externals: {
         "three": "three"
+    }, 
+    resolve: {
+        modules: ["node_modules"]
     }
 }

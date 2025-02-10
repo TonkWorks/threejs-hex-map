@@ -11,7 +11,7 @@
       background-size: cover;
       height: 100vh;
       font-family: 'Trajan Pro', serif;
-      color: #d4af37;
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -22,6 +22,7 @@
       text-shadow: 2px 2px 4px #000;
       margin: 2rem 0;
       letter-spacing: 3px;
+      color: #d4af37;
     }
 
     .menu-container {
@@ -39,7 +40,7 @@
       margin: 0.5rem 0;
       background: rgba(20, 20, 20, 0.8);
       border: 1px solid #d4af37;
-      color: #d4af37;
+      color: white;
       font-size: 1.5em;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -96,7 +97,7 @@
       background: rgba(0, 0, 0, 0.9);
       border: 1px solid #d4af37;
       padding: 1rem;
-      max-width: 300px;
+      max-width: 600px;
       z-index: 2000;
       pointer-events: none;
       white-space: pre-line;
@@ -183,42 +184,13 @@
     <input type="range" class="volume-slider" id="sfx-volume" min="0" max="100">
   </div>
 
+
+  <audio id="audio"></audio>
+
+
+  <script src="/assets/nations/nations.js"></script>
   <script>
     // Nations object for civilization selection
-    const nations = {
-      "USA": {
-        "leader": "President Trump",
-        "description": "A modern powerhouse, championing liberty and opportunity, ever striving for greatness on the world stage."
-      },
-      "The Luminari": {
-        "leader": "Queen Lyara",
-        "description": "A radiant realm guided by celestial wisdom, shining as a beacon of hope and enlightenment."
-      },
-      "Soviet Union": {
-        "leader": "Premier Volkov",
-        "description": "A formidable collective under the Red Banner, forging an industrial and ideological empire of workers."
-      },
-      "China": {
-        "leader": "Chairman Wei",
-        "description": "An enduring civilization blending ancient heritage with modern ambitions, led by the steady hand of Chairman Wei."
-      },
-      "Rome": {
-        "leader": "Emperor Augustus",
-        "description": "The Eternal City stands at the center of civilization, expanding its influence with legions and grand roads."
-      },
-      "Egypt": {
-        "leader": "Pharaoh Cleopatra",
-        "description": "A land of timeless marvels along the Nile, guided by the wisdom and allure of its legendary Pharaoh."
-      },
-      "Greece": {
-        "leader": "King Alexander",
-        "description": "Birthplace of philosophy and strategy, unified under Alexander’s ambition to spread Hellenic culture across the world."
-      },
-      "Britain": {
-        "leader": "Queen Victoria",
-        "description": "A seafaring empire wielding industrial might and colonial ambitions, led by the steadfast Queen Victoria."
-      }
-    };
     const civilizations = Object.keys(nations);
 
     // Colors for the dropdowns (using JS list)
@@ -409,6 +381,8 @@
       const sfxVolume = document.getElementById('sfx-volume').value;
       const settings = { musicVolume, sfxVolume };
       localStorage.setItem('settings', JSON.stringify(settings));
+
+      audio.volume = musicVolume / 100;
     }
 
     // Initialize volume slider values from localStorage (if any)
@@ -422,10 +396,25 @@
       }
     }
 
+    const audio = document.getElementById('audio');
+    function playAudio() {
+
+        let settings = localStorage.getItem('settings');
+        if (settings) {
+            settings = JSON.parse(settings);
+            audio.volume = settings.musicVolume / 100;
+        }
+        audio.src = '/assets/music/conquest-of-eternity-229230.mp3';
+        audio.loop = true;
+        audio.play();
+    }
     // Attach event listeners to volume sliders
     document.getElementById('music-volume').addEventListener('input', updateVolumeSettings);
     document.getElementById('sfx-volume').addEventListener('input', updateVolumeSettings);
-
+    document.addEventListener('click', function() {
+        playAudio();
+        document.removeEventListener('click', arguments.callee);
+    });
     // Initialize save games, dropdowns, and AI slots on window load
     window.onload = () => {
       populateHumanCivDropdown();
