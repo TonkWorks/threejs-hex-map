@@ -109,9 +109,8 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     labelDiv.className = 'unit-label';
     labelDiv.id = `${unitID}-label`;
     labelDiv.innerHTML = `
-    <div>
         <img src="${icon}" style="width: 90px; height: 100px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
     `;
     labelDiv.style.fontFamily = 'Arial, sans-serif';
 
@@ -122,6 +121,7 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     unitModel.add(unitLabel);
 
 }
+
 export function CreateRifleman(player: Player): Unit {
     const unitType = "rifleman"
 
@@ -676,7 +676,7 @@ export function createTerritoryOverlayModel(player: Player) {
         geom,
         new MeshBasicMaterial({ 
             color: player.color,
-            opacity: .45,
+            opacity: .35,
             transparent: true,
             side: FrontSide,
         })

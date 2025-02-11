@@ -66,7 +66,7 @@
         #tooltip {
             display: block;
             position: absolute;
-            top: -0px;
+            top: -50px;
 
 
             background: rgba(0, 0, 0, 0.7);
@@ -94,6 +94,11 @@
             background-color: rgb(34, 0, 44, .85);
             top: auto;
             bottom: 250px;
+            margin-top: 0px;
+            padding-top: 0px;
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-bottom: 0px;
             right: 0;
             width: 450px;
             min-height: 50px;
@@ -163,7 +168,7 @@
             color: gold;
             opacity: 0;
             padding: 20px 30px;
-            background: #333;
+            background: rgba(20, 20, 20, 0.8);
             color: #fff;
             font-size: 24px;
             text-align: center;
@@ -195,6 +200,7 @@
         }
 
         #menu {
+            background: rgba(0, 0, 0, 0.8);
             visibility: hidden;
             position: fixed;
             color: white;
@@ -204,20 +210,23 @@
             left: 15%;
             width: 70%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9); /* Semi-transparent black */
             z-index: 1050; /* Higher than Bootstrap's default modal z-index */
             align-items: center;
             justify-content: center;
             font-size: 3em;
+            border: 2px solid #d4af37;
+            border-radius: 5px;
+            padding: 2rem;
         }
         #menu .close-button {
             position: absolute;
-            top: -30px;
-            right: 10px;
+            right: 1rem;
+            top: .25rem;
             background-color: transparent;
             color: white;
             border: none;
-            font-size: 2em;
+            color: #d4af37;
+            font-size: 1.3em;
             cursor: pointer;
         }
 
@@ -226,9 +235,11 @@
         }
 
         #menu .options button {
-            background-color: #444;
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid #d4af37;
             color: white;
-            border: none;
+            font-size: 1.5em;
+
             padding: 10px 20px;
             margin: 10px 0;
             cursor: pointer;
@@ -237,7 +248,41 @@
             justify-content: center;
             align-items: center;
             display: flex;
+            transition: transform  0.3s ease;
         }
+
+        #menu .options button:hover {
+            background: rgba(212, 175, 55, 0.6);
+            transform: scale(1.05);
+        }
+
+
+        .action-button {
+            color: white;
+            min-height: 50px;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            display: flex;
+        }
+        .action-button:hover {
+            background: rgba(212, 175, 55, 0.6);
+            transform: scale(1.05);
+        }
+
+        .action-button-disabled {
+            color: grey;
+            min-height: 50px;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            display: flex;
+        }
+
         #menu-research-img {
             max-height: 600px;
             max-width: 100%;
@@ -287,9 +332,6 @@
             justify-content: center;
             text-align: center;
             font-size: .75em;
-        }
-        #menu .options button:hover {
-            background-color: #666;
         }
         .grey {
             color: rgb(104, 104, 104);
@@ -415,6 +457,62 @@
             }
         }
 
+
+        #progressBarContainer {
+            width: 250px;
+            background-color: #333;
+            border-radius: 5px;
+            position: relative;
+            height: 22px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            }
+
+            /* The dynamic progress fill element */
+            .progressBar {
+            height: 100%;
+            background: linear-gradient(to right, #4CAF50, #8BC34A);
+            transition: width 0.5s ease-in-out;
+            }
+
+            .progressText {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #fff;
+            /* Gold outline for high contrast */
+            /* -webkit-text-stroke: 1px #DAA520; */
+            text-shadow: 0px 0px 3px #000;
+            z-index: 10;
+            }
+
+        @keyframes shine {
+            0% { filter: brightness(100%); }
+            50% { filter: brightness(120%); }
+            100% { filter: brightness(100%); }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .glow {
+            animation: border-glow 5s ease-in-out infinite;
+        }
+
+        @keyframes border-glow {
+            0% { box-shadow: 0 0 5px #c8aa6e; }
+            80% { box-shadow: 0 0 20px #c8aa6e; }
+            100% { box-shadow: 0 0 5px #c8aa6e; }
+        }
+
     </style>
 </head>
 <body>
@@ -423,7 +521,7 @@
 
     <div id="title" class="text">Rising Powers</div>
     <div id="resource-info"></div>    
-    <div id="action"></div>
+    <div id="action" class="glow"></div>
     <div id="unit-info"></div>
     <div id="game-info"></div>
     <div id="menu"></div>

@@ -1,3 +1,4 @@
+import selector from "./DefaultTileSelector";
 import { getRandomInt } from "./util";
 
 export interface Player {
@@ -5,6 +6,7 @@ export interface Player {
     nation: string;
     gold: number;
     color: string;
+    government: string;
     isDefeated: boolean;
     image: string;
     taxRate: number;
@@ -49,6 +51,7 @@ function createPlayer(): Player {
         gold: 0,
         cityIndex: 0,
         taxRate: 0.1,
+        government: "autocracy",
         image: "",
         isDefeated: false,
         units: {},
@@ -139,6 +142,44 @@ export function InitGameState(): GameState {
     };
 }
 
+export function cloneGameState(original: GameState): GameState {
+    // Clone the entire game state
+    const cloned: GameState = {
+        players: {},
+        playerOrder: [...original.playerOrder],
+        playersTurn: original.playersTurn,
+        aiDifficulty: original.aiDifficulty,
+        currentPlayer: original.currentPlayer,
+        turn: original.turn
+    };
+
+    // Iterate over each player to clone their information excluding units and improvements
+    for (const key in original.players) {
+        const player = original.players[key];
+        cloned.players[key] = {
+            ...player,
+            units: {}, // Reset or ignore the units
+            improvements: {} // Reset or ignore the improvements
+        };
+
+        for (const [unitKey, _] of Object.entries(player.units)) {
+            cloned.players[key].units[unitKey] = {
+                ...player.units[unitKey],
+                model: null,
+                selector: null,
+            }
+        }
+
+        for (const [improvementKey, _] of Object.entries(player.improvements)) {
+            cloned.players[key].improvements[improvementKey] = {
+                ...player.improvements[improvementKey],
+                model: null,
+            }
+        }
+    }
+
+    return cloned;
+}
 
 // Player diplomatic actions
 export function DeclareWarBetweenPlayers(gs: GameState, Player1: Player, Player2: Player) {

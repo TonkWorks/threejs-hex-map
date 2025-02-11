@@ -1,4 +1,4 @@
-import {Vector3, BufferGeometry, BufferAttribute} from "three"
+import {Vector3, BufferGeometry, BufferAttribute, Vector2} from "three"
 
 export const NE = 0b100000
 export const E  = 0b010000
@@ -108,6 +108,20 @@ export function randomPointInHexagonEx(hexRadius: number, modifier: (cornerIndex
         .add(C.multiplyScalar(s*rSqrt))
 
     return point.multiplyScalar(modifier(startCornerIndex) * hexRadius)
+}
+
+
+export function getHexPoints(cx: number, cy: number, radius: number = 1): Vector2[] {
+    const points: Vector2[] = [];
+    // Using an angle offset to orient the hexagon as desired.
+    for (let i = 0; i < 6; i++) {
+      // Adjust the angle offset (here –30°) so that one edge is horizontal.
+      const angle = Math.PI / 180 * (60 * i - 30);
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
+      points.push(new Vector2(x, y));
+    }
+    return points;
 }
 
 function computeHexagonCorner(radius: number, angle: number): Vector3 {

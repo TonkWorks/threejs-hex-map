@@ -55,11 +55,11 @@ function generateRivers(grid: Grid<TileData>): Grid<TileData> {
         const river = [spawn]
 
         let tile = spawn
-        if (tile === undefined) {
+        if (tile == undefined || !tile) {
             console.log("A")
             return
         }
-        while (!isWater(tile.height) && river.length < 20) {
+        while (!isWater(tile.height) &&  river.length < 20) {
             const neighbors = sortByHeight(grid.neighbors(tile.q, tile.r)).filter(t => !contains(t, river))
             if (neighbors.length == 0) {
                 console.info("Aborted river generation", river, tile)

@@ -542,6 +542,19 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        return point.multiplyScalar(modifier(startCornerIndex) * hexRadius);
 	    }
 	    exports.randomPointInHexagonEx = randomPointInHexagonEx;
+	    function getHexPoints(cx, cy, radius = 1) {
+	        const points = [];
+	        // Using an angle offset to orient the hexagon as desired.
+	        for (let i = 0; i < 6; i++) {
+	            // Adjust the angle offset (here –30°) so that one edge is horizontal.
+	            const angle = Math.PI / 180 * (60 * i - 30);
+	            const x = cx + radius * Math.cos(angle);
+	            const y = cy + radius * Math.sin(angle);
+	            points.push(new three_1.Vector2(x, y));
+	        }
+	        return points;
+	    }
+	    exports.getHexPoints = getHexPoints;
 	    function computeHexagonCorner(radius, angle) {
 	        return new three_1.Vector3(radius * Math.sin(Math.PI * 2 * angle), radius * Math.cos(Math.PI * 2 * angle), 0);
 	    }
@@ -815,26 +828,32 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        }
 	        //
 	        exportData(excludedProperties = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]) {
-	            const items = util_1.deepCopy(this.toArray())
+	            const items = this.toArray()
 	                .filter((item) => item !== undefined)
 	                .map(item => {
 	                const copy = {};
 	                Object.keys(item).forEach((key) => {
-	                    if (!excludedProperties.includes(key)) {
-	                        copy[key] = item[key];
+	                    // Skip excluded properties.
+	                    if (excludedProperties.includes(key)) {
+	                        return;
 	                    }
 	                    if (key === "resource") {
-	                        delete copy.resource.model;
-	                        delete copy.resource.image;
+	                        // Create a shallow copy of resource so modifications do not affect the original.
+	                        copy[key] = Object.assign({}, item[key]);
+	                        delete copy[key].model;
+	                        delete copy[key].image;
 	                    }
-	                    if (key === "clouds" && item.clouds === false) {
-	                        delete copy.clouds;
+	                    else if (key === "clouds" && item[key] === false) {
+	                        // Omit this property.
 	                    }
-	                    if (key === "fog" && item.fog === false) {
-	                        delete copy.fog;
+	                    else if (key === "fog" && item[key] === false) {
+	                        // Omit this property.
 	                    }
-	                    if (key === "rivers" && item.rivers === null) {
-	                        delete copy.rivers;
+	                    else if (key === "rivers" && item[key] === null) {
+	                        // Omit this property.
+	                    }
+	                    else {
+	                        copy[key] = item[key];
 	                    }
 	                });
 	                return copy;
@@ -1006,6 +1025,16 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        return JSON.parse(JSON.stringify(obj));
 	    }
 	    exports.deepCopy = deepCopy;
+	    function deepCopyIgnoring(obj, keysToIgnore) {
+	        return JSON.parse(JSON.stringify(obj, (key, value) => {
+	            // Skip keys that are in the keysToIgnore list.
+	            if (keysToIgnore.includes(key)) {
+	                return {};
+	            }
+	            return value;
+	        }));
+	    }
+	    exports.deepCopyIgnoring = deepCopyIgnoring;
 	    function loadTextureAtlas() {
 	        return __awaiter(this, void 0, void 0, function* () {
 	            return loadJSON("../../assets/land-atlas.json");
@@ -1748,7 +1777,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        function growRiver(spawn) {
 	            const river = [spawn];
 	            let tile = spawn;
-	            if (tile === undefined) {
+	            if (tile == undefined || !tile) {
 	                console.log("A");
 	                return;
 	            }

@@ -1,4 +1,4 @@
-import {FileLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial} from "three"
+import {FileLoader, TextureLoader, Texture, MeshBasicMaterial, MeshStandardMaterial, Material} from "three"
 import {QR, TextureAtlas} from "./interfaces"
 
 const fileLoader = new FileLoader()
@@ -132,6 +132,16 @@ export function deepCopy<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
 }
 
+export function deepCopyIgnoring<T>(obj: T, keysToIgnore: string[]): T {
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
+      // Skip keys that are in the keysToIgnore list.
+      if (keysToIgnore.includes(key)) {
+        return {};
+      }
+      return value;
+    }));
+  }
+
 
 export async function loadTextureAtlas() {
     return loadJSON<TextureAtlas>("../../assets/land-atlas.json")
@@ -143,7 +153,7 @@ export function asset(relativePath: string): string {
 }
 
 /// three.js and animations
-export function updateMaterialColor(material: THREE.Material, color: string) {
+export function updateMaterialColor(material: Material, color: string) {
     if (material instanceof MeshBasicMaterial ||
         material instanceof MeshStandardMaterial) {
         material.color.set(color);

@@ -163,7 +163,8 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
             if (target && target.classList.contains('city-menu')) {
                 event.stopPropagation();
                 const dataAttribute = target.getAttribute('data-name');
-                mapView.cityMenuAction(dataAttribute);
+                const dataTarget = target.getAttribute('data-target');
+                mapView.cityMenuAction(dataAttribute, dataTarget);
             }
             if (target && target.classList.contains('action-menu')) {
                 event.stopPropagation();

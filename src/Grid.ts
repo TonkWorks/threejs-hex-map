@@ -157,31 +157,32 @@ export default class Grid<T extends QR> {
 
     //
     exportData(excludedProperties: string[] = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]): { width: number, height: number, items: T[] } {
-        
-        const items = deepCopy(this.toArray())
-            .filter((item): item is T => item !== undefined)
-            .map(item => {
-                const copy: Partial<T> = {} as T;
-                Object.keys(item).forEach((key: string) => {
-                    if (!excludedProperties.includes(key)) {
-                        (copy as any)[key] = (item as any)[key];
-                    }
-                    if (key === "resource") {
-                        delete (copy as any).resource.model;
-                        delete (copy as any).resource.image;
-                    }
-                    if (key === "clouds" && (item as any).clouds === false) {
-                        delete (copy as any).clouds;
-                    }
-                    if (key === "fog" && (item as any).fog === false) {
-                        delete (copy as any).fog;
-                    }
-                    if (key === "rivers" && (item as any).rivers === null) {
-                        delete (copy as any).rivers;
-                    }
-                });
-                return copy as T;
-            });
+        const items = this.toArray()
+        .filter((item): item is T => item !== undefined)
+        .map(item => {
+          const copy: Partial<T> = {} as T;
+          Object.keys(item).forEach((key: string) => {
+            // Skip excluded properties.
+            if (excludedProperties.includes(key)) {
+              return;
+            }
+            if (key === "resource") {
+              // Create a shallow copy of resource so modifications do not affect the original.
+              (copy as any)[key] = { ...(item as any)[key] };
+              delete (copy as any)[key].model;
+              delete (copy as any)[key].image;
+            } else if (key === "clouds" && (item as any)[key] === false) {
+              // Omit this property.
+            } else if (key === "fog" && (item as any)[key] === false) {
+              // Omit this property.
+            } else if (key === "rivers" && (item as any)[key] === null) {
+              // Omit this property.
+            } else {
+              (copy as any)[key] = (item as any)[key];
+            }
+          });
+          return copy as T;
+        });
 
         return {
             width: this.width,
