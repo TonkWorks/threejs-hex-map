@@ -30,7 +30,7 @@ export default class ChunkedLazyMapMesh extends Object3D implements TileDataSour
         const chunkWidth = Math.ceil(Math.sqrt(chunkSize))
         const numChunksX = Math.ceil(tileGrid.width / chunkWidth)
         const numChunksY = Math.ceil(tileGrid.height / chunkWidth)
-        const chunks: TileData[][][] = range(numChunksX).map(x => range(numChunksY).map(_ => []))
+        const chunks: TileData[][][] = range(numChunksX).map(x => range(numChunksY).map<TileData[]>(() => []))
 
         // assign tiles to cells in the coarser chunk grid
         tileGrid.forEachIJ((i, j, q, r, tile) => {
@@ -52,7 +52,7 @@ export default class ChunkedLazyMapMesh extends Object3D implements TileDataSour
             })
         })
 
-        this.loaded = Promise.all(promises).then(() => null)
+        this.loaded = Promise.all(promises).then((): void => null)
         this.quadtree = new QuadTree<MapThunk>(this.thunks, 1, (thunk: MapThunk) => thunk.computeCenter())        
     }
 

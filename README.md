@@ -31,8 +31,8 @@ npm install electron-packager
 
 export PATH=$PATH:/usr/lib/wine
 rm -fr build
-electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win
-zip -r build/a.zip build/win/rising-win32-x64
+electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win --overwrite
+zip -r build/a.zip build/win/risingpowers-win32-x64/
 
 
     // "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
