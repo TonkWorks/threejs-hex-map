@@ -17,6 +17,8 @@
     "exclude": [
         "src/three",
         "node_modules",
+        "electron",
+        "build",
         "lib"
     ]
 }

@@ -1109,12 +1109,12 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    exports.deepCopyIgnoring = deepCopyIgnoring;
 	    function loadTextureAtlas() {
 	        return __awaiter(this, void 0, void 0, function* () {
-	            return loadJSON("/assets/land-atlas.json");
+	            return loadJSON("../../assets/land-atlas.json");
 	        });
 	    }
 	    exports.loadTextureAtlas = loadTextureAtlas;
 	    function asset(relativePath) {
-	        return "/assets/" + relativePath;
+	        return "../../assets/" + relativePath;
 	    }
 	    exports.asset = asset;
 	    /// three.js and animations
