@@ -153,6 +153,16 @@
       </select>
     </div>
     <div class="dropdown-group">
+      <label>Resources:</label><br>
+      <select class="civ-dropdown op-select" id="resources" 
+              title="Availability of strategic/bonus resources">
+        <option value="300">Abundant</option>
+        <option value="200">Standard</option>
+        <option value="100">Strategic</option>
+        <option value="50">Scarce</option>
+    </select>
+    </div>
+    <div class="dropdown-group">
       <label>AI Difficulty:</label><br>
       <!-- AI difficulty dropdown; options populated via JavaScript -->
       <select class="civ-dropdown op-select" id="ai-difficulty"
@@ -346,6 +356,7 @@
         human: humanSelection,
         aiPlayers: aiPlayers,
         map: document.getElementById('map').value,
+        resources: document.getElementById('resources').value,
         difficulty: document.getElementById('ai-difficulty').value
       }));
       window.location.href = '/examples/random/';

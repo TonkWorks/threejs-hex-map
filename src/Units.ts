@@ -641,7 +641,7 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     labelDiv.id = unitID;
 
     const img = `<img src="${nation.flag_image}" style="padding-right:10px;" height="25px"/>`
-    labelDiv.innerHTML = `<span class="city-label">${img} ${cityName} (${population}) </span>`;
+    labelDiv.innerHTML = `<span class="city-label" data-target="${unitID}">${img} ${cityName} (${population}) </span>`;
     labelDiv.style.pointerEvents = 'none';
     const cityLabel = new CSS3DObject(labelDiv);
     cityLabel.position.set(0, -.82, .3);

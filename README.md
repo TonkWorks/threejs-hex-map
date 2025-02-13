@@ -20,3 +20,17 @@ https://icons8.com/icon/set/flags/stickers
 
 For an example check out the code in `examples/random`. To test it in the browser
 simply `npm start` and open `http://localhost:3000/examples/random/`.
+
+
+## Packaging
+--icon=icon.ico
+
+npx electron-packager . RisingPowers --platform=win32 --arch=x64 --out=build/win 
+
+export PATH=$PATH:/usr/lib/wine
+rm -fr build
+electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win
+zip -r build/a.zip build/win/rising-win32-x64
+
+
+    // "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",

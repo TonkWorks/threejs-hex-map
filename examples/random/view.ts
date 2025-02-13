@@ -127,11 +127,11 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
-//        setFogAround(mapView, mapView.selectedTile, 100, true, true)
+         setFogAround(mapView, mapView.selectedTile, 100, true, true)
         mapView.initGameSetup();
         mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
         // setFogAround(mapView, mapView.selectedTile, 5, true, false)
-        setFogAround(mapView, mapView.selectedTile, 50, false, false)
+        setFogAround(mapView, mapView.selectedTile, 5, false, false)
         mapView.updateResourcePanel();
         mapView.updateGameStatePanel();
         mapView.showEndTurnInActionPanel();
@@ -165,6 +165,11 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 const dataAttribute = target.getAttribute('data-name');
                 const dataTarget = target.getAttribute('data-target');
                 mapView.cityMenuAction(dataAttribute, dataTarget);
+            }
+            if (target && target.classList.contains('city-label')) {
+                event.stopPropagation();
+                const dataAttribute = target.getAttribute('data-target');
+                mapView.cityLabelClick(dataAttribute);
             }
             if (target && target.classList.contains('action-menu')) {
                 event.stopPropagation();

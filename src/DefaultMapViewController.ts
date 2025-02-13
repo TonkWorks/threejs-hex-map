@@ -181,7 +181,6 @@ export default class Controller implements MapViewController {
     panCameraTo(qr: QR, durationMs: number) {
         const from = this.controls.getCamera().position.clone()
         const to = this.controls.getCameraFocusPosition(qr)
-
         this.addAnimation(new Animation(durationMs, (a) => {
             this.controls.getCamera().position.copy(from.clone().lerp(to, a))
         }))

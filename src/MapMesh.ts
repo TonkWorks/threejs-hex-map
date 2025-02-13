@@ -25,6 +25,8 @@ import { LAND_FRAGMENT_SHADER } from './shaders/land.fragment';
 import { LAND_VERTEX_SHADER } from './shaders/land.vertex';
 import { MOUNTAINS_FRAGMENT_SHADER } from './shaders/mountains.fragment';
 import { MOUNTAINS_VERTEX_SHADER } from './shaders/mountains.vertex';
+import { WATER_VERTEX_SHADER } from './shaders/water.vertex';
+
 import Forests from "./Forests";
 
 export interface MapMeshOptions {
@@ -185,6 +187,8 @@ export default class MapMesh extends Group implements TileDataSource {
      */
     private globalGrid: Grid<TileData>
 
+    water: Mesh
+    waterMaterial: RawShaderMaterial
     private land: Mesh
     private mountains: Mesh
     private trees: Forests
@@ -250,9 +254,12 @@ export default class MapMesh extends Group implements TileDataSource {
         options.undiscoveredTexture.wrapS = options.undiscoveredTexture.wrapT = RepeatWrapping
         //options.transitionTexture.flipY = true
 
+        // ── Create the meshes: separate land, mountains, water, and trees ──
+        // NOTE: We now filter water tiles out of the land mesh and create a new water mesh.
         this.loaded = Promise.all([
-            this.createLandMesh(this.tiles.filter(t => !t.isMountain)),            
+            this.createLandMesh(this.tiles.filter(t => !isWater(t.height) && !t.isMountain)),
             this.createMountainMesh(this.tiles.filter(t => t.isMountain)),
+            this.createWaterMesh(this.tiles.filter(t => isWater(t.height))),
             this.createTrees()
         ]).then(() => {
             // All promises resolved; return nothing to make this a Promise<void>
@@ -294,27 +301,39 @@ export default class MapMesh extends Group implements TileDataSource {
      * @param tiles changed tiles
      */
     updateFogAndClouds(tiles: TileData[]) {
-        const landGeometry = this.land.geometry as InstancedBufferGeometry
-        const landStyleAttr = landGeometry.getAttribute("style") as InstancedBufferAttribute
-        const mountainsGeometry = this.mountains.geometry as InstancedBufferGeometry
-        const mountainsStyleAttr = mountainsGeometry.getAttribute("style") as InstancedBufferAttribute
-
+        const landGeometry = this.land.geometry as InstancedBufferGeometry;
+        const landStyleAttr = landGeometry.getAttribute("style") as InstancedBufferAttribute;
+        const waterGeometry = this.water.geometry as InstancedBufferGeometry;
+        const waterStyleAttr = waterGeometry.getAttribute("style") as InstancedBufferAttribute;
+        const mountainsGeometry = this.mountains.geometry as InstancedBufferGeometry;
+        const mountainsStyleAttr = mountainsGeometry.getAttribute("style") as InstancedBufferAttribute;
+    
         tiles.forEach(updated => {            
-            const old = this.localGrid.get(updated.q, updated.r)            
-            if (!old) return
-
-            if (updated.fog != old.fog || updated.clouds != old.clouds) {
-                old.fog = updated.fog
-                old.clouds = updated.clouds
-                const attribute = old.isMountain ? mountainsStyleAttr : landStyleAttr
-                this.updateFogStyle(attribute, old.bufferIndex, updated.fog, updated.clouds)
+            const old = this.localGrid.get(updated.q, updated.r);            
+            if (!old) return;
+    
+            if (updated.fog !== old.fog || updated.clouds !== old.clouds) {
+                old.fog = updated.fog;
+                old.clouds = updated.clouds;
+    
+                let attribute: InstancedBufferAttribute;
+                if (old.isMountain) {
+                    attribute = mountainsStyleAttr;
+                } else if (isWater(old.height)) {
+                    attribute = waterStyleAttr;
+                } else {
+                    attribute = landStyleAttr;
+                }
+    
+                this.updateFogStyle(attribute, old.bufferIndex, updated.fog, updated.clouds);
             }
-        })
-
-        landStyleAttr.needsUpdate = true
-        mountainsStyleAttr.needsUpdate = true        
-
+        });
+    
+        landStyleAttr.needsUpdate = true;
+        mountainsStyleAttr.needsUpdate = true;
+        waterStyleAttr.needsUpdate = true;
     }
+    
 
     private updateFogStyle(attr: InstancedBufferAttribute, index: number, fog: boolean, clouds: boolean) {
         const style = attr.getY(index)
@@ -336,6 +355,62 @@ export default class MapMesh extends Group implements TileDataSource {
             treeOptions: this.options.treeOptions
         })
         this.add(trees)
+    }
+
+    // ── NEW: Create a water mesh using the same hexagon geometry but with water shaders ──
+    private async createWaterMesh(tiles: MapMeshTile[]) {
+        const atlas = this.options.terrainAtlas
+        const geometry = createHexagonTilesGeometry(tiles, this.globalGrid, 0, this.options);
+        const material = new RawShaderMaterial({
+            uniforms: {
+                sineTime: {value: 1.0},
+                showGrid: {value: this._showGrid ? 1.0 : 0.0},
+                camera: { value: new Vector3(0, 0, 0) },
+                texture: { value: this.options.terrainAtlasTexture },
+                textureAtlasMeta: {
+                    value: new Vector4(atlas.width, atlas.height, atlas.cellSize, atlas.cellSpacing)
+                },
+                hillsNormal: {
+                    value: this.options.hillsNormalTexture
+                },
+                coastAtlas: {
+                    value: this.options.coastAtlasTexture
+                },
+                riverAtlas: {
+                    value: this.options.riverAtlasTexture
+                },
+                mapTexture: {
+                    value: this.options.undiscoveredTexture
+                },
+                transitionTexture: {
+                    value: this.options.transitionTexture
+                },
+                lightDir: {
+                    value: new Vector3(0.5, 0.6, -0.5).normalize()
+                },
+                gridColor: {
+                    value: typeof this.options.gridColor != "undefined" ? this.options.gridColor : new Color(0xffffff)
+                },
+                gridWidth: {
+                    value: typeof this.options.gridWidth != "undefined" ? this.options.gridWidth : 0.02
+                },
+                gridOpacity: {
+                    value: typeof this.options.gridOpacity != "undefined" ? this.options.gridOpacity : 0.33
+                }
+            },
+            vertexShader: LAND_VERTEX_SHADER,
+            fragmentShader: LAND_FRAGMENT_SHADER,
+            side: FrontSide,
+            wireframe: false,
+            opacity: .2,
+            transparent: true,
+            depthWrite: false
+        });
+        this.waterMaterial = material;
+        this.water = new Mesh(geometry, material)
+        this.water.frustumCulled = false;
+        this.water.layers.enable(10);
+        this.add( this.water);
     }
 
     private async createLandMesh(tiles: MapMeshTile[]) {

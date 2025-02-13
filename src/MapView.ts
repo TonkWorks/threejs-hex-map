@@ -254,7 +254,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.stats = Stats.default();
         this.stats.dom.style.top= '35px';
         this.stats.showPanel(0);
-        document.body.appendChild(this.stats.dom);
+        // document.body.appendChild(this.stats.dom);
 
         // Setup EffectComposer
         this.composer = new EffectComposer(renderer);
@@ -357,7 +357,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         for (const tile of tiles) {
             let t = this._tileGrid.get(tile.q, tile.r);
-
             if (t.improvement !== undefined && t.clouds === false) {
                 t.improvement.model.visible = true;
             }
@@ -375,6 +374,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                 t.resource.model.visible = true;
                 t.resource.model.matrixWorldNeedsUpdate = true;
             }
+        }
+        for (let player of Object.values(this._gameState.players)) {    
+            this.updateBorderOverlay(player);        
         }
     }
     // updateAllVisilibility() {
@@ -535,6 +537,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         ];
     
         for (const tile of ownedTiles) {
+            if (tile.clouds) continue;
+
             const center = qrToWorld(tile.q, tile.r);
             const hexPoints = getHexPoints(center.x, center.y, 1);
     
@@ -634,17 +638,20 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
 
-        let new_game_settings = localStorage.getItem("new_game_settings");
-        if (new_game_settings) {
-            new_game_settings = JSON.parse(new_game_settings);
-
-            // this._gameState.players = 
+        let new_game_settingsStr = localStorage.getItem("new_game_settings");
+        let new_game_settings: { resources?: number } = {};
+        if (new_game_settingsStr) {
+            new_game_settings = JSON.parse(new_game_settingsStr);
             console.log(new_game_settings);
             localStorage.removeItem("new_game_settings");
         }
         // set up initial resources
         const resourceNames = Object.keys(ResourceMap);
-        for (let i = 0; i < 50; i++) {
+        let amount = 200;
+        if (new_game_settings.resources) {
+            amount = new_game_settings.resources;
+        }
+        for (let i = 0; i < amount; i++) {
             let tile = this.getRandomTile(false);
             if (tile && tile.resource === undefined && !isMountain(tile.height) && !isWater(tile.height)) {
                 // get random from resource map
@@ -712,8 +719,16 @@ export default class MapView implements MapViewControls, TileDataSource {
         // this._minimap_camera.position.y = 4;
         this._minimap_camera.position.z = this._tileGrid.width * 2;
 
-        // this._onAnimate(dtS)
+        this._onAnimate(dtS)
 
+        // if (this._mapMesh && (this._mapMesh as MapMesh).waterMaterial) {
+        //     (this._mapMesh as MapMesh).waterMaterial.uniforms.sineTime.value = timestamp / 900;
+        //     (this._mapMesh as MapMesh).waterMaterial.needsUpdate = true;
+        // }
+        // if (this._mapMesh && (this._mapMesh as MapMesh).landMaterial) {
+        //     (this._mapMesh as MapMesh).landMaterial.uniforms.sineTime.value = timestamp / 10;
+        //     (this._mapMesh as MapMesh).landMaterial.needsUpdate = true;
+        // }
         for (const ps of ParticleSystems) {
             ps.update(dtS);
             if (!ps.isActive()) {
@@ -910,6 +925,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.showEndTurnInActionPanel();
             this.updateUnitInfoForTile(tile);
         }
+
         if (this._onTileSelected) {
             this._onTileSelected(tile)
         }
@@ -1368,7 +1384,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     const nation = Nations[p2.name];
                     const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
                     const roundedPopulation = Math.floor(targetTile.improvement.population);
-                    const label = `<span class="city-label">${img} ${targetTile.improvement.name} (${roundedPopulation})</span>`
+                    const label = `<span class="city-label" data-target="${targetTile.improvement.id}">${img} ${targetTile.improvement.name} (${roundedPopulation})</span>`
                     updateLabel(targetTile.improvement.id, label);
 
                     // update all tiles that belonged to that city to new owner.
@@ -1401,6 +1417,23 @@ export default class MapView implements MapViewControls, TileDataSource {
         });
     }
 
+    cityLabelClick(id: string) {
+        const improvement = this.getImprovementById(id);
+        console.log(id);
+        if (this.gameState.currentPlayer !== improvement.owner) {
+            this.playerNegotiation(improvement.owner);
+        } else {
+            this.showCityMenu(this.getTile(improvement.tileInfo.q, improvement.tileInfo.r));
+        }
+    }
+    getImprovementById(id: string) {
+        for (const [key, player] of Object.entries(this.gameState.players)) {
+            if (player.improvements[id]) {
+                return player.improvements[id];
+            }
+        }
+       return null;
+    }
     updateTaxes() {
         const currentPlayer = this.getPlayer(this.gameState.currentPlayer);
         let government = GovernmentsMap[currentPlayer.government];
@@ -1719,9 +1752,8 @@ export default class MapView implements MapViewControls, TileDataSource {
             improvement.population += improvement.population_rate;
             const roundedPopulation = Math.floor(improvement.population);
 
-
             const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
-            const label = `<span class="city-label">${img} ${improvement.name} (${roundedPopulation})</span>`
+            const label = `<span class="city-label" data-target="${improvement.id}">${img} ${improvement.name} (${roundedPopulation})</span>`
             updateLabel(improvement.id, label);
 
             // gold
@@ -2106,6 +2138,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let info = `
             <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
             <div style="text-align: center;">
+                ${tile.improvement.name}</br>
                 <img id="menu-leader-img" src="${tile.improvement.image}" alt="${tile.improvement.name}">
             </div>
             <div class="options">
