@@ -126,7 +126,7 @@ export function CreateRifleman(player: Player): Unit {
     const unitType = "rifleman"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/rifleman.png")
+    const texture = textureLoader.load("/assets/map/units/rifleman.png")
     // texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(4/3, 2/3),
@@ -175,7 +175,7 @@ export function CreateInfantry(player: Player): Unit {
     const unitType = "infantry"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/infantry.png")
+    const texture = textureLoader.load("/assets/map/units/infantry.png")
     // texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(4/3, 2/3),
@@ -224,7 +224,7 @@ export function CreateInfantry(player: Player): Unit {
 export function CreateCavalry(player: Player): Unit {
     const unitType = "cavalry"
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/cavalry.png")
+    const texture = textureLoader.load("/assets/map/units/cavalry.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(2.6*2/3, 1.3*2/3),
@@ -269,7 +269,7 @@ export function CreateCavalry(player: Player): Unit {
 export function CreateTank(player: Player): Unit {
     const unitType = "tank"
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/tank.png")
+    const texture = textureLoader.load("/assets/map/units/tank.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1, 1),
@@ -315,7 +315,7 @@ export function CreateArtillary(player: Player): Unit {
     const unitType = "artillary"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/artillary.png")
+    const texture = textureLoader.load("/assets/map/units/artillary.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.1*2/3, 1.1*2/3),
@@ -361,7 +361,7 @@ export function CreateBoat(player: Player): Unit {
     const unitType = "boat"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/boat.png")
+    const texture = textureLoader.load("/assets/map/units/boat.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -407,7 +407,7 @@ export function CreateDestroyer(player: Player): Unit {
     const unitType = "destroyer"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/destroyer.png")
+    const texture = textureLoader.load("/assets/map/units/destroyer.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -454,7 +454,7 @@ export function CreateGunshp(player: Player): Unit {
     const unitType = "gunship"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/gunship.png")
+    const texture = textureLoader.load("/assets/map/units/gunship.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -502,7 +502,7 @@ export function CreateMissile(player: Player): Unit {
     const unitType = "missile"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/missile.png")
+    const texture = textureLoader.load("/assets/map/units/missile.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -618,7 +618,7 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     // );
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/city2.png")
+    const texture = textureLoader.load("/assets/map/units/city2.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -780,7 +780,7 @@ export const ResourceMap: { [key: string]: Resource } = {
 
 export function CreateResourceModel(resource: Resource): Resource {
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load(`../../${resource.image}`)
+    const texture = textureLoader.load(`${resource.image}`)
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new BoxBufferGeometry(.4, .4, .001),
