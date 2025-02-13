@@ -27,6 +27,8 @@ simply `npm start` and open `http://localhost:3000/examples/random/`.
 
 npx electron-packager . RisingPowers --platform=win32 --arch=x64 --out=build/win 
 
+npm install electron-packager
+
 export PATH=$PATH:/usr/lib/wine
 rm -fr build
 electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win

@@ -18,8 +18,8 @@ function createWindow() {
         mainWindow.maximize()
     }
     
-    // mainWindow.webContents.openDevTools()
-    mainWindow.loadFile('index.html')
+    mainWindow.webContents.openDevTools()
+    mainWindow.loadFile('examples/random/index.html')
 }
 
 app.whenReady().then(() => {

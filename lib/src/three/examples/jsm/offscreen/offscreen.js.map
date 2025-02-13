@@ -1,1 +1,0 @@
-{"version":3,"file":"offscreen.js","sourceRoot":"","sources":["../../../../../../src/three/examples/jsm/offscreen/offscreen.js"],"names":[],"mappings":";;;;;;;IAEA,IAAI,CAAC,SAAS,GAAG,UAAW,OAAO;QAElC,IAAI,IAAI,GAAG,OAAO,CAAC,IAAI,CAAC;QACxB,kBAAI,CAAE,IAAI,CAAC,cAAc,EAAE,IAAI,CAAC,KAAK,EAAE,IAAI,CAAC,MAAM,EAAE,IAAI,CAAC,UAAU,EAAE,IAAI,CAAC,IAAI,CAAE,CAAC;IAElF,CAAC,CAAC"}
