@@ -18,10 +18,10 @@ function createWindow() {
         mainWindow.maximize()
     }
     
-    mainWindow.webContents.openDevTools()
-    mainWindow.loadFile('examples/random/index.html')
+    // mainWindow.webContents.openDevTools()
+    mainWindow.loadFile('examples/random/main_menu.html')
 }
-
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.whenReady().then(() => {
     createWindow()
 

@@ -2,7 +2,7 @@ export const Nations: { [key: string]: any } = {
   "The Luminari": {
     "name": "The Luminari",
     "leader": "Queen Lyara",
-    "flag_image": "/assets/ui/flags/icons8-canada-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-canada-100.png",
     "description": "A radiant realm guided by celestial wisdom, shining as a beacon of hope and enlightenment.",
     "cities": [
       "Auroralith",
@@ -17,8 +17,8 @@ export const Nations: { [key: string]: any } = {
       "Illumindor"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "insulted": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "insulted": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Welcome, traveler. Do you seek the wisdom of the stars?"],
@@ -31,7 +31,7 @@ export const Nations: { [key: string]: any } = {
   "USA": {
     "name": "USA",
     "leader": "President Trump",
-    "flag_image": "/assets/ui/flags/icons8-usa-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-usa-100.png",
     "description": "A modern powerhouse, championing liberty and opportunity, ever striving for greatness on the world stage.",
     "cities": [
       "Washington",
@@ -85,8 +85,8 @@ export const Nations: { [key: string]: any } = {
       "Honolulu"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Welcome to the land of liberty and opportunity."],
@@ -103,7 +103,7 @@ export const Nations: { [key: string]: any } = {
   "Soviet Union": {
     "name": "Soviet Union",
     "leader": "Premier Volkov",
-    "flag_image": "/assets/ui/flags/icons8-ussr-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-ussr-100.png",
     "description": "A formidable collective under the Red Banner, forging an industrial and ideological empire of workers.",
     "cities": [
       "Moscow",
@@ -118,8 +118,8 @@ export const Nations: { [key: string]: any } = {
       "Murmansk"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/stalin.webp"],
-      "angry": ["/assets/leaders/stalin-angry.webp"]
+      "default": ["../../assets/leaders/stalin.webp"],
+      "angry": ["../../assets/leaders/stalin-angry.webp"]
     },
     "quotes": {
       "greeting": ["Comrade, let us discuss the future of the proletariat."],
@@ -132,7 +132,7 @@ export const Nations: { [key: string]: any } = {
   "China": {
     "name": "China",
     "leader": "Chairman Wei",
-    "flag_image": "/assets/ui/flags/icons8-china-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-china-100.png",
     "description": "An enduring civilization blending ancient heritage with modern ambitions, led by the steady hand of Chairman Wei.",
     "cities": [
       "Beijing",
@@ -147,8 +147,8 @@ export const Nations: { [key: string]: any } = {
       "Tianjin"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Greetings from the Middle Kingdom."],
@@ -161,7 +161,7 @@ export const Nations: { [key: string]: any } = {
   "Rome": {
     "name": "Rome",
     "leader": "Emperor Augustus",
-    "flag_image": "/assets/ui/flags/icons8-italy-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-italy-100.png",
     "description": "The Eternal City stands at the center of civilization, expanding its influence with legions and grand roads.",
     "cities": [
       "Rome",
@@ -176,8 +176,8 @@ export const Nations: { [key: string]: any } = {
       "Capua"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Salve! Rome welcomes you with open arms."],
@@ -190,7 +190,7 @@ export const Nations: { [key: string]: any } = {
   "Egypt": {
     "name": "Egypt",
     "leader": "Pharaoh Cleopatra",
-    "flag_image": "/assets/ui/flags/icons8-egypt-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-egypt-100.png",
     "description": "A land of timeless marvels along the Nile, guided by the wisdom and allure of its legendary Pharaoh.",
     "cities": [
       "Memphis",
@@ -205,8 +205,8 @@ export const Nations: { [key: string]: any } = {
       "Bubastis"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["We greet you under the ever-watchful eyes of the gods."],
@@ -219,7 +219,7 @@ export const Nations: { [key: string]: any } = {
   "Greece": {
     "name": "Greece",
     "leader": "King Alexander",
-    "flag_image": "/assets/ui/flags/icons8-greece-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-greece-100.png",
     "description": "Birthplace of philosophy and strategy, unified under Alexander’s ambition to spread Hellenic culture across the world.",
     "cities": [
       "Athens",
@@ -234,8 +234,8 @@ export const Nations: { [key: string]: any } = {
       "Pergamon"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Hail, traveler! Greece extends its wisdom to you."],
@@ -248,7 +248,7 @@ export const Nations: { [key: string]: any } = {
   "Britain": {
     "name": "Britain",
     "leader": "Queen Victoria",
-    "flag_image": "/assets/ui/flags/icons8-great-britain-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-great-britain-100.png",
     "description": "A seafaring empire wielding industrial might and colonial ambitions, led by the steadfast Queen Victoria.",
     "cities": [
       "London",
@@ -263,8 +263,8 @@ export const Nations: { [key: string]: any } = {
       "Bristol"
     ],
     "leader_images": {
-      "default": ["/assets/leaders/default.png"],
-      "angry": ["/assets/leaders/default.png"]
+      "default": ["../../assets/leaders/default.png"],
+      "angry": ["../../assets/leaders/default.png"]
     },
     "quotes": {
       "greeting": ["Welcome, from across the seas, to the British Isles."],

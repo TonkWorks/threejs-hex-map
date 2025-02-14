@@ -22,17 +22,16 @@ For an example check out the code in `examples/random`. To test it in the browse
 simply `npm start` and open `http://localhost:3000/examples/random/`.
 
 
-## Packaging
---icon=icon.ico
+## Packaging to windows
 
-npx electron-packager . RisingPowers --platform=win32 --arch=x64 --out=build/win 
-
-npm install electron-packager
+# apt-get install wine64
+# npm install electron-packager
+cd election
 
 export PATH=$PATH:/usr/lib/wine
 rm -fr build
-electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win --overwrite
+electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win --overwrite --icon dist/assets/branding/icon.ico
 zip -r build/a.zip build/win/risingpowers-win32-x64/
-
-
-    // "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
+# right click download
+# wait like 2 minutes to finish
+# send to -> compress in folder that has .exe upload to steamworks.

@@ -39,9 +39,15 @@ export interface Unit {
 }
 
 export const UnitMap: {[key: string]: any } = {
+    "settler": {
+        create: CreateSettler,
+        cost: 100,
+        moveSounds: [asset("sounds/units/rifelman.mp3")],
+        attackSounds: [],
+    },
     "rifleman": {
         create: CreateRifleman,
-        cost: 100,
+        cost: 50,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
     },
@@ -122,11 +128,59 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
 
 }
 
+export function CreateSettler(player: Player): Unit {
+    const unitType = "settler"
+
+    const textureLoader = new TextureLoader()
+    const texture = textureLoader.load("../../assets/map/units/rifleman.png")
+    // texture.magFilter = NearestFilter;
+    const unitModel = new Mesh(
+        new PlaneBufferGeometry(4/3, 2/3),
+        new MeshBasicMaterial({ 
+            // color: player.color,
+            map: texture,
+            transparent: true,
+            side: FrontSide,
+            alphaTest: .5,
+        })
+    );
+    unitModel.castShadow = false;
+    unitModel.receiveShadow = false;
+
+    unitModel.rotateX(Math.PI / 4.5);
+    
+    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
+    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
+    const name = "Settler " + toRoman(1);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
+
+    let unit = {
+        id:unitID,
+        type: unitType,
+        name: name,
+        health: 1,
+        health_max: 1,
+        movement: 3,
+        movement_max: 3,
+        attack_range: 0,
+        attack: 0,
+        defence: 0,
+        kills: 0,
+        land: true,
+        water: false,
+        offset: 0,
+        image: "../../assets/rifleman.webp",
+        owner: player.name,
+        model: unitModel,
+    };
+    return unit;
+}
+
 export function CreateRifleman(player: Player): Unit {
     const unitType = "rifleman"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/rifleman.png")
+    const texture = textureLoader.load("../../assets/map/units/rifleman.png")
     // texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(4/3, 2/3),
@@ -144,10 +198,10 @@ export function CreateRifleman(player: Player): Unit {
 
     unitModel.rotateX(Math.PI / 4.5);
     
-    // const unitModel = createUnitModel("/assets/ui/units/rifleman.png");
+    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     const name = "Rifleman Company " + toRoman(1);
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/rifleman.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
 
     let unit = {
         id:unitID,
@@ -164,7 +218,7 @@ export function CreateRifleman(player: Player): Unit {
         land: true,
         water: false,
         offset: 0,
-        image: "/assets/rifleman.webp",
+        image: "../../assets/rifleman.webp",
         owner: player.name,
         model: unitModel,
     };
@@ -175,7 +229,7 @@ export function CreateInfantry(player: Player): Unit {
     const unitType = "infantry"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/infantry.png")
+    const texture = textureLoader.load("../../assets/map/units/infantry.png")
     // texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(4/3, 2/3),
@@ -193,10 +247,10 @@ export function CreateInfantry(player: Player): Unit {
 
     unitModel.rotateX(Math.PI / 4.5);
     
-    // const unitModel = createUnitModel("/assets/ui/units/rifleman.png");
+    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     const name = "Infantry Company " + toRoman(1);
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/infantry.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/infantry.png", player.color);
 
     let unit = {
         id:unitID,
@@ -213,7 +267,7 @@ export function CreateInfantry(player: Player): Unit {
         land: true,
         water: false,
         offset: 0,
-        image: "/assets/rifleman.webp",
+        image: "../../assets/rifleman.webp",
         owner: player.name,
         model: unitModel,
     };
@@ -224,7 +278,7 @@ export function CreateInfantry(player: Player): Unit {
 export function CreateCavalry(player: Player): Unit {
     const unitType = "cavalry"
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/cavalry.png")
+    const texture = textureLoader.load("../../assets/map/units/cavalry.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(2.6*2/3, 1.3*2/3),
@@ -241,7 +295,7 @@ export function CreateCavalry(player: Player): Unit {
     unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/horse.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/horse.png", player.color);
 
     const name = "Cavalry " + toRoman(1);
     let unit = {
@@ -259,7 +313,7 @@ export function CreateCavalry(player: Player): Unit {
         land: true,
         water: false,
         offset: .29,
-        image: "/assets/map/icons/horse.png",
+        image: "../../assets/map/icons/horse.png",
         owner: player.name,
         model: unitModel,
     };
@@ -269,7 +323,7 @@ export function CreateCavalry(player: Player): Unit {
 export function CreateTank(player: Player): Unit {
     const unitType = "tank"
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/tank.png")
+    const texture = textureLoader.load("../../assets/map/units/tank.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1, 1),
@@ -286,7 +340,7 @@ export function CreateTank(player: Player): Unit {
     unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/tank.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/tank.png", player.color);
 
     const name = "Column " + toRoman(1);
     let unit = {
@@ -304,7 +358,7 @@ export function CreateTank(player: Player): Unit {
         land: true,
         water: false,
         offset: .2,
-        image: "/assets/map/icons/tank.png",
+        image: "../../assets/map/icons/tank.png",
         owner: player.name,
         model: unitModel,
     };
@@ -315,7 +369,7 @@ export function CreateArtillary(player: Player): Unit {
     const unitType = "artillary"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/artillary.png")
+    const texture = textureLoader.load("../../assets/map/units/artillary.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.1*2/3, 1.1*2/3),
@@ -332,7 +386,7 @@ export function CreateArtillary(player: Player): Unit {
     unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/artillary.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/artillary.png", player.color);
 
     const name = "Artillary Company " + toRoman(1);
     let unit = {
@@ -350,7 +404,7 @@ export function CreateArtillary(player: Player): Unit {
         land: true,
         water: false,
         offset: .29,
-        image: "/assets/map/icons/artillary.png",
+        image: "../../assets/map/icons/artillary.png",
         owner: player.name,
         model: unitModel,
     };
@@ -361,7 +415,7 @@ export function CreateBoat(player: Player): Unit {
     const unitType = "boat"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/boat.png")
+    const texture = textureLoader.load("../../assets/map/units/boat.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -378,7 +432,7 @@ export function CreateBoat(player: Player): Unit {
     unitModel.rotateX(Math.PI / 4.5);
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/boat.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/boat.png", player.color);
 
     const name = "SS FAFO";
     let unit = {
@@ -396,7 +450,7 @@ export function CreateBoat(player: Player): Unit {
         land: false,
         water: true,
         offset: .5,
-        image: "/assets/map/units/boat.png",
+        image: "../../assets/map/units/boat.png",
         owner: player.name,
         model: unitModel,
     };
@@ -407,7 +461,7 @@ export function CreateDestroyer(player: Player): Unit {
     const unitType = "destroyer"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/destroyer.png")
+    const texture = textureLoader.load("../../assets/map/units/destroyer.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -426,7 +480,7 @@ export function CreateDestroyer(player: Player): Unit {
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     const name = "SS FAFO";
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/destroyer.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/destroyer.png", player.color);
 
     let unit = {
         id: `${player.name}_${unitType}_${unitModel.uuid}`,
@@ -443,7 +497,7 @@ export function CreateDestroyer(player: Player): Unit {
         land: false,
         water: true,
         offset: 0,
-        image: "/assets/map/units/destroyer.png",
+        image: "../../assets/map/units/destroyer.png",
         owner: player.name,
         model: unitModel,
     };
@@ -454,7 +508,7 @@ export function CreateGunshp(player: Player): Unit {
     const unitType = "gunship"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/gunship.png")
+    const texture = textureLoader.load("../../assets/map/units/gunship.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -472,7 +526,7 @@ export function CreateGunshp(player: Player): Unit {
     unitModel
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/gunship.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/gunship.png", player.color);
 
     const name = "Gunship";
     let unit = {
@@ -490,7 +544,7 @@ export function CreateGunshp(player: Player): Unit {
         land: true,
         water: true,
         offset: .5,
-        image: "/assets/map/units/gunship.png",
+        image: "../../assets/map/units/gunship.png",
         owner: player.name,
         model: unitModel,
     };
@@ -502,7 +556,7 @@ export function CreateMissile(player: Player): Unit {
     const unitType = "missile"
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/missile.png")
+    const texture = textureLoader.load("../../assets/map/units/missile.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -520,7 +574,7 @@ export function CreateMissile(player: Player): Unit {
     unitModel
 
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "/assets/map/icons/missile.png", player.color);
+    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/missile.png", player.color);
 
     const name = "Missile";
     let unit = {
@@ -538,7 +592,7 @@ export function CreateMissile(player: Player): Unit {
         land: true,
         water: false,
         offset: .5,
-        image: "/assets/map/units/missile.png",
+        image: "../../assets/map/units/missile.png",
         owner: player.name,
         model: unitModel,
     };
@@ -588,6 +642,8 @@ export interface Improvement {
     population_rate: number; // Population growth rate
     production_rate: number; // Production rate
 
+    nextTile?: {q: number, r: number}; // Next tile to expand to
+
     image: string; // Image URL
     owner: string; // Player or faction ID
     model?: Mesh; // Reference to the 3D model in the scene
@@ -618,7 +674,7 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     // );
 
     const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("/assets/map/units/city2.png")
+    const texture = textureLoader.load("../../assets/map/units/city2.png")
     texture.magFilter = NearestFilter;
     const unitModel = new Mesh(
         new PlaneBufferGeometry(1.5, 1.5),
@@ -653,7 +709,7 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     let city = {
         id: unitID,
         type: placeType,
-        image: "/assets/city.webp",
+        image: "../../assets/city.webp",
         health: 100,
         name: cityName,
         population: population,
@@ -738,42 +794,42 @@ export interface Resource {
 export const ResourceMap: { [key: string]: Resource } = {
     "box": {   
         name:  "box",
-        image: "/assets/map/resources/box.png",
+        image: "../../assets/map/resources/box.png",
         gold: 5,
     },
     "coal": {   
         name: "coal",
-        image: "/assets/map/resources/coal.png",
+        image: "../../assets/map/resources/coal.png",
         gold: 5,
     },
     "corn": {   
         name: "corn",
-        image: "/assets/map/resources/corn.png",
+        image: "../../assets/map/resources/corn.png",
         gold: 5,
     },
     "gold": {   
         name: "gold",
-        image: "/assets/map/resources/gold.png",
+        image: "../../assets/map/resources/gold.png",
         gold: 5,
     },
     "meat": {   
         name: "meat",
-        image: "/assets/map/resources/meat.png",
+        image: "../../assets/map/resources/meat.png",
         gold: 5,
     },
     "sheep": {   
         name: "sheep",
-        image: "/assets/map/resources/sheep.png",
+        image: "../../assets/map/resources/sheep.png",
         gold: 5,
     },
     "wheat": {   
         name: "wheat",
-        image: "/assets/map/resources/wheat.png",
+        image: "../../assets/map/resources/wheat.png",
         gold: 5,
     },
     "wood": {   
         name: "wood",
-        image: "/assets/map/resources/wood.png",
+        image: "../../assets/map/resources/wood.png",
         gold: 5,
     }
 }
@@ -802,6 +858,27 @@ export function CreateResourceModel(resource: Resource): Resource {
         model: unitModel,
     }
 }
+
+
+export function CreateYieldModel(image: string): Mesh {
+    const textureLoader = new TextureLoader()
+    const texture = textureLoader.load(image)
+    const unitModel = new Mesh(
+        new BoxBufferGeometry(.3, .3, .001),
+        new MeshBasicMaterial({ 
+            // color: player.color,
+            map: texture,
+            transparent: true,
+            side: FrontSide,
+            alphaTest: .5,
+        })
+    );
+    unitModel.castShadow = false;
+    unitModel.receiveShadow = false;
+    unitModel.rotateX(Math.PI / 6);
+    return unitModel;
+}
+
 
 // utilities
 

@@ -21,6 +21,7 @@ export interface TileData {
     owner?: string | null;
     unit?: Unit | null;
     city?: string | null;
+    yields?: { [key: string]: number } | null;
     improvement?: Improvement | null;
     improvementOverlay?: Mesh | null;
     territoryOverlay?: Mesh | null;

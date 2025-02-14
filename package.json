@@ -1,30 +1,16 @@
 {
-  "name": "threejs-hex-map",
-  "version": "0.3.1",
-  "description": "A simple 3D hexagonal terrain map based on three.js.",
+  "name": "risingpowers",
+  "version": "0.0.1",
   "main": "lib/src/index.js",
   "types": "lib/src/index",
   "scripts": {
     "start": "node server.js",
     "build": "tsc && webpack",
-    "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
+    "dev": "concurrently \"tsc --watch\" \"node server.js\"",
+    "deve": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
     "test": "echo \"No tests yet.\" && exit 0"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com:Bunkerbewohner/threejs-hex-map.git"
-  },
-  "keywords": [
-    "webgl",
-    "threejs",
-    "typescript",
-    "hexagon",
-    "map",
-    "terrain"
-  ],
-  "author": "Mathias Kahl <mathias.kahl@gmail.com>",
-  "license": "MIT",
-  "homepage": "https://github.com/Bunkerbewohner/threejs-hex-map",
+  "author": "Kevin Dagostino <kevin@tonkworks.com>",
   "dependencies": {
     "concurrently": "^9.1.2",
     "electron": "^34.2.0",

@@ -6,8 +6,5 @@
         "electron-packager": "^17.1.2"
     },
     "main": "electron.js",
-    "scripts": {
-        "start": "electron .",
-        "build": "electron-packager . --overwrite"
-    }
+    "scripts": {}
 }
