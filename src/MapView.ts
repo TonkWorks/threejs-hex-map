@@ -80,6 +80,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private borders: any = {};
     private composer: any = null;
     private stats: any = null;
+    private settings: any = {};
 
     _units_models: Group = new Group()
     _ui_map_expansion: Group = new Group()
@@ -94,6 +95,8 @@ export default class MapView implements MapViewControls, TileDataSource {
     resourcePanel: HTMLElement = null;
     sectionHalo: LightOfGod = null;
     _lastMinimapUpdate: number = 0;
+
+    _renderMinimap: boolean = true;
 
     get controller() {
         return this._controller
@@ -257,6 +260,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.stats = Stats.default();
         this.stats.dom.style.top= '35px';
         this.stats.showPanel(0);
+
+        
         // document.body.appendChild(this.stats.dom);
 
         // Setup EffectComposer
@@ -358,37 +363,44 @@ export default class MapView implements MapViewControls, TileDataSource {
     updateTiles(tiles: TileData[]) {
         this._mapMesh.updateTiles(tiles)
 
-        for (const tile of tiles) {
-            let t = this._tileGrid.get(tile.q, tile.r);
-            if (t.improvement !== undefined && t.clouds === false) {
-                t.improvement.model.visible = true;
-            }
-            if (t.improvementOverlay !== undefined && t.clouds === false) {
-                t.improvementOverlay.visible = true;
-            }
-            if (t.territoryOverlay !== undefined && t.clouds === false) {
-                t.territoryOverlay.visible = true;
-            }
-
-            if (t.unit !== undefined && t.fog == false && t.clouds === false) {
-                t.unit.model.visible = true;
-            }
-            if (t.clouds === false && t.resource !== undefined) {
-                t.resource.model.visible = true;
-                t.resource.model.matrixWorldNeedsUpdate = true;
-            }
-        }
-        for (let player of Object.values(this._gameState.players)) {    
-            this.updateBorderOverlay(player);        
+        this.updateAllVisilibility();
+        for (let player of Object.values(this._gameState.players)) {
+            this.updateBorderOverlay(player);
         }
     }
-    // updateAllVisilibility() {
-    //     this.getTileGrid().forEach((tile) => {
-    //         if (tile.unit !== undefined) {
-    //             tile.unit.model.visible = true;
-    //         }
-    //     }
-    // }
+
+    updateAllVisilibility() {
+        let tiles = this.getTileGrid().toArray();
+        for (const tile of tiles) {
+            if (tile.clouds) {
+                continue;
+            };
+            if (tile.fog == true) {
+                if (tile.unit !== undefined) {
+                    tile.unit.model.visible = false;
+                }
+            }
+            if (tile.fog == false) {
+                if (tile.unit !== undefined) {
+                    tile.unit.model.visible = true;
+                }
+                if (tile.improvement !== undefined) {
+                    tile.improvement.model.visible = true;
+                }
+            }
+
+            if (tile.territoryOverlay !== undefined) {
+                tile.territoryOverlay.visible = true;
+            }
+            if (tile.improvementOverlay !== undefined) {
+                tile.improvementOverlay.visible = true;
+            }
+            if (tile.resource !== undefined && tile.resource.model !== undefined) {
+                tile.resource.model.visible = true;
+            }
+        }
+        this._renderMinimap = true;
+    }
     addUnitToMap(unit: Unit, tile: TileData, fromSaved: boolean = false) {
         // Bad Cases
         if (tile === undefined) {
@@ -488,9 +500,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (!improvement.nextTile) {
             let tiles = this.getEligibleTilesForExpansion(tile);
             if (tiles.length > 0) {
-                improvement.nextTile = this.getBestYield(tiles, tile)
+                let t = this.getBestYield(tiles, tile)
+                improvement.nextTile = { q: t.q, r: t.r }
             }
         }
+
+        // check for cuttoff tiles
+        this.checkForCutOffTiles(tile);
+
         this.updateResourcePanel();
         this.updateGameStatePanel();
     }
@@ -508,7 +525,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         const tworldPos = qrToWorld(t.q, t.r);
         t.territoryOverlay.position.set(tworldPos.x, tworldPos.y, 0.01);
         t.territoryOverlay.layers.enable(10);
-        this.updateTiles([t]);
+        // this.updateTiles([t]);
     }
 
 
@@ -611,7 +628,6 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     initGameSetup() {
-
         if (this._savedGame) {
             this._gameState = this._savedGame.gameState;
 
@@ -626,10 +642,9 @@ export default class MapView implements MapViewControls, TileDataSource {
 
             for (const [key, player] of Object.entries(this._gameState.players)) {
                 for (const improvementData of Object.values(player.improvements)) {
-                    const improvement = CreateCity(player);
+                    const improvement = CreateCity(player, improvementData.name, improvementData.id);
                     improvement.id = improvementData.id;
                     improvement.population = improvementData.population;
-                    improvement.name = improvementData.name;
                     let t = this.getTile(improvementData.tileInfo.q, improvementData.tileInfo.r)
                     // t.improvement = undefined;
                     this.addImprovementToMap(improvement, t, true);
@@ -646,6 +661,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 const t = this.getTile(this._savedGame.selectedTile.q, this._savedGame.selectedTile.r);
                 this.selectTile(t);
             }
+            this.updateGlobalFog();
             return;
         }
 
@@ -709,6 +725,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.selectTile(startTile);
             }
         }
+        this.updateGlobalFog();
     }
 
     toast({ text, icon, onClick }: { text: string; icon: string; onClick: () => void }): void {
@@ -744,8 +761,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         const camera = this._camera
         const zoomRelative = camera.position.z / MapView.DEFAULT_ZOOM
-        const scroll = this._scrollDir.clone().normalize().multiplyScalar(this.scrollSpeed * zoomRelative * dtS)
-        camera.position.add(scroll)
+        const scrollOffset = this._scrollDir.clone().normalize().multiplyScalar(this.scrollSpeed * zoomRelative * dtS)
 
         // if (this._chunkedMesh) {
         //     this._chunkedMesh.updateVisibility(camera)
@@ -753,7 +769,12 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // }
         // this._minimap_camera.position.y = 4;
-        this._minimap_camera.position.z = this._tileGrid.width * 2;
+        const targetPosition = camera.position.clone().add(scrollOffset);
+        // Smoothly interpolate toward the target position.
+        // Adjust the lerp factor (e.g. 0.1) to control how "smooth" or "snappy" the movement feels.
+        camera.position.lerp(targetPosition, 0.3);
+
+        this._minimap_camera.position.z = this._tileGrid.width * 2.05;
 
         this._onAnimate(dtS)
 
@@ -774,14 +795,13 @@ export default class MapView implements MapViewControls, TileDataSource {
         for (const ps of Selectors) {
             ps.update(dtS);
         }
-
         // this._renderer.render(this._scene, camera);
         this.composer.render();
-        if (timestamp - this._lastMinimapUpdate > 150) {
-            this._labelRenderer.render(this._scene, camera);
-        }
-        if (timestamp - this._lastMinimapUpdate > 500) {
+        this._labelRenderer.render(this._scene, camera);
+        if (this._renderMinimap) {
+        // if (timestamp - this._lastMinimapUpdate > 250) {
             this._minimap_renderer.render(this._scene, this._minimap_camera);
+            this._lastMinimapUpdate = timestamp;
         }
 
         this.stats.end();
@@ -980,6 +1000,74 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     }
 
+    updateGlobalFog() {
+        const tileGrid = this.getTileGrid();
+        const noFogKeys = new Set<string>();
+        console.log(this.settings)
+        if (this.settings.dev_mode === true) {
+            let changed: TileData[] = [];
+            tileGrid.toArray().forEach((tile) => {
+                if (tile.clouds === true || tile.fog === true) {
+                    tile.clouds = false;
+                    tile.fog = false;
+                    changed.push(tile);
+                }
+            });
+            this.updateTiles(changed);
+            return;
+        }
+        
+        // First pass: determine which tiles should have no fog.
+        tileGrid.toArray().forEach((tile) => {
+            // Skip tiles with clouds.
+            if (tile.clouds === true) return;
+        
+            // Helper to add a tile and ensure it's not processed if it has clouds.
+            const markTile = (t: TileData) => {
+            if (!t.clouds) {
+                noFogKeys.add(`${t.q},${t.r}`);
+            }
+            };
+        
+            // If the tile is owned by the current player, mark it and its neighbors (range 1) as no-fog.
+            if (tile.owner && tile.owner === this.gameState.currentPlayer) {
+            markTile(tile);
+            tileGrid.neighbors(tile.q, tile.r, 1).forEach(markTile);
+            }
+        
+            // If a unit on the tile belongs to the current player, mark it and its neighbors (range 2) as no-fog.
+            if (tile.unit && tile.unit.owner === this.gameState.currentPlayer) {
+            markTile(tile);
+            tileGrid.neighbors(tile.q, tile.r, 2).forEach(markTile);
+            }
+        });
+        
+        // Second pass: update fog state based on the precomputed no-fog set.
+        const changed: TileData[] = [];
+        tileGrid.toArray().forEach((tile) => {
+            // Skip tiles with clouds.
+            if (tile.clouds === true) return;
+        
+            // Fog should be off if the tile is marked, on otherwise.
+            const shouldHaveFog = !noFogKeys.has(`${tile.q},${tile.r}`);
+            if (tile.fog !== shouldHaveFog) {
+            tile.fog = shouldHaveFog;
+            changed.push(tile);
+            }
+        });
+        this.updateTiles(changed);
+    }
+
+    setFogAround(tile: TileData, range: number, fog: boolean) {
+        const tiles = this.getTileGrid().neighbors(tile.q, tile.r, range)
+    
+        const updated = tiles.map(t => {
+            t.fog = fog
+            t.clouds = false;
+            return t
+        })
+        this.updateTiles(updated)
+    }
 
     updateToolTip(tile: TileData, x: number, y: number) {
         const tooltip = document.getElementById("tooltip");
@@ -996,7 +1084,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (tile.improvement) {
             data.push(this.generateImprovementInfo(tile.improvement));
         }
-        if (tile.unit) {
+        if (tile.unit && tile.fog === false) {
             data.push(this.generateUnitInfo(tile.unit));
         }
         if (tile.resource) {
@@ -1177,7 +1265,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         nextMovementTile.unit.movement -= 1;
 
         if (nextMovementTile.unit.movement === 0) {
-            if (nextMovementTile.unit.selector !== undefined) {
+            if (nextMovementTile.unit.selector && nextMovementTile.unit.selector !== undefined) {
                 nextMovementTile.unit.selector.dispose();
                 nextMovementTile.unit.selector = undefined;
             }
@@ -1208,8 +1296,13 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         const worldPos = qrToWorld(nextMovementTile.q, nextMovementTile.r);
         animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y, .2, easeOutQuad, () => {
-            nextMovementTile.unit.moving = false;
-            this.moveUnit(nextMovementTile, targetTile)
+            if (nextMovementTile.unit) {
+                nextMovementTile.unit.moving = false;
+                if (playerInitiated) {
+                    this.updateGlobalFog();
+                };
+                this.moveUnit(nextMovementTile, targetTile);
+            }
         });
     }
 
@@ -1283,7 +1376,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                     while (targetTile.unit.model.children.length > 0) {
                         targetTile.unit.model.remove(targetTile.unit.model.children[0]);
                     }
+                    
                     targetTile.unit.model.parent.remove(targetTile.unit.model);
+                    targetTile.unit.model.geometry.dispose();
                     targetTile.unit = undefined;
                     currentTile.locked = false;
                     targetTile.locked = false;
@@ -1387,6 +1482,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                     currentTile.locked = false;
                     targetTile.locked = false;
                     currentTile.unit.moving = false;
+
+                    // check for cuttoff tiles
+                    this.checkForCutOffTiles(currentTile);
+
                     this.moveUnit(currentTile, targetTile);
                     this.checkVictoryConditions();
                     return;
@@ -1406,13 +1505,13 @@ export default class MapView implements MapViewControls, TileDataSource {
             currentPlayer.research.progress = 0;
             this.updateResourcePanel();
             this.menuPanel.innerHTML = "";
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
         });
     }
 
     cityLabelClick(id: string) {
         const improvement = this.getImprovementById(id);
-        console.log(id);
+        console.log(`improvmenet id: ${id}`);
         if (this.gameState.currentPlayer !== improvement.owner) {
             this.playerNegotiation(improvement.owner);
         } else {
@@ -1420,8 +1519,10 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     }
     getImprovementById(id: string) {
+        console.log(this);
         for (const [key, player] of Object.entries(this.gameState.players)) {
             if (player.improvements[id]) {
+                console.log("a");
                 return player.improvements[id];
             }
         }
@@ -1441,7 +1542,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         let info = `
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div style="text-align: center;">
                 <img id="menu-leader-img" src="../../assets/ui/resources/taxes.png">
             </div>
@@ -1455,14 +1556,13 @@ export default class MapView implements MapViewControls, TileDataSource {
             </div>
 
         `;
-        this.menuPanel.innerHTML = info;
-        this.menuPanel.style.visibility = "visible";
+        this.showMenu(info);
     }
 
     getTextInput(instructions: string, value: string = "", callback: (text: string) => void) {
         this._text_input_callback = callback;
         let info = `
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div class="text-input-group">
                 ${instructions}
                 <input type="text" id="text-input" name="text-input" value="${value}">
@@ -1470,19 +1570,18 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <button class="general-menu" data-name="cancel_text_input">Cancel</button>
             </div>
         `;
-        this.menuPanel.innerHTML = info;
-        this.menuPanel.style.visibility = "visible";
+        this.showMenu(info);
     }
 
     generalMenuClicked(name: string) {
         if (name === "submit_text_input") {
             const text = (<HTMLInputElement>document.getElementById("text-input")).value;
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
             this.menuPanel.innerHTML = "";
             this._text_input_callback(text);
         }
         if (name === "cancel_text_input") {
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
         }
     }
 
@@ -1820,9 +1919,10 @@ export default class MapView implements MapViewControls, TileDataSource {
             // decide new tile for expansion.
             let tiles = this.getEligibleTilesForExpansion(origTile);
             if (tiles.length > 0) {
-                origTile.improvement.nextTile = this.getBestYield(tiles, origTile)
+                let t = this.getBestYield(tiles, origTile);
+                origTile.improvement.nextTile = { q: t.q, r: t.r };
             }
-
+            this.updateGlobalFog();
             this.updateResourcePanel();
             this.displayExpansionView(origTile);
           });
@@ -1853,7 +1953,52 @@ export default class MapView implements MapViewControls, TileDataSource {
           }
         });
         return Array.from(uniqueMap.values());
-      }
+    }
+
+    checkForCutOffTiles(tile: TileData) {
+        const grid = this.getTileGrid();
+        const tiles = grid.neighbors(tile.q, tile.r, 5);
+        tiles.forEach(t => {
+            if (t.city && !this.isTileConnectedToHomeCity(t)) {
+                t.owner = ""
+                t.city = ""
+            }
+        });
+    }
+
+    isTileConnectedToHomeCity(startTile: TileData): boolean {
+        const grid = this.getTileGrid();
+        // If there is no city specified, we consider it disconnected.
+        if (!startTile.city) return false;
+      
+        const visited = new Set<string>();
+        const queue: TileData[] = [startTile];
+      
+        while (queue.length) {
+          const current = queue.shift()!;
+          const key = `${current.q},${current.r}`;
+          if (visited.has(key)) continue;
+          visited.add(key);
+      
+          // Check if the current tile is the home city tile.
+          // (Assuming the home city tile is marked with an improvement whose id matches startTile.city.)
+          if (current.improvement && current.improvement.id === startTile.city) {
+            return true;
+          }
+      
+          // Get immediate neighbors (radius 1).
+          const neighbors = grid.neighbors(current.q, current.r, 1);
+          neighbors.forEach(neighbor => {
+            // Only traverse neighbors that are part of the same city chain.
+            if (neighbor.city === startTile.city && !visited.has(`${neighbor.q},${neighbor.r}`)) {
+              queue.push(neighbor);
+            }
+          });
+        }
+      
+        // No connection found to the home city.
+        return false;
+    }
 
     getBestYield(tiles: TileData[], referenceTile: TileData): TileData {
         return tiles.reduce((best, tile) => {
@@ -1893,6 +2038,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             while (allToasts.length > 0) {
                 allToasts[0].parentNode.removeChild(allToasts[0]);
             }
+            this.updateGlobalFog();
         }
 
 
@@ -1952,7 +2098,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                 // decide new tile for expansion.
                 tiles = this.getEligibleTilesForExpansion(cityTile);
                 if (tiles.length > 0) {
-                    cityTile.improvement.nextTile = this.getBestYield(tiles, cityTile)
+                    let t= this.getBestYield(tiles, cityTile);
+                    cityTile.improvement.nextTile = { q: t.q, r: t.r };
                 }
             }
 
@@ -1980,7 +2127,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                         mm.pickResearch();
                     }
                 });
-                DisplayResearchFinished(tech);
+                let info = DisplayResearchFinished(tech);
+                this.showMenu(info);
                 if (tech.quote_audio) {
                     this.playSound(asset(tech.quote_audio));
                 }
@@ -2089,11 +2237,16 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     updateUnitInfoForTile(tile: TileData) {
-        this.clearYields();
-        this.clearNextExpansion();
+        if (this.gameState.playersTurn !== this.gameState.currentPlayer) {
+            return;
+        }
         if (this.unitInfoPanel == null) {
             return;
         }
+
+        this.clearYields();
+        this.clearNextExpansion();
+
         if (tile.unit === undefined && tile.improvement === undefined) {
             this.unitInfoPanel.innerHTML = "";
             this.unitInfoCache = "";
@@ -2247,7 +2400,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         const player2nation = Nations[player2.nation];
         let info = `
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div style="text-align: center;">
                 <img id="menu-leader-img" src="${player2nation.leader_images["default"][0]}" alt="${player2.name}">
             </div>
@@ -2272,17 +2425,18 @@ export default class MapView implements MapViewControls, TileDataSource {
             info += `<button class="player-diplomatic-menu" data-name="declare_war" data-target="${player2.name}">Declare War</button>`
         }
         info += `</div>`;
-        this.showLeaderMenu(info);
+        this.showMenu(info);
     }
 
-    showLeaderMenu(info: string) {
+    showMenu(info: string) {
         if (this.menuPanel == null) {
             return;
         }
         this.menuPanel.innerHTML = info;
         this.menuPanel.style.visibility = "visible";
+        const menuModal = document.getElementById("menu-modal");
+        menuModal.style.visibility = "visible";
     }
-
 
 
     showCityMenu(tile: TileData) {
@@ -2301,7 +2455,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         // </div>`;
 
         let options: [string, string, number, string][] = [
-            ["buy_land", "Buy Land", 40, "city.png"],
             ["buy_settler", "Settler", 100, "settler.png"],
             ["buy_rifleman", "Rifleman", 100, "rifleman.png"],
             ["buy_calvary", "Cavalry", 200, "cavalry.png"],
@@ -2330,22 +2483,52 @@ export default class MapView implements MapViewControls, TileDataSource {
             options.push(["buy_nuke", "Nuke", 1000, "nuke.png"]);
         }
 
+        let city_info = "";
+        // get all the city tiles;
+        let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
+        let yields: {[key: string]: number} = {};
+        let resources: {[key: string]: number} = {};
+
+        tiles.forEach(t => {
+            for (const [key, value] of Object.entries(t.yields)) {
+                if (yields[key] === undefined) {
+                    yields[key] = 0;
+                }
+                yields[key] += value;
+            }
+            if (tile.resource !== undefined) {
+                resources[tile.resource.name] += 1;
+            }
+        });
+
+        let yield_info = ""
+        for (const [key, value] of Object.entries(tile.yields)) {
+            if (value > 0) {
+                yield_info += `<tr><th>${capitalize(key)}:</th> <td>${value}</td></tr>`
+            }
+        }
+        for (const [name, label, cost, image] of options) {
+            city_info += `<button class="city-menu" data-name="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png">${label}</button>`
+        }
+
         let option_info = ""
         for (const [name, label, cost, image] of options) {
             option_info += `<button class="city-menu" data-name="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png">${label}</button>`
         }
         let info = `
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div style="text-align: center;">
                 ${tile.improvement.name}</br>
-                <img id="menu-leader-img" src="${tile.improvement.image}" alt="${tile.improvement.name}">
+            </div>
+            <div>City Yields</div>
+            <div class="small">
+                ${yield_info}
             </div>
             <div class="options">
                 ${option_info}
                 </div>
         `;
-        this.menuPanel.innerHTML = info;
-        this.menuPanel.style.visibility = "visible";
+        this.showMenu(info);
     }
 
     mainMenu() {
@@ -2356,6 +2539,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let options2: [string, string][] = [
             ["main_menu", "Exit to Main Menu"],
             ["exit_desktop", "Exit to Desktop"],
+            ["dev_mode", "Enable Dev Mode"],
         ]
 
         let option_info = ""
@@ -2368,13 +2552,12 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let info = `
             <h3 class="title">Menu</h3>
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div class="options">
                 ${option_info}
                 </div>
         `;
-        this.menuPanel.innerHTML = info;
-        this.menuPanel.style.visibility = "visible";
+        this.showMenu(info);
     }
     async mainMenuOption(name: String) {
         if (name === "main_menu") {
@@ -2382,6 +2565,21 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         if (name === "exit_desktop") {
             window.close();
+        }
+        if (name === "dev_mode") {
+            let settings = JSON.parse(localStorage.getItem('settings') || '{}');
+            if (settings.dev_mode && settings.dev_mode === true) {
+                settings.dev_mode = false;
+                localStorage.setItem('settings', JSON.stringify(settings));
+                this.settings = settings;
+                this.updateGlobalFog();
+                return;
+            }
+            settings.dev_mode = true;
+            localStorage.setItem('settings', JSON.stringify(settings));
+            this.settings = settings;
+            this.updateGlobalFog();
+            console.log("Dev mode enabled");
         }
         if (name === "load_game") {
             let savedGames = JSON.parse(localStorage.getItem('saved_games') || '[]');
@@ -2394,14 +2592,16 @@ export default class MapView implements MapViewControls, TileDataSource {
             const sg = this.getSaveGame();
             const currentDate = new Date().toISOString(); // Get current date in ISO format
             console.log('Game saved on:', currentDate);
-            // console.log(sg);
+            console.log(sg);
+            const sgs = JSON.stringify(sg);
+            console.log(sgs);
             let savedGames = JSON.parse(localStorage.getItem('saved_games') || '[]');
             let name = `${currentDate}`;
             savedGames.push({
                 name: name,
                 id: `saved_game_${name}`
             });
-            localStorage.setItem(`saved_game_${name}`, JSON.stringify(sg));
+            localStorage.setItem(`saved_game_${name}`, sgs);
             console.log(savedGames);
             while (savedGames.length > 10) {
                 let sg_name = savedGames.shift();
@@ -2414,7 +2614,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: `Game saved!`,
                 onClick: function () { }
             });
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
         }
     }
 
@@ -2428,7 +2628,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         let info = `
-            <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div style="text-align: center;">
                 <img id="menu-leader-img" src="${nation.leader_images["default"][0]}" alt="${player2.name}">
             </div>
@@ -2439,7 +2639,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <button class="player-diplomatic-menu" data-name="declare_war" data-target="${player2.name}">Declare War</button>
             </div>
         `;
-        this.showLeaderMenu(info);
+        this.showMenu(info);
         return false;
     }
 
@@ -2475,7 +2675,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: `${player.name} government changed to ${GovernmentsMap[target].name}`,
                 onClick: function () { }
             });
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
         }
 
         if (name === "settler_place_city") {
@@ -2491,10 +2691,12 @@ export default class MapView implements MapViewControls, TileDataSource {
                 while (tile.unit.model.children.length > 0) {
                     tile.unit.model.remove(tile.unit.model.children[0]);
                 }
+                tile.unit.model.geometry.dispose();
                 tile.unit.model.parent.remove(tile.unit.model);
                 tile.unit = undefined;
 
                 // update stats
+                this.updateGlobalFog();
                 this.showEndTurnInActionPanel();
                 this.updateUnitInfoForTile(tile);
             });
@@ -2562,13 +2764,13 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: `War between ${player.name} and ${targetPlayer.name} declared!`,
                 onClick: function () { }
             });
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
             console.log(this._gameState)
             return;
         }
         if (name === "declare_peace") {
             DeclarePeaceBetweenPlayers(this._gameState, player, targetPlayer);
-            this.menuPanel.style.visibility = "hidden";
+            this.CloseMenu();
             return;
         }
     }
@@ -2579,8 +2781,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         console.log(currentPlayer.improvements);
         if (Object.keys(currentPlayer.improvements).length === 0) {
             console.log("Lost!");
-            this.menuPanel.innerHTML = `<h1 class="text-info">Defeat!</h1>`;
-            this.menuPanel.style.visibility = "visible";
+            let info = `<h1 class="text-info">Defeat!</h1>`;
+            this.showMenu(info)
             return;
         }
 
@@ -2613,8 +2815,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         console.log("Winner!");
-        this.menuPanel.innerHTML = `<h1 class="text-info">Victory!</h1>`;
-        this.menuPanel.style.visibility = "visible";
+        let info = `<h1 class="text-info">Victory!</h1>`;
+        this.showMenu(info);
     }
 
     playSound(name: string, position?: Vector3) {
@@ -2633,6 +2835,10 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
 
+    CloseMenu() {
+        document.getElementById('menu-modal').style.visibility = 'hidden';
+        document.getElementById('menu').style.visibility = 'hidden';
+    }
 }
 
 // Calculate the distance between two hexes (Manhattan distance in axial coordinates)
@@ -2721,4 +2927,9 @@ function animateFall(
 
 function easeOutQuad(t: number): number {
     return t * (2 - t);
+}
+
+export function CloseMenu() {
+    document.getElementById('menu-modal').style.visibility = 'hidden';
+    document.getElementById('menu').style.visibility = 'hidden';
 }

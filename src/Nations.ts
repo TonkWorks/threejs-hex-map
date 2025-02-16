@@ -118,8 +118,8 @@ export const Nations: { [key: string]: any } = {
       "Murmansk"
     ],
     "leader_images": {
-      "default": ["../../assets/leaders/stalin.webp"],
-      "angry": ["../../assets/leaders/stalin-angry.webp"]
+      "default": ["../../assets/leaders/h.png"],
+      "angry": ["../../assets/leaders/h.png"],
     },
     "quotes": {
       "greeting": ["Comrade, let us discuss the future of the proletariat."],

@@ -9,8 +9,8 @@ import { Nations } from './Nations';
 import { asset } from './util';
 import AnimatedSelector from './Selector';
 
+const materialCache = new Map();
 
-      
 export interface Unit {
     id: string; // Unique identifier
     type: string; // Unit type (e.g., "warrior", "archer", "settler")
@@ -125,7 +125,6 @@ export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:
     unitLabel.scale.set(.004, .004, .004);
     labelDiv.style.pointerEvents = 'none';
     unitModel.add(unitLabel);
-
 }
 
 export function CreateSettler(player: Player): Unit {
@@ -650,7 +649,7 @@ export interface Improvement {
     tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
 }
 
-export function CreateCity(player: Player, name: string = ""): Improvement {
+export function CreateCity(player: Player, name: string = "", id: string = ""): Improvement {
     const placeType = "city"
     const nation = Nations[player.nation];
 
@@ -690,7 +689,10 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     // unitModel.receiveShadow = false;
     unitModel.rotateX(Math.PI / 4.5);
 
-    const unitID = `${player.name}_${placeType}_${unitModel.uuid}`;
+    let unitID = `${player.name}_${placeType}_${unitModel.uuid}`;
+    if (id !== "") {
+        unitID = id;
+    }
     const population = 1;
     const labelDiv = document.createElement('div');
     labelDiv.className = 'city-label';
@@ -725,27 +727,31 @@ export function CreateCity(player: Player, name: string = ""): Improvement {
     return city;
 }
 
+const territoryOverlayGeometry = new RingBufferGeometry(0.001, 1, 6, 1);
+territoryOverlayGeometry.rotateZ(Math.PI/2);
 export function createTerritoryOverlayModel(player: Player) {
-    const geom = new RingBufferGeometry(0.001, 1, 6, 1)
-    geom.rotateZ(Math.PI/2)
-    const model = new Mesh(
-        geom,
-        new MeshBasicMaterial({ 
+    const key = `territory_overlay_${player.name}`;
+    if (!materialCache.has(key)) {
+        materialCache.set(key, new MeshBasicMaterial({ 
             color: player.color,
             opacity: .35,
             transparent: true,
             side: FrontSide,
-        })
+        }));
+    }
+    const model = new Mesh(
+        territoryOverlayGeometry,
+        materialCache.get(key)
     );
     model.visible = false;
     return model;
 }
 
+const modelOverlayGeometry = new RingBufferGeometry(0.001, .4, 6, 1);
+modelOverlayGeometry.rotateZ(Math.PI/2);
 export function createCityOverlayModel() {
-    const geom = new RingBufferGeometry(0.001, .4, 6, 1)
-    geom.rotateZ(Math.PI/2)
     const model = new Mesh(
-        geom,
+        modelOverlayGeometry,
         new MeshBasicMaterial({ 
             color: "white",
             opacity: 1,
@@ -898,6 +904,5 @@ function toRoman(num: number): string {
     }
     return result;
 }
-
 
 export default Unit;

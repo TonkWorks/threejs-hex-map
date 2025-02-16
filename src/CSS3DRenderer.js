@@ -14,14 +14,13 @@ function epsilon( value ) {
 	return Math.abs( value ) < 1e-10 ? 0 : value;
 }
 
-// A generic function to produce a CSS matrix3d string from an array of 16 numbers.
-// The sign adjustments are provided in the signAdjust array (which has 16 values, either 1 or -1).
+// Build a CSS matrix3d string using an array join rather than repeated concatenation.
 function buildCSSMatrix( elements, signAdjust ) {
-	let css = 'matrix3d(';
-	for ( let i = 0; i < 16; i ++ ) {
-		css += epsilon( elements[ i ] * signAdjust[ i ] ) + ( i < 15 ? ',' : ')' );
+	const values = new Array( 16 );
+	for ( let i = 0; i < 16; i++ ) {
+		values[i] = epsilon( elements[i] * signAdjust[i] );
 	}
-	return css;
+	return 'matrix3d(' + values.join(',') + ')';
 }
 
 // For camera, we want to flip the sign of elements 1, 5, 9, 13.
@@ -75,67 +74,46 @@ class CSS3DObject extends Object3D {
 		this.element.setAttribute( 'draggable', false );
 
 		this.addEventListener( 'removed', function () {
-
 			this.traverse( function ( object ) {
-
 				// Remove from DOM if element exists.
-				if (
-					object.element instanceof object.element.ownerDocument.defaultView.Element &&
-					object.element.parentNode !== null
-				) {
-
+				if ( object.element instanceof object.element.ownerDocument.defaultView.Element &&
+					 object.element.parentNode !== null ) {
 					object.element.remove();
-
 				}
-
 			} );
-
 		} );
-
 	}
 
 	copy( source, recursive ) {
-
 		super.copy( source, recursive );
-
 		this.element = source.element.cloneNode( true );
-
 		return this;
-
 	}
-
 }
 
 class CSS3DSprite extends CSS3DObject {
 
 	constructor( element ) {
-
 		super( element );
-
 		this.isCSS3DSprite = true;
-
 		this.rotation2D = 0;
-
 	}
 
 	copy( source, recursive ) {
-
 		super.copy( source, recursive );
-
 		this.rotation2D = source.rotation2D;
-
 		return this;
-
 	}
-
 }
 
 //
 // CSS3DRenderer class
 //
 
+// Allocate scratch matrices once for reuse.
 const _matrix = new Matrix4();
 const _matrix2 = new Matrix4();
+const _billboardMatrix = new Matrix4();
 
 class CSS3DRenderer {
 
@@ -153,9 +131,7 @@ class CSS3DRenderer {
 		};
 
 		const domElement = parameters.element !== undefined ? parameters.element : document.createElement( 'div' );
-
 		domElement.style.overflow = 'hidden';
-
 		this.domElement = domElement;
 
 		const viewElement = document.createElement( 'div' );
@@ -169,41 +145,31 @@ class CSS3DRenderer {
 		viewElement.appendChild( cameraElement );
 
 		this.getSize = function () {
-
-			return {
-				width: _width,
-				height: _height
-			};
-
+			return { width: _width, height: _height };
 		};
 
 		this.render = function ( scene, camera ) {
 
-			// Calculate the field-of-view value from the camera's projection matrix
+			// Calculate the field-of-view value from the camera's projection matrix.
 			const fov = camera.projectionMatrix.elements[ 5 ] * _heightHalf;
 
 			// Handle camera view offsets, if set.
 			if ( camera.view && camera.view.enabled ) {
-
-				viewElement.style.transform = `translate(${ -camera.view.offsetX * ( _width / camera.view.width ) }px,${ -camera.view.offsetY * ( _height / camera.view.height ) }px)` +
+				viewElement.style.transform =
+					`translate(${ -camera.view.offsetX * ( _width / camera.view.width ) }px,${ -camera.view.offsetY * ( _height / camera.view.height ) }px)` +
 					`scale(${ camera.view.fullWidth / camera.view.width },${ camera.view.fullHeight / camera.view.height })`;
-
 			} else {
-
 				viewElement.style.transform = '';
-
 			}
 
+			// Update matrices if autoUpdate is enabled.
 			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
 			if ( camera.parent === null && camera.matrixWorldAutoUpdate === true ) camera.updateMatrixWorld();
 
 			let tx = 0, ty = 0;
-
 			if ( camera.isOrthographicCamera ) {
-
 				tx = - ( camera.right + camera.left ) / 2;
 				ty = ( camera.top + camera.bottom ) / 2;
-
 			}
 
 			const scaleByViewOffset = camera.view && camera.view.enabled ? camera.view.height / camera.view.fullHeight : 1;
@@ -212,27 +178,22 @@ class CSS3DRenderer {
 			const cameraCSSMatrix = camera.isOrthographicCamera ?
 				`scale(${ scaleByViewOffset }) scale(${ fov }) translate(${ epsilon( tx ) }px,${ epsilon( ty ) }px)${ getCameraCSSMatrix( camera.matrixWorldInverse ) }` :
 				`scale(${ scaleByViewOffset }) translateZ(${ fov }px)${ getCameraCSSMatrix( camera.matrixWorldInverse ) }`;
-			const perspective = camera.isPerspectiveCamera ? `perspective(${ fov }px) ` : '';
 
+			const perspective = camera.isPerspectiveCamera ? `perspective(${ fov }px) ` : '';
 			const style = perspective + cameraCSSMatrix + `translate(${ _widthHalf }px,${ _heightHalf }px)`;
 
 			if ( cache.camera.style !== style ) {
-
 				cameraElement.style.transform = style;
 				cache.camera.style = style;
-
 			}
 
-			// === Optimization: Precompute billboard matrix for sprites once ===
-			// For sprites we need the transposed camera inverse.
-			const billboardMatrix = new Matrix4().copy( camera.matrixWorldInverse ).transpose();
+			// --- Optimization: Reuse billboard matrix instance for sprites ---
+			_billboardMatrix.copy( camera.matrixWorldInverse ).transpose();
 
-			renderObject( scene, scene, camera, cameraCSSMatrix, billboardMatrix, cameraElement );
-
+			renderObject( scene, scene, camera, cameraCSSMatrix, _billboardMatrix, cameraElement );
 		};
 
 		this.setSize = function ( width, height ) {
-
 			_width = width;
 			_height = height;
 			_widthHalf = _width / 2;
@@ -240,43 +201,32 @@ class CSS3DRenderer {
 
 			domElement.style.width = width + 'px';
 			domElement.style.height = height + 'px';
-
 			viewElement.style.width = width + 'px';
 			viewElement.style.height = height + 'px';
-
 			cameraElement.style.width = width + 'px';
 			cameraElement.style.height = height + 'px';
-
 		};
 
 		// Hide the DOM element for an object (and its children) that is not visible.
 		function hideObject( object ) {
-
 			if ( object.isCSS3DObject ) object.element.style.display = 'none';
-
 			for ( let i = 0, l = object.children.length; i < l; i++ ) {
-
 				hideObject( object.children[ i ] );
-
 			}
-
 		}
 
 		// Render a single object (recursively).
 		function renderObject( object, scene, camera, cameraCSSMatrix, billboardMatrix, cameraElement ) {
 
 			if ( object.visible === false ) {
-
 				hideObject( object );
 				return;
-
 			}
 
 			if ( object.isCSS3DObject ) {
 
 				// Only show the object if its layers match the camera’s.
 				const visible = object.layers.test( camera.layers );
-
 				const element = object.element;
 				element.style.display = visible ? '' : 'none';
 
@@ -286,35 +236,23 @@ class CSS3DRenderer {
 					if ( object.onBeforeRender ) object.onBeforeRender( _this, scene, camera );
 
 					let style;
-
 					if ( object.isCSS3DSprite ) {
-
-						// === Sprite Optimization ===
-						// Start from the precomputed billboard matrix
-						_matrix.copy( billboardMatrix );
-
-						// Apply the sprite's 2D rotation if needed.
+						// --- Sprite Optimization ---
+						_matrix.copy( billboardMatrix ); // reuse billboard matrix
 						if ( object.rotation2D !== 0 ) {
 							_matrix.multiply( _matrix2.makeRotationZ( object.rotation2D ) );
 						}
-
-						// Apply the sprite’s position and scale.
 						object.matrixWorld.decompose( _position, _quaternion, _scale );
 						_matrix.setPosition( _position );
 						_matrix.scale( _scale );
-
-						// Clean up the bottom row (not needed for CSS transforms).
+						// Clean up the bottom row.
 						_matrix.elements[ 3 ] = 0;
 						_matrix.elements[ 7 ] = 0;
 						_matrix.elements[ 11 ] = 0;
 						_matrix.elements[ 15 ] = 1;
-
 						style = getObjectCSSMatrix( _matrix );
-
 					} else {
-
 						style = getObjectCSSMatrix( object.matrixWorld );
-
 					}
 
 					// Update the transform only if it has changed.
@@ -330,20 +268,16 @@ class CSS3DRenderer {
 					}
 
 					if ( object.onAfterRender ) object.onAfterRender( _this, scene, camera );
-
 				}
-
 			}
 
 			// Recurse for all children.
-			for ( let i = 0, l = object.children.length; i < l; i++ ) {
-				renderObject( object.children[ i ], scene, camera, cameraCSSMatrix, billboardMatrix, cameraElement );
+			const children = object.children;
+			for ( let i = 0, l = children.length; i < l; i++ ) {
+				renderObject( children[i], scene, camera, cameraCSSMatrix, billboardMatrix, cameraElement );
 			}
-
 		}
-
 	}
-
 }
 
 export { CSS3DObject, CSS3DSprite, CSS3DRenderer };

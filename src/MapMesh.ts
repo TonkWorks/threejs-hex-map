@@ -257,9 +257,10 @@ export default class MapMesh extends Group implements TileDataSource {
         // ── Create the meshes: separate land, mountains, water, and trees ──
         // NOTE: We now filter water tiles out of the land mesh and create a new water mesh.
         this.loaded = Promise.all([
-            this.createLandMesh(this.tiles.filter(t => !isWater(t.height) && !t.isMountain)),
             this.createMountainMesh(this.tiles.filter(t => t.isMountain)),
-            this.createWaterMesh(this.tiles.filter(t => isWater(t.height))),
+            this.createLandMesh(this.tiles.filter(t => !t.isMountain)),
+            // this.createLandMesh(this.tiles.filter(t => !isWater(t.height) && !t.isMountain)),
+            // this.createWaterMesh(this.tiles.filter(t => isWater(t.height))),
             this.createTrees()
         ]).then(() => {
             // All promises resolved; return nothing to make this a Promise<void>
@@ -303,8 +304,8 @@ export default class MapMesh extends Group implements TileDataSource {
     updateFogAndClouds(tiles: TileData[]) {
         const landGeometry = this.land.geometry as InstancedBufferGeometry;
         const landStyleAttr = landGeometry.getAttribute("style") as InstancedBufferAttribute;
-        const waterGeometry = this.water.geometry as InstancedBufferGeometry;
-        const waterStyleAttr = waterGeometry.getAttribute("style") as InstancedBufferAttribute;
+        // const waterGeometry = this.water.geometry as InstancedBufferGeometry;
+        // const waterStyleAttr = waterGeometry.getAttribute("style") as InstancedBufferAttribute;
         const mountainsGeometry = this.mountains.geometry as InstancedBufferGeometry;
         const mountainsStyleAttr = mountainsGeometry.getAttribute("style") as InstancedBufferAttribute;
     
@@ -319,8 +320,6 @@ export default class MapMesh extends Group implements TileDataSource {
                 let attribute: InstancedBufferAttribute;
                 if (old.isMountain) {
                     attribute = mountainsStyleAttr;
-                } else if (isWater(old.height)) {
-                    attribute = waterStyleAttr;
                 } else {
                     attribute = landStyleAttr;
                 }
@@ -331,7 +330,6 @@ export default class MapMesh extends Group implements TileDataSource {
     
         landStyleAttr.needsUpdate = true;
         mountainsStyleAttr.needsUpdate = true;
-        waterStyleAttr.needsUpdate = true;
     }
     
 

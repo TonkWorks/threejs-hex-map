@@ -95,15 +95,7 @@ export function placeACity(mapView: MapView, player: Player): boolean {
         }
         player.gold -= 100;
         mapView.addImprovementToMap(CreateCity(player), tile);
-        return true;
-    }
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const tile = findACityLocation(mapView, player, 6);
-        if (!tile) {
-            continue;
-        }
-        player.gold -= 100;
-        mapView.addImprovementToMap(CreateCity(player), tile);
+        mapView.updateAllVisilibility();
         return true;
     }
     return false;
@@ -145,20 +137,43 @@ function findAlltargetTiles(mapView: MapView, player: Player) {
 
 export async function attack(mapView: MapView, player: Player, targets: TileData[]) {
     for (const unit of Object.values(player.units)) {
-        const t = mapView.getTile(unit.tileInfo.q, unit.tileInfo.r);
-        let targetTile = findTargetForUnit(t, targets);
-        if (!targetTile) {
-            return;
+      const t = mapView.getTile(unit.tileInfo.q, unit.tileInfo.r);
+      let targetTile = findTargetForUnit(t, targets);
+  
+      // If no target is available, skip this unit
+      if (!targetTile) {
+        continue;
+      }
+  
+      const MAX_RETRIES = 5;
+      let retries = 0;
+  
+      // Try a few times with 250ms delay if the target is locked
+      while (targetTile && targetTile.locked && retries < MAX_RETRIES) {
+        await sleep(250);
+        retries++;
+      }
+  
+      // If the target is still locked after retries, move it to the back of the queue
+      if (targetTile && targetTile.locked) {
+        const idx = targets.indexOf(targetTile);
+        if (idx > -1) {
+          targets.splice(idx, 1);
+          targets.push(targetTile);
         }
-        if (targetTile.locked) {
-            await sleep(1500); // Sleep to see if we unlock
-        }
-        mapView.moveUnit(t, targetTile);
-
-        // Attack the nearest enemy unit
-        // For now, just attack the first enemy unit we find
+        // Attempt to find another target now that the locked one is at the back
+        targetTile = findTargetForUnit(t, targets);
+      }
+  
+      // If still no valid (and unlocked) target is found, skip this unit
+      if (!targetTile || targetTile.locked) {
+        continue;
+      }
+      mapView.moveUnit(t, targetTile);
+  
+      // Additional attack logic would go here (e.g. attacking enemy units)
     }
-}
+  }
   
 function findTargetForUnit(currentTile: TileData, targets: TileData[]) {
     // spice it up by removing a random target

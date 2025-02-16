@@ -1,11 +1,11 @@
 import { KeyActions, KEY_CODES } from './util';
-import MapView from '../../src/MapView';
+import MapView, { CloseMenu } from '../../src/MapView';
 import { CreateRifleman, CreateCity } from '../../src/Units';
 
 export function initInput(mapView: MapView) {
     const keyActions: KeyActions = {
         [KEY_CODES.ESC]: {
-            up: () => document.getElementById('menu').style.visibility='hidden'
+            up: () => CloseMenu()
         },
         [KEY_CODES.LEFT_ARROW]: {
             down: () => mapView.scrollDir.x = -1,

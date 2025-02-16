@@ -43,7 +43,7 @@ async function generateMap(mapSize: number) {
         const terrain = terrainAt(q, r, height)
         const trees = isMountain(height) || isWater(height) || terrain == "desert" ? undefined :
             (varying(true, false, false) ? treeAt(q, r, terrain) : undefined)
-        return {q, r, height, terrain, treeIndex: trees, rivers: null, locked: false, fog: false, clouds: false }
+        return {q, r, height, terrain, treeIndex: trees, rivers: null, locked: false, fog: true, clouds: true }
     })
 }
 
@@ -127,11 +127,11 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onLoaded = () => {
         // uncover tiles around initial selection
-         setFogAround(mapView, mapView.selectedTile, 100, true, true)
+        //  setFogAround(mapView, mapView.selectedTile, 100, true, true)
         mapView.initGameSetup();
         mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
         // setFogAround(mapView, mapView.selectedTile, 5, true, false)
-        setFogAround(mapView, mapView.selectedTile, 5, false, false)
+        // setFogAround(mapView, mapView.selectedTile, 5, false, false)
         mapView.updateResourcePanel();
         mapView.updateGameStatePanel();
         mapView.showEndTurnInActionPanel();
@@ -159,6 +159,9 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 event.stopPropagation();
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.mainMenuOption(dataAttribute);
+            }
+            if (target && target.id === 'menu-modal') {
+                mapView.CloseMenu();
             }
             if (target && target.classList.contains('city-menu')) {
                 event.stopPropagation();

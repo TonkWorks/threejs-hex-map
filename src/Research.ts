@@ -311,7 +311,7 @@ export function BenefitCompact(tech: Technology): string {
     }
     return benefit;
 }
-export function DisplayResearchFinished(tech: Technology): void {
+export function DisplayResearchFinished(tech: Technology): string {
     let benefit = "";
     if (tech.population_growth_multiplier) {
         let pop_icon = `<img src="../../assets/ui/resources/population.png" style="height: 35px;"/>`
@@ -331,7 +331,7 @@ export function DisplayResearchFinished(tech: Technology): void {
     let research = `<span class="research highlight-hover action small">Pick a new research</action>`
 
     let info = `
-        <button class="close-button" onclick="document.getElementById('menu').style.visibility='hidden'">&times;</button>
+        <button class="close-button" onclick="CloseMenu();">&times;</button>
         <h3>Research Completed: ${tech.name}</h3>
         <p style="quote">${tech.quote}</p>
         <div style="text-align: center;">
@@ -345,7 +345,5 @@ export function DisplayResearchFinished(tech: Technology): void {
         ${research}
         
     `;
-    const menuPanel = document.getElementById('menu');
-    menuPanel.innerHTML = info;
-    menuPanel.style.visibility = "visible";
+    return info;
 }

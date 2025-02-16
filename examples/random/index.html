@@ -199,6 +199,17 @@
             opacity: 0;
         }
 
+        #menu-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5); /* semi-transparent background */
+            z-index: 1040;
+            visibility: hidden;
+        }
+
         #menu {
             background: rgba(0, 0, 0, 0.8);
             visibility: hidden;
@@ -288,7 +299,8 @@
             max-width: 100%;
         }
         #menu-leader-img {
-            width: 40%;
+            max-width: 40%;
+            max-height: 300px;
         }
         #menu-unit-img {
             width: 50px;
@@ -523,9 +535,11 @@
     <div id="action" class="glow"></div>
     <div id="unit-info"></div>
     <div id="game-info"></div>
-    <div id="menu"></div>
+    <div id="menu-modal">
+        <div id="menu"></div>
+    </div>
     <div id="tooltip"></div>
-    <div id="achievement">Achievement Unlocked!</div>
+    <div id="achievement">A New Age Begins!</div>
 
 
 <script >
@@ -546,10 +560,13 @@
       // For demonstration purposes, show the achievement 1 second after page load.
       window.addEventListener('load', () => {
         setTimeout(showAchievement, 1000);
-
-        setTimeout(showAchievement, 5000);
-
     });
+
+
+    function CloseMenu() {
+        document.getElementById('menu-modal').style.visibility = 'hidden';
+        document.getElementById('menu').style.visibility = 'hidden';
+    }
 
 </script>
 <script data-main="main" src="./require.js"></script>
