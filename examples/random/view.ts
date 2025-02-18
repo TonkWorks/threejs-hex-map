@@ -184,6 +184,10 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.generalMenuClicked(dataAttribute);
             }
+            if (target && target.classList.contains('menu-trade')) {
+                event.stopPropagation();
+                mapView.tradeMenuClicked(target);
+            }
             if (target && target.classList.contains('research')) {
                 event.stopPropagation();
                 mapView.pickResearch();

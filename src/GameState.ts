@@ -19,8 +19,10 @@ export interface Player {
 
 
 export interface DiplomaticAction {
-    startTurn: number;
+    startTurn?: number;
     endTurn?: number;
+    amount?: number;
+    resource?: string;
 }
 
 export interface GameState {
@@ -181,8 +183,47 @@ export function cloneGameState(original: GameState): GameState {
     return cloned;
 }
 
+export class DiplomaticSummary {
+    gold_per_turn: number = 0;
+    gold_summary = "";
+    resources: { [key: string]: number } = {}
+    resources_summary = "";
+    diplomatic_actions_summary: "";
+}
+
 // Player diplomatic actions
+export function GetDiplomaticActionsSummary(gs: GameState, player: Player): DiplomaticSummary {
+    //return gs.players[Player.name].diplomatic_actions;
+    let ds = new DiplomaticSummary()
+    for (const [key, value] of Object.entries(player.diplomatic_actions)) {
+        let opponnent = gs.players[key];
+        for (const [action, actionValue] of Object.entries(value)) {
+            let d: DiplomaticAction = actionValue;
+
+            if (action === "gpt") {
+                ds.gold_per_turn += d.amount;
+                ds.gold_summary += `${opponnent.name} gold per turn: ${d.amount} (${d.endTurn - d.startTurn} turns)`;
+            }
+            if (action.startsWith("resource_")){
+                if (!ds.resources[d.resource]) {
+                    ds.resources[d.resource] = 0;
+                }
+                ds.resources[d.resource] += d.amount;
+                ds.resources_summary += `${opponnent.name} ${d.resource}: ${d.amount} (${d.endTurn - d.startTurn} turns)`;
+            }
+        }
+    }
+    return ds;
+}
+
 export function DeclareWarBetweenPlayers(gs: GameState, Player1: Player, Player2: Player) {
+    // remove all other diplomatic actions
+    gs.players[Player1.name].diplomatic_actions[Player2.name] = {}
+    gs.players[Player2.name].diplomatic_actions[Player1.name] = {}
+
+    
+    // declare war
+    console.log(gs.players[Player1.name].diplomatic_actions)
     gs.players[Player1.name].diplomatic_actions[Player2.name]["war"] = {
         startTurn: gs.turn,
     };
@@ -194,6 +235,14 @@ export function DeclareWarBetweenPlayers(gs: GameState, Player1: Player, Player2
 export function DeclarePeaceBetweenPlayers(gs: GameState, Player1: Player, Player2: Player) {
     delete gs.players[Player1.name].diplomatic_actions[Player2.name]["war"];
     delete gs.players[Player2.name].diplomatic_actions[Player1.name]["war"];
+    gs.players[Player1.name].diplomatic_actions[Player2.name]["peace"] = {
+        startTurn: gs.turn,
+        endTurn: gs.turn + 10,
+    };
+    gs.players[Player2.name].diplomatic_actions[Player1.name]["peace"] = {
+        startTurn: gs.turn,
+        endTurn: gs.turn + 10,
+    };
 }
 
 export default GameState;

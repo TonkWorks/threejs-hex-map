@@ -214,6 +214,17 @@
       { value: 'yellow', label: 'Yellow' }
     ];
 
+    function getSettings() {
+      const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+      if (settings.musicVolume === undefined) {
+        settings.musicVolume = 100;
+      }
+      if (settings.sfxVolume === undefined) {
+        settings.sfxVolume = 100;
+      }
+      return settings;
+    }
+
     // Difficulty options as a JS list
     const difficulties = ["Settler", "Chieftain", "Warlord", "King", "Emperor", "Deity"];
 
@@ -400,21 +411,16 @@
 
     // Initialize volume slider values from localStorage (if any)
     function initializeVolumeSliders() {
-      const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-      if (settings.musicVolume !== undefined) {
-        document.getElementById('music-volume').value = settings.musicVolume;
-      }
-      if (settings.sfxVolume !== undefined) {
-        document.getElementById('sfx-volume').value = settings.sfxVolume;
-      }
+      const settings = getSettings();
+      document.getElementById('music-volume').value = settings.musicVolume;
+      document.getElementById('sfx-volume').value = settings.sfxVolume;
     }
 
     const audio = document.getElementById('audio');
 
     function playAudio() {
-      let settings = localStorage.getItem('settings');
+      let settings = getSettings();
       if (settings) {
-        settings = JSON.parse(settings);
         audio.volume = settings.musicVolume / 100;
       }
       audio.src = '../../assets/music/conquest-of-eternity-229230.mp3';

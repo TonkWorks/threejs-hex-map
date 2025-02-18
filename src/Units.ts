@@ -734,7 +734,7 @@ export function createTerritoryOverlayModel(player: Player) {
     if (!materialCache.has(key)) {
         materialCache.set(key, new MeshBasicMaterial({ 
             color: player.color,
-            opacity: .35,
+            opacity: .15,
             transparent: true,
             side: FrontSide,
         }));
@@ -743,6 +743,24 @@ export function createTerritoryOverlayModel(player: Player) {
         territoryOverlayGeometry,
         materialCache.get(key)
     );
+
+
+    const key2 = `territory_overlay_mini_${player.name}`;
+    if (!materialCache.has(key2)) {
+        materialCache.set(key2, new MeshBasicMaterial({ 
+            color: player.color,
+            opacity: .6,
+            transparent: true,
+            side: FrontSide,
+        }));
+    }
+    const model2 = new Mesh(
+        territoryOverlayGeometry,
+        materialCache.get(key2)
+    );
+    model2.layers.disable(0);
+    model2.layers.enable(10);
+    model.add(model2);
     model.visible = false;
     return model;
 }

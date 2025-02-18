@@ -84,7 +84,7 @@ export let Selectors: Selector[] = [];
       shaftCount = 6,            // Number of cylinders
       initialOpacity = 0.0,      // Base opacity
       flickerSpeed = 1,          // Speed of flicker
-      flickerRange = 0.1,       // How much flicker can change opacity
+      flickerRange = 0.01,       // How much flicker can change opacity
       height = 75,                // Cylinder height
       radiusTop = 0.2,
       radiusBottom = .2
@@ -110,7 +110,7 @@ export let Selectors: Selector[] = [];
           color: 0xffffff,
           transparent: true,
           opacity: initialOpacity,
-        //   blending: AdditiveBlending,  // Helps get a nice “light” look
+          blending: AdditiveBlending,  // Helps get a nice “light” look
           depthWrite: false,           // Often turned off for additive glowing
           side: 2,                     // DoubleSide – shows from inside & outside
         });
@@ -142,7 +142,7 @@ export let Selectors: Selector[] = [];
         const flicker =
           Math.sin((performance.now() / 1000) * this.flickerSpeed + idx) *
           this.flickerRange;
-        const baseOpacity = 0.03;
+        const baseOpacity = 0.02;
         material.opacity = MathUtils.clamp(baseOpacity + flicker, 0, 1);
   
         // Or animate rotation, scale, etc.:
