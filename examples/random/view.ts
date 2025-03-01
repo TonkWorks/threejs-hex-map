@@ -129,6 +129,7 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
         // uncover tiles around initial selection
         //  setFogAround(mapView, mapView.selectedTile, 100, true, true)
         mapView.initGameSetup();
+        mapView._selectedUnit = null;
         mapView.focus(mapView.selectedTile.q + 1, mapView.selectedTile.r -3)
         // setFogAround(mapView, mapView.selectedTile, 5, true, false)
         // setFogAround(mapView, mapView.selectedTile, 5, false, false)

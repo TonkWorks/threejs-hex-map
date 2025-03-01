@@ -7,7 +7,7 @@ import { screenToWorld } from './camera-utils';
 import Grid from './Grid';
 import DefaultTileSelector from "./DefaultTileSelector"
 import { AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial } from "./DefaultTileHoverSelector"
-import DefaultUnit, { CreateArtillary, CreateBoat, CreateCavalry, createCityOverlayModel, CreateDestroyer, CreateGunshp, CreateInfantry, CreateMissile, CreateResourceModel, CreateTank, createTerritoryOverlayModel, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates } from "./Units"
+import DefaultUnit, { CreateArtillary, CreateBoat, CreateCavalry, createCityOverlayModel, CreateDestroyer, CreateGunshp, CreateInfantry, CreateMissile, CreateResourceModel, CreateTank, createTerritoryOverlayModel, createTileOverlayModel, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates, updateUnitHealthBar } from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
@@ -26,7 +26,7 @@ import { takeTurn } from './AI';
 import Toastify from './third/toastify';
 import { Nations } from './Nations';
 import { AIChooseResearch, DisplayResearchFinished, RenderTechTree, Technologies, Technology } from './Research';
-import AnimatedSelector, { LightOfGod, Selector, Selectors } from './Selector';
+import AnimatedSelector, { LightOfGod, Selector, Selectors, WhiteOutline } from './Selector';
 
 import { BloomEffect, EffectComposer, EffectPass, RenderPass, SMAAEffect, VignetteEffect } from './third/postprocessing.esm';
 import * as Stats from './third/stats';
@@ -64,7 +64,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _selectedTile: TileData
     private _hoveredTile: TileData
 
-    private _selectedUnit: Unit
+    _selectedUnit: Unit
 
     private _listener: AudioListener;
 
@@ -86,6 +86,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private settings: any = {};
 
     _units_models: Group = new Group()
+    _movement_overlay: Group = new Group();
     _ui_map_expansion: Group = new Group()
     _ui_map_temp_models: Group = new Group()
     unitInfoPanel: HTMLElement = null;
@@ -256,6 +257,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // units
         this._scene.add(this._units_models)
+        this._scene.add(this._movement_overlay)
         this._scene.add(this._ui_map_temp_models)
         this._scene.add(this._ui_map_expansion)
 
@@ -574,7 +576,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     
         // Array to store separate border lines
-        const borderLines = [];
+        const borderLines: Vector3[][] = [];
     
         const neighborOffsets = [
             { dq: 1, dr: 0 },
@@ -585,9 +587,12 @@ export default class MapView implements MapViewControls, TileDataSource {
             { dq: 1, dr: -1 },
         ];
     
+        // Scale factor to move border lines inward (e.g., 0.95 = 5% inward)
+        const scaleFactor = 0.99;
+    
         for (const tile of ownedTiles) {
             if (tile.clouds) continue;
-
+    
             const center = qrToWorld(tile.q, tile.r);
             const hexPoints = getHexPoints(center.x, center.y, 1);
     
@@ -596,24 +601,37 @@ export default class MapView implements MapViewControls, TileDataSource {
                 const neighbor = this.getTile(tile.q + offset.dq, tile.r + offset.dr);
     
                 if (!neighbor || neighbor.owner !== player.name) {
-                    const p1 = hexPoints[i];
-                    const p2 = hexPoints[(i + 1) % 6];
+                    const originalP1 = hexPoints[i];
+                    const originalP2 = hexPoints[(i + 1) % 6];
     
-                    // Create an individual line for each border segment
-                    borderLines.push([new Vector3(p1.x, p1.y, 0.01), new Vector3(p2.x, p2.y, 0.01)]);
+                    // Calculate points scaled towards the center
+                    const innerP1 = {
+                        x: center.x + (originalP1.x - center.x) * scaleFactor,
+                        y: center.y + (originalP1.y - center.y) * scaleFactor
+                    };
+                    const innerP2 = {
+                        x: center.x + (originalP2.x - center.x) * scaleFactor,
+                        y: center.y + (originalP2.y - center.y) * scaleFactor
+                    };
+    
+                    // Create an individual line for each border segment using inner points
+                    borderLines.push([
+                        new Vector3(innerP1.x, innerP1.y, 0.01),
+                        new Vector3(innerP2.x, innerP2.y, 0.01)
+                    ]);
                 }
             }
         }
     
-        // Create a separate ThickLine object for each discontinuous border segment
+        // Merge adjacent border segments into continuous paths
+        const mergedPaths = this.mergeBorderLines(borderLines);
+    
+        // Create a separate ThickLine object for each continuous border path
         const allBorders = new Group();
-        borderLines.forEach(line => {
-            const thickLine = new ThickLine(line, {
-                linewidth: 4,
+        mergedPaths.forEach(path => {
+            const thickLine = new ThickLine(path, {
+                linewidth: 3,
                 color: player.color,
-                // fill: true,
-                // fillColor: 'blue',
-                // fillOpacity: 0.5
                 resolution: new Vector2(window.innerWidth, window.innerHeight)
             });
             allBorders.add(thickLine);
@@ -621,6 +639,102 @@ export default class MapView implements MapViewControls, TileDataSource {
         allBorders.layers.enable(10);
         this.borders[player.name] = allBorders;
         this._units_models.add(allBorders);
+    }
+    
+    addUnitMovementBorder(unit: Unit) {
+        // array ot get tiles unit can move to.
+        if (unit.movement === 0) {
+            return;
+        }
+        this._movement_overlay.clear();
+
+        const tiles = this._tileGrid.neighbors(unit.tileInfo.q, unit.tileInfo.r, unit.movement);
+    
+        for (const tt of tiles) {
+            if (isMountain(tt.height)) {
+                continue
+            }
+            if (unit.land == false && !(isWater(tt.height) || tt.rivers)) {
+                continue
+            }
+            if (unit.water == false && isWater(tt.height)) {
+                continue
+            }
+            let m = createTileOverlayModel();
+            m.position.set(qrToWorld(tt.q, tt.r).x, qrToWorld(tt.q, tt.r).y, 0.02);
+            this._movement_overlay.add(m);
+        }
+    }
+
+    private mergeBorderLines(lines: Vector3[][]): Vector3[][] {
+        const mergedPaths: Vector3[][] = [];
+        const processed = new Set<number>();
+        const epsilon = 0.001;
+    
+        const arePointsEqual = (a: Vector3, b: Vector3): boolean => {
+            return Math.abs(a.x - b.x) < epsilon &&
+                   Math.abs(a.y - b.y) < epsilon &&
+                   Math.abs(a.z - b.z) < epsilon;
+        };
+    
+        for (let i = 0; i < lines.length; i++) {
+            if (processed.has(i)) continue;
+    
+            let path: Vector3[] = [...lines[i]];
+            processed.add(i);
+    
+            // Extend path forward
+            let currentEnd = path[path.length - 1];
+            let found = true;
+            while (found) {
+                found = false;
+                for (let j = 0; j < lines.length; j++) {
+                    if (processed.has(j)) continue;
+                    const segment = lines[j];
+                    if (arePointsEqual(segment[0], currentEnd)) {
+                        path.push(segment[1]);
+                        processed.add(j);
+                        currentEnd = segment[1];
+                        found = true;
+                        break;
+                    } else if (arePointsEqual(segment[1], currentEnd)) {
+                        path.push(segment[0]);
+                        processed.add(j);
+                        currentEnd = segment[0];
+                        found = true;
+                        break;
+                    }
+                }
+            }
+    
+            // Extend path backward
+            let currentStart = path[0];
+            found = true;
+            while (found) {
+                found = false;
+                for (let j = 0; j < lines.length; j++) {
+                    if (processed.has(j)) continue;
+                    const segment = lines[j];
+                    if (arePointsEqual(segment[1], currentStart)) {
+                        path.unshift(segment[0]);
+                        processed.add(j);
+                        currentStart = segment[0];
+                        found = true;
+                        break;
+                    } else if (arePointsEqual(segment[0], currentStart)) {
+                        path.unshift(segment[1]);
+                        processed.add(j);
+                        currentStart = segment[1];
+                        found = true;
+                        break;
+                    }
+                }
+            }
+    
+            mergedPaths.push(path);
+        }
+    
+        return mergedPaths;
     }
     
     addResourceToMap(resourceName: string, tile: TileData) {
@@ -684,6 +798,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             this.updateAllTerritoryOverlays();
             this.updateGlobalFog();
+            this.addUnitSelectors();
             return;
         }
 
@@ -748,6 +863,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
         }
         this.updateGlobalFog();
+        this.addUnitSelectors();
     }
 
     toast({ text, icon, onClick }: { text: string; icon: string; onClick: () => void }): void {
@@ -918,14 +1034,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         // Show attack arrow if enemy is targeted
-        if (enemyTargeted && this._selectedUnit && this.selectedTile.unit.owner === this.gameState.currentPlayer) {
+        if (enemyTargeted && this._selectedUnit && this.selectedTile.unit && this.selectedTile.unit.owner === this.gameState.currentPlayer && this.selectedTile.unit.movement > 0) {
             const distance = getHexDistance(this.selectedTile, tile);
             if (distance <= this.selectedTile.unit.attack_range) {
                 const arrow = new AttackArrow(qrToWorld(this.selectedTile.q, this.selectedTile.r), 3.5, worldPos);
                 this._arrow = arrow.createCurveMesh();
                 this._scene.add(this._arrow);
             }
-        } else if (this._selectedUnit && this.selectedTile.unit &&  !this.selectedTile.unit.moving && this.selectedTile.unit.owner === this.gameState.currentPlayer && this.selectedTile.unit.movement > 0) {
+        } else if (this._selectedUnit && this.selectedTile.unit && !tile.unit &&  !this.selectedTile.unit.moving && this.selectedTile.unit.owner === this.gameState.currentPlayer && this.selectedTile.unit.movement > 0) {
             // Show movement path if a friendly unit is selected
             if (tile !== this.selectedTile) {
                 const path = [this.selectedTile, ...this.calculatePath(this.selectedTile, tile, this.selectedTile.unit.movement)];
@@ -958,6 +1074,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.sectionHalo.dispose();
             this.sectionHalo = undefined;
         }
+        this._movement_overlay.clear();
 
         if (tile.unit !== undefined && tile.unit.owner === this.gameState.currentPlayer) {
 
@@ -966,6 +1083,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.sectionHalo = new LightOfGod();
                 tile.unit.model.add(this.sectionHalo.group);
                 this.updateUnitInfoForTile(tile);
+                this.addUnitMovementBorder(tile.unit);
             }
             else if (this._selectedUnit === tile.unit) {
                 this._selectedUnit = undefined;
@@ -1104,6 +1222,11 @@ export default class MapView implements MapViewControls, TileDataSource {
             tooltip.style.visibility = "hidden";
             return;
         }
+        if (tile.clouds) {
+            tooltip.style.visibility = "hidden";
+            return;
+        }
+
         tooltip.innerHTML = ""
 
         tooltip.style.left = x + 30 + "px"; // Offset to avoid cursor overlap
@@ -1293,14 +1416,19 @@ export default class MapView implements MapViewControls, TileDataSource {
         nextMovementTile.unit.movement -= 1;
 
         if (nextMovementTile.unit.movement === 0) {
-            if (nextMovementTile.unit.selector && nextMovementTile.unit.selector !== undefined) {
+            if (nextMovementTile.unit.selector) {
+                nextMovementTile.unit.selector.mesh.parent.remove(nextMovementTile.unit.selector.mesh);
                 nextMovementTile.unit.selector.dispose();
                 nextMovementTile.unit.selector = undefined;
             }
         }
 
+        const worldPos = qrToWorld(nextMovementTile.q, nextMovementTile.r);
         if (playerInitiated) {
             this.playSound(asset("sounds/units/rifleman2.mp3"), nextMovementTile.unit.model.position);
+        }
+        if (nextMovementTile.unit.selector) {
+            nextMovementTile.unit.selector.mesh.position.set(worldPos.x, worldPos.y, .02);
         }
 
         // check visibility
@@ -1322,12 +1450,12 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.selectTile(nextMovementTile)
         }
 
-        const worldPos = qrToWorld(nextMovementTile.q, nextMovementTile.r);
         animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y, .2, easeOutQuad, () => {
             if (nextMovementTile.unit) {
                 nextMovementTile.unit.moving = false;
                 if (playerInitiated) {
                     this.updateGlobalFog();
+
                 };
                 this.moveUnit(nextMovementTile, targetTile);
             }
@@ -1373,40 +1501,32 @@ export default class MapView implements MapViewControls, TileDataSource {
         animateToPosition(targetTile.unit.model, defenderBackX, defenderBackY, battleDuration, easeOutQuad, () => { });
         animateToPosition(currentTile.unit.model, twoThirdsX, twoThirdsY, battleDuration, easeOutQuad, () => {
 
-            const outcome = getRandomInt(1, 2)
+            // const outcome = getRandomInt(1, 2)
+            targetTile.unit.health -= Math.max(currentTile.unit.attack - targetTile.unit.defence, 0);
+            if (targetTile.unit.health >= 0  && currentTile.unit.attack_range === 1 && targetTile.unit.attack_range === 1) {
+                currentTile.unit.health -=  Math.max(targetTile.unit.attack - currentTile.unit.defence, 0);
+                new Rocket(worldPosTarget, worldPosCur, this._scene);
+            }
+            updateUnitHealthBar(currentTile.unit);
+            updateUnitHealthBar(targetTile.unit);
+
+            let outcome = 0;
+            if (targetTile.unit.health <= 0 && currentTile.unit.health > 0) {
+                outcome = 1;
+            }
+
             // fall back to original positions
             animateToPosition(currentTile.unit.model, worldPosCur.x, worldPosCur.y, battleDuration, easeOutQuad, () => { });
-
             if (outcome === 1) {
-                // defender dies
+                // defender dies / battle victorious
                 const defenderBackX = worldPosTarget.x + (worldPosTarget.x - worldPosCur.x) * (1 / 3);
                 const defenderBackY = worldPosTarget.y + (worldPosTarget.y - worldPosCur.y) * (1 / 3);
                 animateFall(targetTile.unit.model, defenderBackX, defenderBackY, .2, easeOutQuad, () => {
 
-                    let player = this.getPlayer(targetTile.unit.owner);
-                    delete player.units[targetTile.unit.id];
-                    this.updateResourcePanel();
-                    this.updateGameStatePanel();
-                    this.playSound(asset("sounds/units/cinematic_boom.mp3"), worldPosCur);
-
-                    const mm = this;
-                    if (this.gameState.currentPlayer === targetTile.unit.owner) {
-                        this.toast({
-                            icon: `../../assets/map/icons/rifleman.png`,
-                            text: `${targetTile.unit.name} has fallen in battle.`,
-                            onClick: function () {
-                                mm.selectTile(targetTile);
-                                mm.focus(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
-                            }
-                        });
+                    if (currentTile.unit) {
+                        currentTile.unit.kills += 1;
                     }
-                    currentTile.unit.kills += 1;
-                    while (targetTile.unit.model.children.length > 0) {
-                        targetTile.unit.model.remove(targetTile.unit.model.children[0]);
-                    }
-                    
-                    targetTile.unit.model.parent.remove(targetTile.unit.model);
-                    targetTile.unit.model.geometry.dispose();
+                    this.killUnit(targetTile);
                     targetTile.unit = undefined;
                     currentTile.locked = false;
                     targetTile.locked = false;
@@ -1421,9 +1541,41 @@ export default class MapView implements MapViewControls, TileDataSource {
                 currentTile.locked = false;
                 targetTile.locked = false;
                 currentTile.unit.movement -= 1;
-            }
 
+                if (currentTile.unit.health <= 0) {
+                    this.killUnit(currentTile);
+                    if (targetTile.unit) {
+                        targetTile.unit.kills += 1;
+                    }
+                }
+                if (targetTile.unit.health <= 0) {
+                    this.killUnit(targetTile);
+                }
+            }
         });
+    }
+
+    killUnit(tile: TileData) {
+        const worldPosCur = qrToWorld(tile.q, tile.r);
+        let player = this.getPlayer(tile.unit.owner);
+        const mm = this;
+        if (this.gameState.currentPlayer === tile.unit.owner) {
+            this.toast({
+                icon: `../../assets/map/icons/rifleman.png`,
+                text: `${tile.unit.name} has fallen in battle.`,
+                onClick: function () {
+                    mm.selectTile(tile);
+                    mm.focus(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
+                }
+            });
+        }
+        tile.unit.model.clear();
+        tile.unit.model.parent.remove(tile.unit.model);
+        delete player.units[tile.unit.id];
+        this.updateResourcePanel();
+        this.updateGameStatePanel();
+        this.playSound(asset("sounds/units/cinematic_boom.mp3"), worldPosCur);
+        tile.unit = undefined;
     }
 
     battleCity(currentTile: TileData, targetTile: TileData) {
@@ -1542,6 +1694,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             currentPlayer.research.current = tech.id;
             currentPlayer.research.progress = 0;
             this.updateResourcePanel();
+            this.showEndTurnInActionPanel();
             this.menuPanel.innerHTML = "";
             this.CloseMenu();
         });
@@ -1817,33 +1970,33 @@ export default class MapView implements MapViewControls, TileDataSource {
             this._pathIndicators.add(thickLine);
         }
     
-        // Optionally, add a step count indicator as text on the final tile.
-        if (path.length > 0) {
-            const firstTile = path[0];
-            const unit = firstTile.unit;
-            const lastTile = path[path.length - 1];
-            const worldPos = qrToWorld(lastTile.q, lastTile.r);
+        // // Optionally, add a step count indicator as text on the final tile.
+        // if (path.length > 0) {
+        //     const firstTile = path[0];
+        //     const unit = firstTile.unit;
+        //     const lastTile = path[path.length - 1];
+        //     const worldPos = qrToWorld(lastTile.q, lastTile.r);
     
-            // Create a canvas to draw the text.
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
+        //     // Create a canvas to draw the text.
+        //     const canvas = document.createElement('canvas');
+        //     const context = canvas.getContext('2d');
 
-            canvas.width = 200;
-            canvas.height = 100;
-            context.font = '64px bold Trojan';
-            context.fillStyle = 'white';
-            context.textAlign = 'center';
-            // Adjust vertical placement as needed.
-            context.fillText(`${path.length - 1} / ${unit.movement}`, canvas.width / 2, canvas.height / 2 + 20);
+        //     canvas.width = 200;
+        //     canvas.height = 100;
+        //     context.font = '64px bold Trojan';
+        //     context.fillStyle = 'white';
+        //     context.textAlign = 'center';
+        //     // Adjust vertical placement as needed.
+        //     context.fillText(`${path.length - 1} / ${unit.movement}`, canvas.width / 2, canvas.height / 2 + 20);
     
-            // Create a texture from the canvas and use it in a sprite.
-            const texture = new CanvasTexture(canvas);
-            const spriteMaterial = new SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new Sprite(spriteMaterial);
-            sprite.position.set(worldPos.x, worldPos.y, 0.3); // Render above the dashed line.
-            sprite.scale.set(0.5, 0.5, 1);
-            this._pathIndicators.add(sprite);
-        }
+        //     // Create a texture from the canvas and use it in a sprite.
+        //     const texture = new CanvasTexture(canvas);
+        //     const spriteMaterial = new SpriteMaterial({ map: texture, transparent: true });
+        //     const sprite = new Sprite(spriteMaterial);
+        //     sprite.position.set(worldPos.x, worldPos.y, 0.3); // Render above the dashed line.
+        //     sprite.scale.set(0.5, 0.5, 1);
+        //     this._pathIndicators.add(sprite);
+        // }
     }
 
       getYieldIconPath(yieldType: string): string {
@@ -2055,6 +2208,16 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     showEndTurnInActionPanel() {
+        // show research if needed.
+        const player = this._gameState.players[this._gameState.currentPlayer];
+        if (player.research.current === "") {
+            const research = Object.keys(player.research.researched).length;
+            const max_research = Technologies.size;
+            if (research < max_research) {
+                this.setActionPanel(`<div class="action-menu action-button research">Pick Research</div>`);
+                return;
+            }
+        }
         this.setActionPanel(`<div class="action-menu action-button" data-name="end_turn">End Turn</div>`);
     }
 
@@ -2199,6 +2362,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     this.playSound(asset(tech.quote_audio));
                 }
                 player.research.current = "";
+                this.showEndTurnInActionPanel();
             } else {
                 let tech = AIChooseResearch();
                 if (tech !== undefined) {
@@ -2215,21 +2379,10 @@ export default class MapView implements MapViewControls, TileDataSource {
             unit.movement = unit.movement_max;
             // unit.health = unit.health_max;
         }
-        // Add selectors for units that have movement
+        
         if (this._gameState.playersTurn === this._gameState.currentPlayer) {
-            for (const [key, unit] of Object.entries(player.units)) {
-                if (unit.movement > 0) {
-                    const tile = this._tileGrid.get(unit.tileInfo.q, unit.tileInfo.r);
-                    const worldPos = qrToWorld(tile.q, tile.r);
-                    const ps = new AnimatedSelector();
-                    ps.mesh.position.set(0, 0, 0.012);
-                    unit.selector = ps;
-                    unit.model.add(ps.mesh);
-                }
-            }
-            this._selectedUnit = undefined;
+            this.addUnitSelectors();
         }
-
 
         this.updateResourcePanel();
         this.updateGameStatePanel();
@@ -2237,6 +2390,23 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this._gameState.playersTurn !== this._gameState.currentPlayer) {
             takeTurn(this, player);
         }
+    }
+
+    addUnitSelectors() {
+        // Add selectors for units that have movement
+        let player = this.gameState.players[this._gameState.currentPlayer];
+        for (const [key, unit] of Object.entries(player.units)) {
+            if (unit.movement > 0) {
+                const tile = this._tileGrid.get(unit.tileInfo.q, unit.tileInfo.r);
+                const worldPos = qrToWorld(tile.q, tile.r);
+                const ps = new WhiteOutline();
+                ps.mesh.rotateZ(Math.PI/2)
+                ps.mesh.position.set(worldPos.x, worldPos.y, worldPos.z + 0.02);
+                unit.selector = ps;
+                this._units_models.add(ps.mesh);
+            }
+        }
+        this._selectedUnit = undefined;
     }
 
     updateResourcePanel() {
@@ -2419,24 +2589,48 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this.gameStatePanel == null) {
             return;
         }
-        let info = ``;
+        let info = ``
         for (const [key, player] of Object.entries(this._gameState.players)) {
             // const units = Object.keys(player.units).length;
             // const cities = Object.keys(player.improvements).length;
             const nation = Nations[player.nation];
-            let style = "";
+            let style = "player-info-top";
+            let nameColor = ""
             if (player.name === this._gameState.playersTurn) {
-                style = `game-info-turn`;
+                nameColor = `game-info-turn`;
             }
-            info += `<img src="${nation.flag_image}" alt="${nation.leader}" style="padding-right:3px; padding-left:15px;" width="30px" height="25px">`
+            if (key !== this._gameState.currentPlayer) {
+                nameColor += ` player-negotiation highlight-hover`
+            }
+
+
+
+            info += `<span class="${style}" data-name="${player.name}">`;
+
+            info += `<div class="${nameColor} player-info-name"  style="padding-right:3px; margin-top:-5px;" data-name="${player.name}">`
+            info += `<img src="${nation.flag_image}" alt="${nation.leader}" style="padding-right:3px; margin-top:-5px; padding-left:15px;" width="30px">`
             if (player.isDefeated) {
                 info += `<s>${player.name}</s>`;
-            } else if (key === this._gameState.currentPlayer) {
-                info += `<span class="${style}" data-name="${player.name}"">${player.name}</span>`
+                continue;
+            }
+            if (key === this._gameState.currentPlayer) {
+                info += `${player.name}`
 
             } else {
-                info += `<span class="player-negotiation highlight-hover ${style}" data-name="${player.name}" style="${style}">${nation.leader}</span>`
+                info += `${nation.leader}`
             }
+            info += `</div>`;
+
+            // const units = Object.keys(player.units).length;
+            const cities = Object.keys(player.improvements).length;
+            const research = Object.keys(player.research.researched).length;
+            const government = GovernmentsMap[player.government].name;
+            info += `<span style="">${government}</span>`;
+            info += `</br><span style=""><img class="player-info-labels" src="../../assets/ui/resources/gold.png">${player.gold}</span>`;
+            info += `</br><span style=""><img class="player-info-labels" src="../../assets/ui/resources/population.png">${cities}</span>`;
+            info += `</br><span style=""><img class="player-info-labels" src="../../assets/ui/resources/research.png">${research}</span>`;
+            info += `</span>`;
+
         }
         info += `<span style="padding-left: 15px;"> TURN: ${this._gameState.turn}</span>`;
         info += `<span class="main-menu" style="padding-left: 15px;">MENU</span>`;
@@ -2464,13 +2658,14 @@ export default class MapView implements MapViewControls, TileDataSource {
             for (const [key, unit] of Object.entries(player.units)) {
                 unit.movement = 0;
                 if (unit.selector) {
+                    unit.selector.mesh.parent.remove(unit.selector.mesh);
                     unit.selector.dispose();
                     unit.selector = undefined;
                 }
             }
             return;
         }
-        console.log("no interaction for action panel");
+        // console.log("no interaction for action panel");
     }
 
 
@@ -2514,7 +2709,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.showMenu(info);
     }
 
-    showMenu(info: string) {
+    showMenu(info: string, layout: string = "center") {
         if (this.menuPanel == null) {
             return;
         }

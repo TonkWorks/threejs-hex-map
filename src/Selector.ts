@@ -11,9 +11,9 @@ import {
     Group,
     MathUtils,
     AdditiveBlending,
+    RingBufferGeometry,
   } from "three";
 import { asset } from "./util";
-  
 
 export interface Selector {
     update(delta: number): void;
@@ -163,6 +163,54 @@ export let Selectors: Selector[] = [];
         this.cylinders.forEach((mesh) => {
           mesh.geometry.dispose();
         });
+    }
+  }
+
+export class WhiteOutline implements Selector {
+    private group: Group;
+    mesh: Mesh;
+    private circles: Mesh[];
+    private circleParams: { scale: number }[];
+  
+    constructor() {
+      this.group = new Group();
+  
+
+
+      const selector = new Mesh(
+          new RingBufferGeometry(0.9, 1, 6, -.6), 
+          new MeshStandardMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.75,
+            emissive: 0xffffff,
+            emissiveIntensity: 10, // Adjust glow strength
+          }))
+      // selector.rotateX(-1*Math.PI / 4.3);
+      // selector.rotateZ(Math.PI/2)
+      this.mesh = selector;
+      this.group.add(this.mesh);
+      Selectors.push(this);
+    }
+  
+    update(delta: number) {
+}
+  
+    dispose() {
+      // Cleanup group
+      if (this.group.parent) {
+        this.group.parent.remove(this.group);
+      }
+  
+      // Dispose geometry and materials
+      this.mesh.geometry.dispose();
+      (this.mesh.material as MeshStandardMaterial).dispose();
+  
+      // Remove from global list
+      const index = Selectors.indexOf(this);
+      if (index !== -1) {
+        Selectors.splice(index, 1);
+      }
     }
   }
 

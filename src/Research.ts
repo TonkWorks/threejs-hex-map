@@ -279,6 +279,8 @@ export function RenderTechTree(
     });
 
     container.style.visibility = "visible";
+    const menuModal = document.getElementById("menu-modal");
+    menuModal.style.visibility = "visible";
 }
 
 function canUnlock(tech: Technology): boolean {

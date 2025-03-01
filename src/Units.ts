@@ -35,7 +35,7 @@ export interface Unit {
     model?: Mesh; // Reference to the 3D model in the scene
     selector?: AnimatedSelector;
     moving?: boolean;
-    tileInfo?: {q: Number, r: Number}; // Reference to the tile the unit is on
+    tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
 }
 
 export const UnitMap: {[key: string]: any } = {
@@ -110,21 +110,115 @@ export function createUnitModel(image:string) {
     return model;
 }
 
-export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:string, text:string = "") {
+// export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:string, text:string = "") {
+//     const labelDiv = document.createElement('div');
+//     labelDiv.className = 'unit-label';
+//     labelDiv.id = `${unitID}-label`;
+//     labelDiv.innerHTML = `
+//         <img src="${icon}" style="width: 90px; height: 100px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+//         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+//     `;
+//     labelDiv.style.fontFamily = 'Arial, sans-serif';
+
+//     const unitLabel = new CSS3DObject(labelDiv);
+//     unitLabel.position.set(0, .5, 0);
+//     unitLabel.scale.set(.004, .004, .004);
+//     labelDiv.style.pointerEvents = 'none';
+//     unitModel.add(unitLabel);
+// }
+
+export function AddUnitLabel(
+    unitModel: Mesh, 
+    unitID: string, 
+    icon: string, 
+    color: string, 
+    text: string = "",
+    healthBarOptions: {
+        width?: number,
+        height?: number,
+        offsetX?: number,
+        offsetY?: number,
+        healthyColor?: string,
+        damagedColor?: string,
+        background?: string
+    } = {}
+) {
+    // Health bar configuration with defaults
+    const healthConfig = {
+        width: healthBarOptions.width || 10,
+        height: healthBarOptions.height || 100,
+        offsetX: healthBarOptions.offsetX || 100,
+        offsetY: healthBarOptions.offsetY || 0,
+        healthyColor: healthBarOptions.healthyColor || '#00ff00',
+        damagedColor: healthBarOptions.damagedColor || '#ff0000',
+        background: healthBarOptions.background || 'rgba(0,0,0,0.5)'
+    };
+
     const labelDiv = document.createElement('div');
     labelDiv.className = 'unit-label';
     labelDiv.id = `${unitID}-label`;
     labelDiv.innerHTML = `
-        <img src="${icon}" style="width: 90px; height: 100px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+        <img src="${icon}" style="
+            width: 90px; 
+            height: 100px; 
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+        
+        
+        <div id="${unitID}-health" style="
+            position: absolute;
+            left: ${healthConfig.offsetX}px;
+            top: ${healthConfig.offsetY}px;
+            width: ${healthConfig.width}px;
+            height: ${healthConfig.height}px;
+            background: ${healthConfig.background};
+            border-radius: 3px;
+            overflow: hidden;">
+            <div id="${unitID}-health-bar" style="
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+                height: 100%;
+                background: ${healthConfig.healthyColor};
+                transform: scaleY(1);
+                transform-origin: bottom;
+                transition: transform 0.2s ease-in-out;">
+            </div>
+        </div>
     `;
+
     labelDiv.style.fontFamily = 'Arial, sans-serif';
+    labelDiv.style.position = 'relative';
 
     const unitLabel = new CSS3DObject(labelDiv);
     unitLabel.position.set(0, .5, 0);
     unitLabel.scale.set(.004, .004, .004);
     labelDiv.style.pointerEvents = 'none';
     unitModel.add(unitLabel);
+
+    // Return methods to control health
+    return {
+        updateHealth: (percentage: number) => {
+            const healthBar = document.getElementById(`${unitID}-health-bar`);
+            if (healthBar) {
+                healthBar.style.transform = `scaleY(${Math.max(0, Math.min(1, percentage))})`;
+            }
+        }
+    };
+}
+
+export function updateUnitHealthBar(unit: Unit) {
+    const percentage = unit.health / unit.health_max;
+    let d = document.getElementById(`${unit.id}-health-bar`);
+    if (!d) {
+        return;
+    }
+    if (percentage === 1) {
+        document.getElementById(`${unit.id}-health`).style.visibility = 'hidden';
+        return;
+    }
+    document.getElementById(`${unit.id}-health`).style.visibility = 'visible';
+    const healthBar = document.getElementById(`${unit.id}-health-bar`);
+    healthBar.style.transform = `scaleY(${Math.max(0, Math.min(1, percentage))})`;
 }
 
 export function CreateSettler(player: Player): Unit {
@@ -152,6 +246,8 @@ export function CreateSettler(player: Player): Unit {
     const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
     const name = "Settler " + toRoman(1);
     AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
+
+    document.getElementById(`${unitID}-health-bar`).style.transform = `scaleY(${Math.max(0, Math.min(1, 100))})`;
 
     let unit = {
         id:unitID,
@@ -211,7 +307,7 @@ export function CreateRifleman(player: Player): Unit {
         movement: 3,
         movement_max: 3,
         attack_range: 1,
-        attack: 3,
+        attack: 5,
         defence: 0,
         kills: 0,
         land: true,
@@ -306,7 +402,7 @@ export function CreateCavalry(player: Player): Unit {
         movement: 6,
         movement_max: 6,
         attack_range: 1,
-        attack: 3,
+        attack: 9,
         defence: 0,
         kills: 0,
         land: true,
@@ -762,6 +858,23 @@ export function createTerritoryOverlayModel(player: Player) {
     model2.layers.enable(10);
     model.add(model2);
     model.visible = false;
+    return model;
+}
+
+export function createTileOverlayModel() {
+    const key = `tile_overlay`;
+    if (!materialCache.has(key)) {
+        materialCache.set(key, new MeshBasicMaterial({ 
+            color: "white",
+            opacity: .5,
+            transparent: true,
+            side: FrontSide,
+        }));
+    }
+    const model = new Mesh(
+        territoryOverlayGeometry,
+        materialCache.get(key)
+    );
     return model;
 }
 
