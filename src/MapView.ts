@@ -34,6 +34,7 @@ import { getHexPoints } from './hexagon';
 import { ThickLine } from './third/thickLine';
 import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
+import { BuildingMap } from './CityImprovements';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -61,7 +62,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _arrow: Object3D = null
 
     private _controller: MapViewController = new DefaultMapViewController()
-    private _selectedTile: TileData
+    _selectedTile: TileData
     private _hoveredTile: TileData
 
     _selectedUnit: Unit
@@ -89,6 +90,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     _movement_overlay: Group = new Group();
     _ui_map_expansion: Group = new Group()
     _ui_map_temp_models: Group = new Group()
+    in_city_menu: boolean = false;
     unitInfoPanel: HTMLElement = null;
     unitInfoCache = "";
     unitInfoIndex = "";
@@ -505,7 +507,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (!improvement.nextTile) {
             let tiles = this.getEligibleTilesForExpansion(tile);
             if (tiles.length > 0) {
-                let t = this.getBestYield(tiles, tile)
+                let t = this.getBestYield(tiles, tile)[0]
                 improvement.nextTile = { q: t.q, r: t.r }
             }
         }
@@ -1064,6 +1066,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     selectTile(tile: TileData) {
+        console.log(tile);
         const worldPos = qrToWorld(tile.q, tile.r)
         this._tileSelector.position.set(worldPos.x, worldPos.y, 0.01)
         this._selectedTile = tile
@@ -1689,6 +1692,8 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     pickResearch() {
+        this.CloseMenu();
+        this.showMenu("", "center");
         const currentPlayer = this.getPlayer(this.gameState.currentPlayer);
         RenderTechTree(currentPlayer.research.current, currentPlayer.research.researched, (tech: Technology) => {
             currentPlayer.research.current = tech.id;
@@ -1702,18 +1707,27 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     cityLabelClick(id: string) {
         const improvement = this.getImprovementById(id);
+        if (!improvement) {
+            return;
+        }
         console.log(`improvmenet id: ${id}`);
         if (this.gameState.currentPlayer !== improvement.owner) {
             this.playerNegotiation(improvement.owner);
         } else {
-            this.showCityMenu(this.getTile(improvement.tileInfo.q, improvement.tileInfo.r));
+            let tile = this.getTile(improvement.tileInfo.q, improvement.tileInfo.r);
+            this._selectedUnit = undefined;
+            this._selectedTile = tile;
+            this.in_city_menu = true;
+            this.focus(tile.q, tile.r);
+            this.showCityMenu(tile);
+            let neighborhood = this.getTileGrid().neighbors(tile.q, tile.r, 5);
+            this.showYields(neighborhood);
+            this.displayExpansionView(tile);
         }
     }
     getImprovementById(id: string) {
-        console.log(this);
         for (const [key, player] of Object.entries(this.gameState.players)) {
             if (player.improvements[id]) {
-                console.log("a");
                 return player.improvements[id];
             }
         }
@@ -2102,6 +2116,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.playSound(asset("sounds/ui/ui_error.mp3"));
                 return;
             }
+            this.playSound(asset("sounds/ui/buy.mp3"));
             player.gold -= buyCost;
             tile.owner = this.gameState.currentPlayer;
             if (tile.territoryOverlay) {
@@ -2114,7 +2129,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             // decide new tile for expansion.
             let tiles = this.getEligibleTilesForExpansion(origTile);
             if (tiles.length > 0) {
-                let t = this.getBestYield(tiles, origTile);
+                let t = this.getBestYield(tiles, origTile)[0];
                 origTile.improvement.nextTile = { q: t.q, r: t.r };
             }
             this.updateGlobalFog();
@@ -2195,17 +2210,23 @@ export default class MapView implements MapViewControls, TileDataSource {
         return false;
     }
 
-    getBestYield(tiles: TileData[], referenceTile: TileData): TileData {
-        return tiles.reduce((best, tile) => {
-          const bestYield = Object.values(best.yields).reduce((sum, v) => sum + v, 0);
-          const tileYield = Object.values(tile.yields).reduce((sum, v) => sum + v, 0);
-          if (tileYield > bestYield) return tile;
-          if (tileYield < bestYield) return best;
-          const bestDistance = getHexDistance(best, referenceTile);
-          const tileDistance = getHexDistance(tile, referenceTile);
-          return tileDistance < bestDistance ? tile : best;
+    getBestYield(tiles: TileData[], referenceTile: TileData): TileData[] {
+        return tiles.slice().sort((a, b) => {
+          const aYield = Object.values(a.yields).reduce((sum, v) => sum + v, 0);
+          const bYield = Object.values(b.yields).reduce((sum, v) => sum + v, 0);
+          
+          // Sort descending: higher yield comes first.
+          if (aYield !== bYield) {
+            return bYield - aYield;
+          }
+          
+          // If yields are equal, sort by distance (closer is better)
+          const aDistance = getHexDistance(a, referenceTile);
+          const bDistance = getHexDistance(b, referenceTile);
+          
+          return aDistance - bDistance;
         });
-    }
+      }
 
     showEndTurnInActionPanel() {
         // show research if needed.
@@ -2281,6 +2302,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // calculate new resources for player
         for (const [key, improvement] of Object.entries(player.improvements)) {
+            let t =  this.getTile(improvement.tileInfo.q, improvement.tileInfo.r);
             // population
             updatePopulationAndProductionRates(player, improvement);
             const previousPopulation = Math.floor(improvement.population);
@@ -2318,14 +2340,62 @@ export default class MapView implements MapViewControls, TileDataSource {
                 // decide new tile for expansion.
                 tiles = this.getEligibleTilesForExpansion(cityTile);
                 if (tiles.length > 0) {
-                    let t= this.getBestYield(tiles, cityTile);
+                    let t = this.getBestYield(tiles, cityTile)[0];
                     cityTile.improvement.nextTile = { q: t.q, r: t.r };
                 }
             }
 
             // gold
-            player.gold += Math.round(improvement.population * player.taxRate * 10) * 100;
+            let yields = this.getYieldsForCity(t);
+            if ("gold" in yields) {
+                player.gold += yields["gold"];
+            }
+            player.gold += Math.round(improvement.population * player.taxRate);
             player.gold += diplomaticSummary.gold_per_turn;
+
+            // advance production in cities
+            if ("production" in yields) {
+                improvement.work_done += yields["production"];
+            }
+
+            // check for completion in cities
+            if (improvement.production_queue.length > 0 && improvement.work_done >= improvement.work_total) {
+                improvement.work_done -= improvement.work_total;
+                let thing_to_build = improvement.production_queue[0];
+                let thing_name = "";
+                if (improvement.work_building === false) {
+                    const mm = UnitMap[thing_to_build];
+                    let unit = mm.create(player)
+                    thing_name = unit.name;
+                    let unit_terrain = "land";
+                    if (thing_to_build === "warship" || thing_to_build === "destroyer") {
+                        unit_terrain = "water";
+                    }
+                    if (thing_to_build === "gunship") {
+                        unit_terrain = "";
+                    }
+                    this.addUnitToMap(
+                        unit,
+                        this.getClosestUnoccupiedTile(t, unit_terrain)
+                    );
+                }
+                if (improvement.work_building === true) {
+                    thing_name = BuildingMap[thing_to_build].name;
+                    improvement.cityBuildings[thing_to_build] = true;
+                }
+
+                improvement.production_queue = [];
+                let mm = this;
+                if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+                    this.toast({
+                        icon: "../../assets/map/icons/star.png",
+                        text: `${thing_name} produced in ${improvement.name}`,
+                        onClick: function () {
+                            mm.selectTile(t);
+                        }
+                    });
+                }
+            }
         }
 
 
@@ -2341,7 +2411,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         // calculate research for player 
-        player.research.progress += 100;
+        player.research.progress += 15;
         if (player.research.progress >= 100 && player.research.current !== "") {
             player.research.progress -= 100;
             player.research.researched[player.research.current] = true;
@@ -2357,7 +2427,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                     }
                 });
                 let info = DisplayResearchFinished(tech);
-                this.showMenu(info);
+                this.CloseMenu();
+                this.showMenu(info, "center");
                 if (tech.quote_audio) {
                     this.playSound(asset(tech.quote_audio));
                 }
@@ -2465,14 +2536,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (Technologies.has(player.research.current)) {
             let tech = Technologies.get(player.research.current);
             tech_name = tech.name;
-            research_amount = "(+5) (2 turns)"
             research_percentage = `${player.research.progress}%`;
         } else {
             tech_name = "Pick a technology to research";
-            research_amount = ""
             research_percentage = '';
         }
-        research_percentage = '25%'
         let research = `<span class="research highlight-hover">
           <div id="progressBarContainer">
             <div style="width: ${research_percentage};" class="progressBar research" id="progressBar"></div>
@@ -2494,6 +2562,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
 
+        if (this.in_city_menu) {
+            this.CloseMenu();
+        }
         this.clearYields();
         this.clearNextExpansion();
 
@@ -2555,9 +2626,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             // friendly city
             let menu = ``
             if (tile.improvement.owner === this.gameState.currentPlayer) {
-                let neighborhood = this.getTileGrid().neighbors(tile.q, tile.r, 5);
-                this.showYields(neighborhood);
-                this.displayExpansionView(tile);
+                // let neighborhood = this.getTileGrid().neighbors(tile.q, tile.r, 5);
+                // this.showYields(neighborhood);
+                // this.displayExpansionView(tile);
                 // player owns city
                 menu = `<tr><td><button class="city-menu" data-name="show_city_menu">City Menu</button></td><td></td></tr>`
             }
@@ -2714,9 +2785,24 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
         this.menuPanel.innerHTML = info;
-        this.menuPanel.style.visibility = "visible";
         const menuModal = document.getElementById("menu-modal");
-        menuModal.style.visibility = "visible";
+        if (layout === "center") {
+            this.menuPanel.style.left = "15%";
+            this.menuPanel.style.width = "70%";
+            this.menuPanel.style.visibility = "visible";
+            menuModal.style.visibility = "visible";
+        }
+        else if (layout === "city") {
+            this.menuPanel.style.left = "0%";
+            this.menuPanel.style.width = "30%";
+            menuModal.style.visibility = "hidden";
+            this.menuPanel.style.visibility = "visible";
+        }
+        else {
+            this.menuPanel.style.visibility = "visible";
+            menuModal.style.visibility = "visible";
+        }
+
     }
 
 
@@ -2736,35 +2822,34 @@ export default class MapView implements MapViewControls, TileDataSource {
         // </div>`;
 
         let options: [string, string, number, string][] = [
-            ["buy_settler", "Settler", 100, "settler.png"],
-            ["buy_rifleman", "Rifleman", 100, "rifleman.png"],
-            ["buy_calvary", "Cavalry", 200, "cavalry.png"],
-            ["buy_artillary", "Artillary", 300, "artillary.png"],
+            ["settler", "Settler", 100, "settler.png"],
+            ["rifleman", "Rifleman", 100, "rifleman.png"],
+            ["cavalry", "Cavalry", 200, "cavalry.png"],
+            ["artillary", "Artillary", 300, "artillary.png"],
         ]
 
         let player = this.getPlayer(tile.improvement.owner);
         // console.log(player.research.researched);
 
         if ("infantry" in player.research.researched) {
-            options.push(["buy_infantry", "Infantry", 400, "rifleman.png"]);
+            options.push(["infantry", "Infantry", 400, "rifleman.png"]);
         }
         if ("warships" in player.research.researched) {
-            options.push(["buy_warship", "Warship", 500, "warship.png"]);
+            options.push(["warship", "Warship", 500, "warship.png"]);
         }
         if ("tank" in player.research.researched) {
-            options.push(["buy_tank", "Tank", 500, "tank.png"]);
+            options.push(["tank", "Tank", 500, "tank.png"]);
         }
         if ("destroyer" in player.research.researched) {
-            options.push(["buy_destroyer", "Destroyer", 500, "destroyer.png"]);
+            options.push(["destroyer", "Destroyer", 500, "destroyer.png"]);
         }
         if ("gunship" in player.research.researched) {
-            options.push(["buy_gunshp", "Gunship", 500, "gunship.png"]);
+            options.push(["gunshp", "Gunship", 500, "gunship.png"]);
         }
         if ("nukes" in player.research.researched) {
-            options.push(["buy_nuke", "Nuke", 1000, "nuke.png"]);
+            options.push(["nuke", "Nuke", 1000, "nuke.png"]);
         }
 
-        let city_info = "";
         // get all the city tiles;
         let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
         let yields: {[key: string]: number} = {};
@@ -2782,34 +2867,119 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
         });
 
-        let yield_info = ""
-        for (const [key, value] of Object.entries(tile.yields)) {
+        let yield_info = `<table class="city_yields">`
+        yield_info += `<tr><td>Population:</td> <td>${tile.improvement.population} (+${tile.improvement.population_rate})</td></tr>`
+        let round = Math.round(tile.improvement.population);
+        yield_info += `<tr><td>Yields: (${round} tiles)</td> <td></td></tr>`
+        let tileYields = this.getYieldsForCity(tile);
+        for (const [key, value] of Object.entries(tileYields)) {
             if (value > 0) {
-                yield_info += `<tr><th>${capitalize(key)}:</th> <td>${value}</td></tr>`
+                yield_info += `<tr><td>${capitalize(key)}:</td> <td>${value}</td></tr>`
             }
         }
-        for (const [name, label, cost, image] of options) {
-            city_info += `<button class="city-menu" data-name="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png">${label}</button>`
+        yield_info += "</table>"
+
+        let avialable_prod = 0;
+        if ("production" in tileYields) {
+            avialable_prod = tileYields["production"];
         }
 
+        let production_info = `<table class="city_yields"><tr><td>Production: </td>`
+        if (tile.improvement.production_queue.length > 0) {
+            let prod_item = tile.improvement.production_queue[0];
+            if (prod_item in UnitMap) {
+                let unit = UnitMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                let percent = Math.ceil(tile.improvement.work_done / tile.improvement.work_total * 100);
+                production_info += `<td>${unit.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
+            }
+            if (prod_item in BuildingMap) {
+                let building = BuildingMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                let percent = Math.ceil(  tile.improvement.work_done /  tile.improvement.work_total * 100);
+                production_info += `<td>${building.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
+            }
+        }
+        production_info += `</table>`
+        console.log(production_info)
+
+        let building_info = `<table class="city_yields"><tr><td>Buildings:</td> <td></td></tr>`
+        for (const [key, _] of Object.entries(tile.improvement.cityBuildings)) {
+            let b = BuildingMap[key];
+            building_info += `<tr><td>${b.name}</td></tr>`
+        }
+        building_info += "</table>"
+
+ 
         let option_info = ""
         for (const [name, label, cost, image] of options) {
-            option_info += `<button class="city-menu" data-name="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png">${label}</button>`
+            let turns = Math.ceil(cost / avialable_prod)/10;
+            option_info += `<tr>`
+            option_info += `<td><button class="city-menu" data-name="queue" data-target="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${label} ${turns}<img id="menu-unit-cost" src="../../assets/ui/resources/production.png"></button></td>`
+            option_info += `<td><button class="city-menu" data-name="buy" data-target="${name}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td>`
+            option_info += `</tr>`
+        }
+
+        option_info += "</br>"
+        for (const [key, building] of Object.entries(BuildingMap)) {
+            if (key in tile.improvement.cityBuildings) {
+                continue;
+            }
+            let turns = Math.ceil(building.cost / avialable_prod)/10;
+            option_info += `<tr><td><button class="city-menu" data-name="queue_building" data-target="${key}"><img id="menu-unit-img" src="${building.menu_image}">${building.name} ${turns}<img id="menu-unit-cost" src="../../assets/ui/resources/production.png"></button></td>`
+            option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"</button></td></tr>`
         }
         let info = `
             <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div style="text-align: center;">
                 ${tile.improvement.name}</br>
             </div>
-            <div>City Yields</div>
-            <div class="small">
+            <p class="small">
                 ${yield_info}
-            </div>
+            </p>
+            <p class="small">
+                ${production_info}
+            </p>
+            <p class="small">
+                ${building_info}
+            </p>
             <div class="options">
-                ${option_info}
-                </div>
+                <table>
+                    ${option_info}
+                </table>
+            </div>
         `;
-        this.showMenu(info);
+        this.showMenu(info, "city");
+    }
+
+    getYieldsForCity(tile: TileData) {
+        let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
+        let tt = this.getBestYield(tiles, tile);
+
+        let yields: {[key: string]: number} = {};
+        let resources: {[key: string]: number} = {};
+
+        let count = 0;
+        let max_count = Math.max(1, tile.improvement.population);
+        tt.forEach(t => {
+            if (count >= max_count) {
+                return;
+            }
+            count += 1;
+            for (const [key, value] of Object.entries(t.yields)) {
+                if (yields[key] === undefined) {
+                    yields[key] = 0;
+                }
+                yields[key] += value;
+            }
+            if (tile.resource !== undefined) {
+                resources[tile.resource.name] += 1;
+            }
+        });
+        console.log(yields)
+        return yields;
     }
 
     mainMenu() {
@@ -2938,6 +3108,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             for (const [key, improvement] of Object.entries(player.improvements)) {
                 updatePopulationAndProductionRates(player, improvement);
             }
+            this.playSound(asset("sounds/ui/buy.mp3"));
         }
         if (name === "decrease_taxes") {
             if (player.taxRate - 0.1 < 0) {
@@ -2947,6 +3118,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             for (const [key, improvement] of Object.entries(player.improvements)) {
                 updatePopulationAndProductionRates(player, improvement);
             }
+            this.playSound(asset("sounds/ui/buy.mp3"));
         }
 
         if (name === "change_government") {
@@ -2983,54 +3155,51 @@ export default class MapView implements MapViewControls, TileDataSource {
             });
             
         }
-
+        if (name === "buy_building") {
+            let building = target;
+            tile.improvement.cityBuildings[building] = true;
+            player.gold -= BuildingMap[building].cost;
+            this.showCityMenu(tile);
+        }
         let unit_type = "";
         let unit_terrain = "land";
-        if (name === "buy_settler") {
-            unit_type = "settler";
-        }
-        if (name === "buy_rifleman") {
-            unit_type = "rifleman";
-        }
-        if (name === "buy_infrantry") {
-            unit_type = "infantry";
-        }
-        if (name === "buy_calvary") {
-            unit_type = "cavalry";
-        }
-        if (name === "buy_tank") {
-            unit_type = "tank";
-        }
-        if (name === "buy_artillary") {
-            unit_type = "artillary";
-        }
-        if (name === "buy_gunship") {
-            unit_type = "gunship";
-        }
-        if (name === "buy_warship") {
-            unit_type = "boat";
-            unit_terrain = "water";
-        }
-        if (name === "buy_destroyer") {
-            unit_type = "destroyer";
-            unit_terrain = "water";
-        }
-        if (name === "buy_nuke") {
-            unit_type = "missile";
-        }
-        if (unit_type !== "") {
-            const mm = UnitMap[unit_type];
-            let unit = mm.create(player)
-            player.gold -= mm.cost;
-            this.addUnitToMap(
-                unit,
-                this.getClosestUnoccupiedTile(tile, unit_terrain)
-            );
+        if (name === "buy") {
+            unit_type = target;
+            if (unit_type === "warship" || unit_type === "destroyer") {
+                unit_terrain = "water";
+            }
+            if (unit_type === "gunship") {
+                unit_terrain = "";
+            }
+            if (unit_type !== "") {
+                const mm = UnitMap[unit_type];
+                let unit = mm.create(player)
+                player.gold -= mm.cost;
+                this.addUnitToMap(
+                    unit,
+                    this.getClosestUnoccupiedTile(tile, unit_terrain)
+                );
+            }
+            this.playSound(asset("sounds/ui/buy.mp3"));
         }
 
+        if (name === "queue") {
+            tile.improvement.production_queue = [target];
+            tile.improvement.work_total = UnitMap[target].cost/10;
+            tile.improvement.work_building = false;
+            this.playSound(asset("sounds/ui/notification.mp3"));
+            this.showCityMenu(tile);
+        }
+        if (name === "queue_building") {
+            tile.improvement.production_queue = [target];
+            tile.improvement.work_total = BuildingMap[target].cost/10;
+            tile.improvement.work_building = true;
+            this.playSound(asset("sounds/ui/notification.mp3"));
+            this.showCityMenu(tile);
+        }
         this.updateResourcePanel();
         this.updateGameStatePanel();
-        this.updateUnitInfoForTile(tile);
+        // this.updateUnitInfoForTile(tile);
         // 
     }
 
@@ -3134,6 +3303,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     CloseMenu() {
         document.getElementById('menu-modal').style.visibility = 'hidden';
         document.getElementById('menu').style.visibility = 'hidden';
+        this.in_city_menu = false;
     }
 }
 

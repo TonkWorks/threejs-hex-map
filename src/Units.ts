@@ -41,56 +41,72 @@ export interface Unit {
 export const UnitMap: {[key: string]: any } = {
     "settler": {
         create: CreateSettler,
+        name: "Settler",
         cost: 100,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [],
     },
     "rifleman": {
         create: CreateRifleman,
+        name: "Rifleman",
         cost: 50,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
     },
     "infantry": {
         create: CreateInfantry,
+        name: "Infantry",
         cost: 200,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
     },
     "cavalry": {
         create: CreateCavalry,
+        name: "Cavalry",
         cost: 200,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
     },
     "tank": {
         create: CreateTank,
+        name: "Tank",
         cost: 200,
         moveSounds: [asset("sounds/units/tank.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
     },
     "artillary": {
         create: CreateArtillary,
+        name: "Artillary",
         cost: 300,
         moveSounds: [asset("sounds/units/artillary.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
     },
     "boat": {
         create: CreateBoat,
+        name: "Boat",
         cost: 500,
         moveSounds: [asset("sounds/units/boat.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
     },
     "destroyer": {
         create: CreateDestroyer,
+        name: "Destroyer",
         cost: 1000,
         moveSounds: [asset("sounds/units/destroyer.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
     },
     "gunship": {
         create: CreateGunshp,
+        name: "Gunship",
         cost: 1000,
         moveSounds: [asset("sounds/units/gunship.mp3")],
+        attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+    },
+    "nuke": {
+        create: CreateMissile,
+        name: "Missile",
+        cost: 1000,
+        moveSounds: [asset("sounds/units/missile.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
     },
 }
@@ -109,23 +125,6 @@ export function createUnitModel(image:string) {
 
     return model;
 }
-
-// export function AddUnitLabel(unitModel:Mesh, unitID: string, icon:string, color:string, text:string = "") {
-//     const labelDiv = document.createElement('div');
-//     labelDiv.className = 'unit-label';
-//     labelDiv.id = `${unitID}-label`;
-//     labelDiv.innerHTML = `
-//         <img src="${icon}" style="width: 90px; height: 100px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-//         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: ${color}; mix-blend-mode: color; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-//     `;
-//     labelDiv.style.fontFamily = 'Arial, sans-serif';
-
-//     const unitLabel = new CSS3DObject(labelDiv);
-//     unitLabel.position.set(0, .5, 0);
-//     unitLabel.scale.set(.004, .004, .004);
-//     labelDiv.style.pointerEvents = 'none';
-//     unitModel.add(unitLabel);
-// }
 
 export function AddUnitLabel(
     unitModel: Mesh, 
@@ -247,7 +246,7 @@ export function CreateSettler(player: Player): Unit {
     const name = "Settler " + toRoman(1);
     AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
 
-    document.getElementById(`${unitID}-health-bar`).style.transform = `scaleY(${Math.max(0, Math.min(1, 100))})`;
+    // document.getElementById(`${unitID}-health-bar`).style.transform = `scaleY(${Math.max(0, Math.min(1, 100))})`;
 
     let unit = {
         id:unitID,
@@ -739,6 +738,12 @@ export interface Improvement {
 
     nextTile?: {q: number, r: number}; // Next tile to expand to
 
+    work_done: number; // Work done on the improvement
+    work_total: number; // Total work required to complete the improvement
+    work_building: boolean;
+    production_queue: string[];
+    cityBuildings: { [key: string]: boolean };
+
     image: string; // Image URL
     owner: string; // Player or faction ID
     model?: Mesh; // Reference to the 3D model in the scene
@@ -813,11 +818,16 @@ export function CreateCity(player: Player, name: string = "", id: string = ""): 
         population: population,
         health_max: 100,
 
+        work_done: 0,
+        work_total: 0,
+        work_building: false,
+        production_queue: [] as string[],
         population_rate: 0,
         production_rate: 0,
         defence: 0,
         owner: player.name,
         model: unitModel,
+        cityBuildings: {},
     }
     updatePopulationAndProductionRates(player, city);
     return city;

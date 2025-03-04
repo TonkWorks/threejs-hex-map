@@ -1,3 +1,5 @@
+import MapView from "./MapView";
+
 export interface Technology {
     id: string;
     name: string;
