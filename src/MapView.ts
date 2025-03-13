@@ -7,7 +7,7 @@ import { screenToWorld } from './camera-utils';
 import Grid from './Grid';
 import DefaultTileSelector from "./DefaultTileSelector"
 import { AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial } from "./DefaultTileHoverSelector"
-import DefaultUnit, { CreateArtillary, CreateBoat, CreateCavalry, createCityOverlayModel, CreateDestroyer, CreateGunshp, CreateInfantry, CreateMissile, CreateResourceModel, CreateTank, createTerritoryOverlayModel, createTileOverlayModel, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates, updateUnitHealthBar } from "./Units"
+import { createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, createTileOverlayModel, createUnit, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates, updateUnitHealthBar } from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
@@ -17,8 +17,8 @@ import { MapMeshOptions } from './MapMesh';
 import { Explosion, FireWithSmoke, NuclearExplosion, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
 import { ParticleSystem, ParticleSystems } from './ParticleSystem';
 
-import { Unit, Improvement, CreateCity, CreateRifleman, UnitMap } from './Units';
-import { cloneGameState, DeclarePeaceBetweenPlayers, DeclareWarBetweenPlayers, DiplomaticAction, GameState, GetDiplomaticActionsSummary, InitGameState, Player } from './GameState';
+import { Unit, Improvement, CreateCity, UnitMap } from './Units';
+import { cloneGameState, DeclarePeaceBetweenPlayers, DeclareWarBetweenPlayers, DiplomaticAction, GameState, GetDiplomaticActionsSummary, TurnToYear, InitGameState, Player } from './GameState';
 import { CSS2DRenderer, CSS2DObject } from './CSS2DRenderer';
 import { CSS3DRenderer, CSS3DObject } from './CSS3DRenderer';
 import { takeTurn } from './AI';
@@ -660,7 +660,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                 continue
             }
             if (unit.water == false && isWater(tt.height)) {
-                continue
+                let player = this.getPlayer(unit.owner);
+                if (!("fishing" in player.research.researched)) {
+                    continue
+                }
             }
             let m = createTileOverlayModel();
             m.position.set(qrToWorld(tt.q, tt.r).x, qrToWorld(tt.q, tt.r).y, 0.02);
@@ -857,7 +860,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             const improvement = CreateCity(player)
             this.addImprovementToMap(improvement, startTile);
 
-            const unit = CreateRifleman(player);
+            const unit = createUnit("rifleman", player);
             this.addUnitToMap(unit, startTile);
 
             if (player.name === this._gameState.currentPlayer) {
@@ -866,6 +869,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         this.updateGlobalFog();
         this.addUnitSelectors();
+        this.showTurnBanner();
     }
 
     toast({ text, icon, onClick }: { text: string; icon: string; onClick: () => void }): void {
@@ -1934,7 +1938,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                 continue
             }
             if (unit.water == false && isWater(tt.height)) {
-                continue
+                let player = this.getPlayer(unit.owner);
+                if (!("fishing" in player.research.researched)) {
+                    continue
+                }
             }
 
             const distance = getHexDistance(tt, target);
@@ -2282,6 +2289,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         if (this._gameState.playersTurn === this._gameState.currentPlayer) {
             this.showEndTurnInActionPanel();
+            this.showTurnBanner();
         } else {
             this.setActionPanel(`<div class="action-button-disabled">Waiting for ${player.name}..<div>`);
         }
@@ -2365,7 +2373,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 let thing_name = "";
                 if (improvement.work_building === false) {
                     const mm = UnitMap[thing_to_build];
-                    let unit = mm.create(player)
+                    let unit = createUnit(thing_to_build, player)
                     thing_name = unit.name;
                     let unit_terrain = "land";
                     if (thing_to_build === "warship" || thing_to_build === "destroyer") {
@@ -2463,6 +2471,13 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     }
 
+    showTurnBanner() {
+        const player = this._gameState.players[this._gameState.playersTurn];
+        const nation = Nations[this._gameState.playersTurn];
+        showBanner(
+            `${nation.name} - ${TurnToYear(this._gameState.turn)} Turn: ${this._gameState.turn}`,
+        );
+    }
     addUnitSelectors() {
         // Add selectors for units that have movement
         let player = this.gameState.players[this._gameState.currentPlayer];
@@ -2703,7 +2718,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             info += `</span>`;
 
         }
-        info += `<span style="padding-left: 15px;"> TURN: ${this._gameState.turn}</span>`;
+        info += `<span style="padding-left: 15px;"> ${TurnToYear(this._gameState.turn)} (TURN: ${this._gameState.turn})</span>`;
         info += `<span class="main-menu" style="padding-left: 15px;">MENU</span>`;
 
         this.gameStatePanel.innerHTML = info;
@@ -3095,6 +3110,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     cityMenuAction(name: string, target: string) {
+        console.log(name, target )
         const tile = this.selectedTile;
         const player = this.getPlayer(this._gameState.currentPlayer);
         if (name === "show_city_menu") {
@@ -3173,7 +3189,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             if (unit_type !== "") {
                 const mm = UnitMap[unit_type];
-                let unit = mm.create(player)
+                let unit = createUnit(unit_type, player)
                 player.gold -= mm.cost;
                 this.addUnitToMap(
                     unit,
@@ -3389,6 +3405,14 @@ function animateFall(
     }
 
     animate();
+}
+
+function showBanner(text: string) {
+    let a = document.getElementById('achievement');
+    a.innerText = text;
+    a.classList.add('show');
+    setTimeout(() => { document.getElementById('achievement').classList.add('remove'); }, 2000);
+    setTimeout(() => { document.getElementById('achievement').classList.remove('remove', 'show'); }, 3000);
 }
 
 function easeOutQuad(t: number): number {

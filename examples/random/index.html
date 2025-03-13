@@ -5,7 +5,14 @@
     <title>Hex-Map</title>
     <meta name="viewport" content="width=device-width, user-scalable=no" />
 
+
+    <!-- @font-face {
+        font-family: 'aa'; /* Custom name for your font */
+        src: url('/assets/ui/fonts/main.otf') format('opentype');
+    } -->
+
 <style type="text/css">
+
         html, body {
             margin: 0;
             padding: 0;
@@ -146,12 +153,14 @@
             align-items:center;
             justify-content: flex-end;
             padding: 7px 24px;
+            font-family: 'Trajan Pro';
+            font-weight: lighter;
             background-color:rgba(84, 18, 138, 0.75);
             color: white;
             padding: 5px;
             border-radius: 5px;
             border-radius: 5px;
-            font-size: 20px;
+            font-size: 16px;
             cursor: pointer;
         }
         .city-label-enemy {
@@ -170,7 +179,6 @@
             padding: 20px 30px;
             background: rgba(20, 20, 20, 0.8);
             color: #fff;
-            font-size: 24px;
             text-align: center;
             border-radius: 8px;
             /* Transition for both transform and opacity */
@@ -182,7 +190,7 @@
             color: #d4af37;
             font-family: 'Trajan Pro', serif;
             font-weight: bold;
-            font-size: 3em;
+            font-size: 2em;
             border-radius: 5px;
             padding: 2rem;
         }
@@ -195,7 +203,7 @@
         }
 
         #achievement.remove {
-            transition: opacity 1s ease-out;
+            transition: opacity .5s ease-out;
             opacity: 0;
         }
 
@@ -644,19 +652,6 @@
             "three": "../../src/three",
         }
     } 
-
-
-    function showAchievement() {
-        document.getElementById('achievement').classList.add('show');
-        setTimeout(() => { document.getElementById('achievement').classList.add('remove'); }, 2000);
-        setTimeout(() => { document.getElementById('achievement').classList.remove('remove', 'show'); }, 3000);
-    }
-
-      // For demonstration purposes, show the achievement 1 second after page load.
-      window.addEventListener('load', () => {
-        setTimeout(showAchievement, 1000);
-    });
-
 
     function CloseMenu() {
         document.getElementById('menu-modal').style.visibility = 'hidden';

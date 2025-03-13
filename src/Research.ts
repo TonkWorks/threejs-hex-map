@@ -37,7 +37,8 @@ export const Technologies = new Map<string, Technology>([
     ['infantry', { id: 'infantry', name: 'Infrantry', dependencies: ["rifles"], unlocks: ["infantry"], quote: "Infantry: because sometimes you just need to take the fight to the ground.", image: "../../assets/research/rifles.webp" }],
 
 
-    ['warships', { id: 'warships', name: 'Warships', dependencies: [], unlocks: ["warship"], quote: "Warship: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/warship.webp" }],
+    ['fishing', { id: 'fishing', name: 'Fishing', dependencies: [], population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Fishing.", image: "../../assets/research/fishing.webp" }],
+    ['warships', { id: 'warships', name: 'Warships', dependencies: ['fishing'], unlocks: ["warship"], quote: "Warship: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/warship.webp" }],
 
     ['tractors', { id: 'tractors', name: 'Tractors', dependencies: ["engineering"], population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
     ['rail_roads', { id: 'rail_roads', name: 'Railroads', dependencies: ["engineering"], gold_growth_multiplier: 40, quote: "Railroads: choochoo", image: "../../assets/research/railroads.webp" }],

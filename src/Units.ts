@@ -38,77 +38,288 @@ export interface Unit {
     tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
 }
 
-export const UnitMap: {[key: string]: any } = {
+interface UnitConfig {
+    name: string;
+    cost: number;
+    moveSounds: string[];
+    attackSounds: string[];
+    texture: string;
+    icon: string;
+    image: string;
+    geometry: { width: number; height: number };
+    textureFilter?: 'nearest' | 'linear';
+    stats: {
+        health_max: number;
+        movement_max: number;
+        attack: number;
+        defence: number;
+        attack_range: number;
+        land: boolean;
+        water: boolean;
+        offset: number;
+    };
+}
+
+export const UnitMap: { [key: string]: UnitConfig } = {
     "settler": {
-        create: CreateSettler,
         name: "Settler",
         cost: 100,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [],
+        texture: "../../assets/map/units/rifleman.png",
+        icon: "../../assets/map/icons/rifleman.png",
+        image: "../../assets/rifleman.webp",
+        geometry: { width: 4/3, height: 2/3 },
+        stats: {
+            health_max: 1,
+            movement_max: 3,
+            attack: 0,
+            defence: 0,
+            attack_range: 0,
+            land: true,
+            water: false,
+            offset: 0,
+        }
     },
     "rifleman": {
-        create: CreateRifleman,
         name: "Rifleman",
         cost: 50,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
+        texture: "../../assets/map/units/rifleman.png",
+        icon: "../../assets/map/icons/rifleman.png",
+        image: "../../assets/rifleman.webp",
+        geometry: { width: 4/3, height: 2/3 },
+        stats: {
+            health_max: 10,
+            movement_max: 3,
+            attack: 5,
+            defence: 0,
+            attack_range: 1,
+            land: true,
+            water: false,
+            offset: 0,
+        }
     },
     "infantry": {
-        create: CreateInfantry,
         name: "Infantry",
         cost: 200,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
+        texture: "../../assets/map/units/infantry.png",
+        icon: "../../assets/map/icons/infantry.png",
+        image: "../../assets/rifleman.webp",
+        geometry: { width: 4/3, height: 2/3 },
+        stats: {
+            health_max: 20,
+            movement_max: 4,
+            attack: 10,
+            defence: 0,
+            attack_range: 1,
+            land: true,
+            water: false,
+            offset: 0,
+        }
     },
     "cavalry": {
-        create: CreateCavalry,
         name: "Cavalry",
         cost: 200,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
+        texture: "../../assets/map/units/cavalry.png",
+        icon: "../../assets/map/icons/horse.png",
+        image: "../../assets/map/icons/horse.png",
+        geometry: { width: 2.6*2/3, height: 1.3*2/3 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 10,
+            movement_max: 6,
+            attack: 9,
+            defence: 0,
+            attack_range: 1,
+            land: true,
+            water: false,
+            offset: 0.29,
+        }
     },
     "tank": {
-        create: CreateTank,
         name: "Tank",
         cost: 200,
         moveSounds: [asset("sounds/units/tank.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/tank.png",
+        icon: "../../assets/map/icons/tank.png",
+        image: "../../assets/map/icons/tank.png",
+        geometry: { width: 1, height: 1 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 10,
+            movement_max: 6,
+            attack: 3,
+            defence: 0,
+            attack_range: 1,
+            land: true,
+            water: false,
+            offset: 0.2,
+        }
     },
     "artillary": {
-        create: CreateArtillary,
         name: "Artillary",
         cost: 300,
         moveSounds: [asset("sounds/units/artillary.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/artillary.png",
+        icon: "../../assets/map/icons/artillary.png",
+        image: "../../assets/map/icons/artillary.png",
+        geometry: { width: 1.1*2/3, height: 1.1*2/3 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 10,
+            movement_max: 2,
+            attack: 3,
+            defence: 0,
+            attack_range: 3,
+            land: true,
+            water: false,
+            offset: 0.29,
+        }
     },
     "boat": {
-        create: CreateBoat,
         name: "Boat",
         cost: 500,
         moveSounds: [asset("sounds/units/boat.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/boat.png",
+        icon: "../../assets/map/icons/boat.png",
+        image: "../../assets/map/units/boat.png",
+        geometry: { width: 1.5, height: 1.5 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 10,
+            movement_max: 10,
+            attack: 10,
+            defence: 0,
+            attack_range: 6,
+            land: false,
+            water: true,
+            offset: 0.5,
+        }
     },
     "destroyer": {
-        create: CreateDestroyer,
         name: "Destroyer",
         cost: 1000,
         moveSounds: [asset("sounds/units/destroyer.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/destroyer.png",
+        icon: "../../assets/map/icons/destroyer.png",
+        image: "../../assets/map/units/destroyer.png",
+        geometry: { width: 1.5, height: 1.5 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 20,
+            movement_max: 18,
+            attack: 20,
+            defence: 0,
+            attack_range: 10,
+            land: false,
+            water: true,
+            offset: 0,
+        }
     },
     "gunship": {
-        create: CreateGunshp,
         name: "Gunship",
         cost: 1000,
         moveSounds: [asset("sounds/units/gunship.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/gunship.png",
+        icon: "../../assets/map/icons/gunship.png",
+        image: "../../assets/map/units/gunship.png",
+        geometry: { width: 1.5, height: 1.5 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 10,
+            movement_max: 18,
+            attack: 20,
+            defence: 0,
+            attack_range: 2,
+            land: true,
+            water: true,
+            offset: 0.5,
+        }
     },
     "nuke": {
-        create: CreateMissile,
         name: "Missile",
         cost: 1000,
         moveSounds: [asset("sounds/units/missile.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
+        texture: "../../assets/map/units/missile.png",
+        icon: "../../assets/map/icons/missile.png",
+        image: "../../assets/map/units/missile.png",
+        geometry: { width: 1.5, height: 1.5 },
+        textureFilter: 'nearest',
+        stats: {
+            health_max: 1,
+            movement_max: 5,
+            attack: 100,
+            defence: 0,
+            attack_range: 20,
+            land: true,
+            water: false,
+            offset: 0.5,
+        }
     },
+};
+
+export function createUnit(type: string, player: Player): Unit {
+    const config = UnitMap[type];
+    const textureLoader = new TextureLoader();
+    const texture = textureLoader.load(config.texture);
+    
+    if (config.textureFilter === 'nearest') {
+        texture.magFilter = NearestFilter;
+    }
+
+    const geometry = new PlaneBufferGeometry(config.geometry.width, config.geometry.height);
+    const material = new MeshBasicMaterial({ 
+        map: texture,
+        transparent: true,
+        side: FrontSide,
+        alphaTest: 0.5,
+    });
+
+    const unitModel = new Mesh(geometry, material);
+    unitModel.castShadow = false;
+    unitModel.receiveShadow = false;
+    unitModel.rotateX(Math.PI / 4.5);
+
+    const unitID = `${player.name}_${type}_${unitModel.uuid}`;
+    const name = type === 'boat' || type === 'destroyer' || type === 'gunship' || type === 'nuke' 
+        ? config.name 
+        : `${config.name} ${toRoman(1)}`;
+
+    AddUnitLabel(unitModel, unitID, config.icon, player.color);
+
+    return {
+        id: unitID,
+        type: type,
+        name: name,
+        health: config.stats.health_max,
+        health_max: config.stats.health_max,
+        movement: config.stats.movement_max,
+        movement_max: config.stats.movement_max,
+        attack_range: config.stats.attack_range,
+        attack: config.stats.attack,
+        defence: config.stats.defence,
+        offset: config.stats.offset,
+        land: config.stats.land,
+        water: config.stats.water,
+        image: config.image,
+        owner: player.name,
+        model: unitModel,
+        kills: 0,
+        movementOrders: undefined,
+        tileInfo: undefined,
+    };
 }
 
 export function createUnitModel(image:string) {
@@ -220,482 +431,9 @@ export function updateUnitHealthBar(unit: Unit) {
     healthBar.style.transform = `scaleY(${Math.max(0, Math.min(1, percentage))})`;
 }
 
-export function CreateSettler(player: Player): Unit {
-    const unitType = "settler"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/rifleman.png")
-    // texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(4/3, 2/3),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-
-    unitModel.rotateX(Math.PI / 4.5);
-    
-    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    const name = "Settler " + toRoman(1);
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
-
-    // document.getElementById(`${unitID}-health-bar`).style.transform = `scaleY(${Math.max(0, Math.min(1, 100))})`;
-
-    let unit = {
-        id:unitID,
-        type: unitType,
-        name: name,
-        health: 1,
-        health_max: 1,
-        movement: 3,
-        movement_max: 3,
-        attack_range: 0,
-        attack: 0,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: 0,
-        image: "../../assets/rifleman.webp",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateRifleman(player: Player): Unit {
-    const unitType = "rifleman"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/rifleman.png")
-    // texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(4/3, 2/3),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            // opacity: .95,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-
-    unitModel.rotateX(Math.PI / 4.5);
-    
-    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    const name = "Rifleman Company " + toRoman(1);
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/rifleman.png", player.color);
-
-    let unit = {
-        id:unitID,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 3,
-        movement_max: 3,
-        attack_range: 1,
-        attack: 5,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: 0,
-        image: "../../assets/rifleman.webp",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateInfantry(player: Player): Unit {
-    const unitType = "infantry"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/infantry.png")
-    // texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(4/3, 2/3),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            // opacity: .95,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-
-    unitModel.rotateX(Math.PI / 4.5);
-    
-    // const unitModel = createUnitModel("../../assets/ui/units/rifleman.png");
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    const name = "Infantry Company " + toRoman(1);
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/infantry.png", player.color);
-
-    let unit = {
-        id:unitID,
-        type: unitType,
-        name: name,
-        health: 20,
-        health_max: 20,
-        movement: 4,
-        movement_max: 4,
-        attack_range: 1,
-        attack: 10,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: 0,
-        image: "../../assets/rifleman.webp",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-
-export function CreateCavalry(player: Player): Unit {
-    const unitType = "cavalry"
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/cavalry.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(2.6*2/3, 1.3*2/3),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/horse.png", player.color);
-
-    const name = "Cavalry " + toRoman(1);
-    let unit = {
-        id: unitID,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 6,
-        movement_max: 6,
-        attack_range: 1,
-        attack: 9,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: .29,
-        image: "../../assets/map/icons/horse.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateTank(player: Player): Unit {
-    const unitType = "tank"
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/tank.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1, 1),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/tank.png", player.color);
-
-    const name = "Column " + toRoman(1);
-    let unit = {
-        id: unitID,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 6,
-        movement_max: 6,
-        attack_range: 1,
-        attack: 3,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: .2,
-        image: "../../assets/map/icons/tank.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateArtillary(player: Player): Unit {
-    const unitType = "artillary"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/artillary.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1.1*2/3, 1.1*2/3),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/artillary.png", player.color);
-
-    const name = "Artillary Company " + toRoman(1);
-    let unit = {
-        id: `${player.name}_${unitType}_${unitModel.uuid}`,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 2,
-        movement_max: 2,
-        attack_range: 3,
-        attack: 3,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: .29,
-        image: "../../assets/map/icons/artillary.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateBoat(player: Player): Unit {
-    const unitType = "boat"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/boat.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1.5, 1.5),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/boat.png", player.color);
-
-    const name = "SS FAFO";
-    let unit = {
-        id: `${player.name}_${unitType}_${unitModel.uuid}`,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 10,
-        movement_max: 10,
-        attack_range: 6,
-        attack: 10,
-        defence: 0,
-        kills: 0,
-        land: false,
-        water: true,
-        offset: .5,
-        image: "../../assets/map/units/boat.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateDestroyer(player: Player): Unit {
-    const unitType = "destroyer"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/destroyer.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1.5, 1.5),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-    unitModel
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    const name = "SS FAFO";
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/destroyer.png", player.color);
-
-    let unit = {
-        id: `${player.name}_${unitType}_${unitModel.uuid}`,
-        type: unitType,
-        name: name,
-        health: 20,
-        health_max: 20,
-        movement: 18,
-        movement_max: 18,
-        attack_range: 10,
-        attack: 20,
-        defence: 0,
-        kills: 0,
-        land: false,
-        water: true,
-        offset: 0,
-        image: "../../assets/map/units/destroyer.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-export function CreateGunshp(player: Player): Unit {
-    const unitType = "gunship"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/gunship.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1.5, 1.5),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-    unitModel
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/gunship.png", player.color);
-
-    const name = "Gunship";
-    let unit = {
-        id: `${player.name}_${unitType}_${unitModel.uuid}`,
-        type: unitType,
-        name: name,
-        health: 10,
-        health_max: 10,
-        movement: 18,
-        movement_max: 18,
-        attack_range: 2,
-        attack: 20,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: true,
-        offset: .5,
-        image: "../../assets/map/units/gunship.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
-
-export function CreateMissile(player: Player): Unit {
-    const unitType = "missile"
-
-    const textureLoader = new TextureLoader()
-    const texture = textureLoader.load("../../assets/map/units/missile.png")
-    texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
-        new PlaneBufferGeometry(1.5, 1.5),
-        new MeshBasicMaterial({ 
-            // color: player.color,
-            map: texture,
-            transparent: true,
-            side: FrontSide,
-            alphaTest: .5,
-        })
-    );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 4.5);
-    unitModel
-
-    const unitID =  `${player.name}_${unitType}_${unitModel.uuid}`;
-    AddUnitLabel(unitModel, unitID, "../../assets/map/icons/missile.png", player.color);
-
-    const name = "Missile";
-    let unit = {
-        id: `${player.name}_${unitType}_${unitModel.uuid}`,
-        type: unitType,
-        name: name,
-        health: 1,
-        health_max: 1,
-        movement: 5,
-        movement_max: 5,
-        attack_range: 20,
-        attack: 100,
-        defence: 0,
-        kills: 0,
-        land: true,
-        water: false,
-        offset: .5,
-        image: "../../assets/map/units/missile.png",
-        owner: player.name,
-        model: unitModel,
-    };
-    return unit;
-}
-
 
 export function LoadSavedUnit(unit: Unit, player: Player): Unit {
-    let newUnit = UnitMap[unit.type].create(player);
+    let newUnit = createUnit(unit.type, player);
     unit.model = newUnit.model;
     return unit;
 }

@@ -1,7 +1,7 @@
 import { Player, DeclareWarBetweenPlayers } from './GameState';
 import { TileData } from './interfaces';
 import MapView from './MapView';
-import Unit, { CreateRifleman, CreateCavalry, CreateArtillary, CreateCity } from './Units';
+import Unit, { CreateCity, createUnit } from './Units';
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -68,13 +68,13 @@ export function buildArmy(mapView: MapView, player: Player) {
         }
         else if (options[randomIndex] === "build_rifleman") {
             player.gold -= 100;
-            unit = CreateRifleman(player);
+            unit = createUnit("rifleman", player);
         } else if (options[randomIndex] === "build_calvary") {
             player.gold -= 200;
-            unit = CreateCavalry(player);
+            unit = createUnit("cavalry", player);
         } else if (options[randomIndex] === "build_artillary") {
             player.gold -= 300;
-            unit = CreateArtillary(player);
+            unit = createUnit("artillary", player);
         }
         if (unit) {
             mapView.addUnitToMap(

@@ -1,6 +1,6 @@
 import { KeyActions, KEY_CODES } from './util';
 import MapView, { CloseMenu } from '../../src/MapView';
-import { CreateRifleman, CreateCity } from '../../src/Units';
+import { CreateCity, createUnit } from '../../src/Units';
 
 export function initInput(mapView: MapView) {
     const keyActions: KeyActions = {
@@ -36,7 +36,7 @@ export function initInput(mapView: MapView) {
         [KEY_CODES.A]: {
             down: () => {
                 const player = mapView.getPlayer("USA")
-                const unit = CreateRifleman(player)
+                const unit = createUnit("rifleman", player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
                 mapView.selectTile(tile);
@@ -45,7 +45,7 @@ export function initInput(mapView: MapView) {
         [KEY_CODES.S]: {
             down: () => {
                 const player = mapView.getPlayer("China")
-                const unit = CreateRifleman(player)
+                const unit = createUnit("rifleman", player)
                 const tile = mapView.selectedTile
                 mapView.addUnitToMap(unit, tile);
                 mapView.selectTile(tile);

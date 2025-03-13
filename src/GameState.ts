@@ -245,4 +245,34 @@ export function DeclarePeaceBetweenPlayers(gs: GameState, Player1: Player, Playe
     };
 }
 
+
+export function TurnToYear(turn: number, easeExponent: number = 2): string {
+    const startYear = -4000;      // 4000 BC
+    const modernYearStart = 2050; // Transition to 1-year-per-turn after 2050 AD
+    const preModernTurns = 100; // Number of turns covering 4000 BC to 2050 AD.
+
+    if (turn < preModernTurns) {
+      // Normalize turn into a value between 0 and 1
+      const t = turn / preModernTurns;
+      // Ease-out interpolation: f(t) = 1 - (1 - t)^easeExponent
+      const easedProgress = 1 - Math.pow(1 - t, easeExponent);
+      // Map eased progress from startYear to modernYearStart
+      const year = startYear + easedProgress * (modernYearStart - startYear);
+      return formatYear(year);
+    } else {
+      // Beyond the pre-modern phase, each turn adds 1 year
+      const extraYears = turn - preModernTurns;
+      const year = modernYearStart + extraYears;
+      return formatYear(year);
+    }
+  }
+  
+function formatYear(year: number): string {
+    if (year < 1) {
+      return `${Math.abs(Math.floor(year))} BC`;
+    } else {
+      return `${Math.floor(year)}`;
+    }
+  }
+
 export default GameState;

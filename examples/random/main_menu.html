@@ -203,7 +203,7 @@
   <script src="../../assets/nations/nations.js"></script>
   <script>
     // Nations object for civilization selection
-    const civilizations = Object.keys(nations);
+    const civilizations = Object.keys(Nations);
 
     // Colors for the dropdowns (using JS list)
     const colors = [
@@ -232,7 +232,7 @@
     function populateHumanCivDropdown() {
       const humanCivDropdown = document.getElementById('human-civ');
       humanCivDropdown.innerHTML = civilizations.map(civ => 
-        `<option value="${civ}" title="Leader: ${nations[civ].leader}\n${nations[civ].description}">
+        `<option value="${civ}" title="Leader: ${Nations[civ].leader}\n${Nations[civ].description}">
           ${civ}
         </option>`
       ).join('');
@@ -287,11 +287,15 @@
       } else if (target.tagName === 'SELECT') {
         civKey = target.options[target.selectedIndex].value;
       }
-      if (civKey && nations[civKey]) {
+      if (civKey && Nations[civKey]) {
         tooltip.style.display = 'block';
         tooltip.style.left = `${event.pageX + 15}px`;
         tooltip.style.top = `${event.pageY}px`;
-        tooltip.textContent = `Leader: ${nations[civKey].leader}\n${nations[civKey].description}`;
+        text = `Leader: ${Nations[civKey].leader}\n${Nations[civKey].description}\n\nBonuses:`;
+        for (let i = 0; i < Nations[civKey].bonuses.length; i++) {
+          text += `\n${Nations[civKey].bonuses[i]}`;
+        }
+        tooltip.textContent = text;
       }
     }
 
@@ -311,7 +315,7 @@
                   onmouseout="hideTooltip()">
             <option value="">None</option>
             ${civilizations.map(c => `
-              <option value="${c}" title="Leader: ${nations[c].leader}\n${nations[c].description}"
+              <option value="${c}" title="Leader: ${Nations[c].leader}\n${Nations[c].description}"
                 ${c === randomCiv ? 'selected' : ''}>
                 ${c}
               </option>
