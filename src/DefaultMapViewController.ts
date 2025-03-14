@@ -1,6 +1,6 @@
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
-import { screenToWorld, screenToWorldMiniMap, pickingRay, qrToWorld } from './coords';
+import { screenToWorld, screenToWorldMiniMap, pickingRay, qrToWorld } from './map/coords';
 import { TileData, QR } from './interfaces';
 import { Vector3, Camera, Vector2 } from 'three';
 

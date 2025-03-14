@@ -1,12 +1,12 @@
 import {TileData} from "../interfaces";
 import {Object3D, Texture, Points, PointsMaterial, BufferAttribute, BufferGeometry, Vector3, Color,
     ShaderMaterial, RawShaderMaterial} from "three"
-import Grid from "../Grid";
+import Grid from "./Grid";
 import {range, flatten, flatMap} from "../util";
-import {qrToWorld} from "../coords";
+import {qrToWorld} from "./coords";
 import {TREES_VERTEX_SHADER} from "../shaders/trees.vertex";
 import {TREES_FRAGMENT_SHADER} from "../shaders/trees.fragment";
-import {randomPointOnCoastTile, waterAdjacency} from "../map-generator";
+import {randomPointOnCoastTile, waterAdjacency} from "./map-generator";
 
 interface ForestTile extends TileData {
     bufferIndex: number;

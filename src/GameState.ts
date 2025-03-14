@@ -1,4 +1,4 @@
-import selector from "./DefaultTileSelector";
+import selector from "./map/DefaultTileSelector";
 import { getRandomInt } from "./util";
 
 export interface Player {
@@ -202,14 +202,14 @@ export function GetDiplomaticActionsSummary(gs: GameState, player: Player): Dipl
 
             if (action === "gpt") {
                 ds.gold_per_turn += d.amount;
-                ds.gold_summary += `${opponnent.name} gold per turn: ${d.amount} (${d.endTurn - d.startTurn} turns)`;
+                ds.gold_summary += `<tr>${opponnent.name} gold per turn: ${d.amount} (${d.endTurn - d.startTurn} turns)</tr>`;
             }
             if (action.startsWith("resource_")){
                 if (!ds.resources[d.resource]) {
                     ds.resources[d.resource] = 0;
                 }
                 ds.resources[d.resource] += d.amount;
-                ds.resources_summary += `${opponnent.name} ${d.resource}: ${d.amount} (${d.endTurn - d.startTurn} turns)`;
+                ds.resources_summary += `<tr>${opponnent.name} ${d.resource}: ${d.amount} (${d.endTurn - d.startTurn} turns))</tr>`;
             }
         }
     }

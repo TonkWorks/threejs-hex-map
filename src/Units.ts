@@ -567,7 +567,6 @@ export function CreateCity(player: Player, name: string = "", id: string = ""): 
         model: unitModel,
         cityBuildings: {},
     }
-    updatePopulationAndProductionRates(player, city);
     return city;
 }
 
@@ -647,25 +646,34 @@ export function updateLabel(domID: string, content: string) {
     if (label) {
         label.innerHTML = content;
     }
-}
-
-export function updatePopulationAndProductionRates(player: Player, improvement: Improvement) {
-    const maxPopulation = 25;
-    const taxRateEffect = 1 - (player.taxRate / 1); // 0 makes it go fast, 100 makes it decrease slightly
-
-    // Calculate the new population rate with logarithmic slowdown
-    const growthFactor = 4; // Adjust this factor to control the growth rate
-    improvement.population_rate = parseFloat((Math.log(maxPopulation - improvement.population + 1) / growthFactor).toFixed(2));
-    improvement.population_rate *= taxRateEffect;
-
-    if (player.taxRate === 1) {
-        improvement.population_rate = 0;
+    // weird bug in case of initial load
+    else {
+        setTimeout(() => {
+            const label = document.getElementById(domID);
+            if (label) {
+                label.innerHTML = content;
+            }
+         }, 1);
     }
-    improvement.population_rate = Math.round(improvement.population_rate * 100) / 100;
-
-    // unused
-    improvement.production_rate = improvement.population;
 }
+
+// export function updatePopulationAndProductionRates(player: Player, improvement: Improvement) {
+//     const maxPopulation = 25;
+//     const taxRateEffect = 1 - (player.taxRate / 1); // 0 makes it go fast, 100 makes it decrease slightly
+
+//     // Calculate the new population rate with logarithmic slowdown
+//     const growthFactor = 4; // Adjust this factor to control the growth rate
+//     improvement.population_rate = parseFloat((Math.log(maxPopulation - improvement.population + 1) / growthFactor).toFixed(2));
+//     improvement.population_rate *= taxRateEffect;
+
+//     if (player.taxRate === 1) {
+//         improvement.population_rate = 0;
+//     }
+//     improvement.population_rate = Math.round(improvement.population_rate * 100) / 100;
+
+//     // unused
+//     improvement.production_rate = improvement.population;
+// }
 
 
 // resources

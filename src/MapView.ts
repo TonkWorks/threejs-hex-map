@@ -1,25 +1,23 @@
 import THREE, { Audio, AudioListener, PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, SpotLight, CylinderGeometry, AdditiveBlending, DoubleSide, Color, TextureLoader, AudioLoader, PCFSoftShadowMap, SpotLightHelper, RingBufferGeometry, CanvasTexture, SpriteMaterial, Sprite, Float32BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments, Vector2, LineDashedMaterial, ArrowHelper, Line, FrontSide } from 'three';
-import { generateRandomMap } from "./map-generator"
-import MapMesh from "./MapMesh"
+import { generateRandomMap } from "./map/map-generator"
+import MapMesh from "./map/MapMesh"
 import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater, isHill } from './interfaces';
 import { loadFile, getRandomInt, updateMaterialColor, deepCopy, loadTextureAtlas, asset, capitalize, deepCopyIgnoring } from "./util"
-import { screenToWorld } from './camera-utils';
-import Grid from './Grid';
-import DefaultTileSelector from "./DefaultTileSelector"
-import { AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial } from "./DefaultTileHoverSelector"
-import { createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, createTileOverlayModel, createUnit, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updatePopulationAndProductionRates, updateUnitHealthBar } from "./Units"
+import Grid from './map/Grid';
+import DefaultTileSelector from "./map/DefaultTileSelector"
+import { AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial } from "./map/DefaultTileHoverSelector"
+import { createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, createTileOverlayModel, createUnit, CreateYieldModel, getNextCityName, LoadSavedUnit, Resource, ResourceMap, updateLabel, updateUnitHealthBar } from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
-import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './coords';
+import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './map/coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
-import { MapMeshOptions } from './MapMesh';
+import { MapMeshOptions } from './map/MapMesh';
 import { Explosion, FireWithSmoke, NuclearExplosion, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
 import { ParticleSystem, ParticleSystems } from './ParticleSystem';
 
 import { Unit, Improvement, CreateCity, UnitMap } from './Units';
-import { cloneGameState, DeclarePeaceBetweenPlayers, DeclareWarBetweenPlayers, DiplomaticAction, GameState, GetDiplomaticActionsSummary, TurnToYear, InitGameState, Player } from './GameState';
-import { CSS2DRenderer, CSS2DObject } from './CSS2DRenderer';
+import { cloneGameState, DeclarePeaceBetweenPlayers, DeclareWarBetweenPlayers, DiplomaticAction, GameState, GetDiplomaticActionsSummary, TurnToYear, InitGameState, Player, DiplomaticSummary } from './GameState';
 import { CSS3DRenderer, CSS3DObject } from './CSS3DRenderer';
 import { takeTurn } from './AI';
 
@@ -30,7 +28,7 @@ import AnimatedSelector, { LightOfGod, Selector, Selectors, WhiteOutline } from 
 
 import { BloomEffect, EffectComposer, EffectPass, RenderPass, SMAAEffect, VignetteEffect } from './third/postprocessing.esm';
 import * as Stats from './third/stats';
-import { getHexPoints } from './hexagon';
+import { getHexPoints } from './map/hexagon';
 import { ThickLine } from './third/thickLine';
 import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
@@ -310,12 +308,12 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this._onLoaded()
             })
         } else {
-            const mesh = this._mapMesh = this._chunkedMesh = new ChunkedLazyMapMesh(tiles, options)
-            this._scene.add(this._mapMesh)
-            mesh.loaded.then(() => {
-                if (this._onLoaded) this._onLoaded()
-            })
-            console.info("using ChunkedLazyMapMesh with " + mesh.numChunks + " chunks for " + (tiles.width * tiles.height) + " tiles")
+            // const mesh = this._mapMesh = this._chunkedMesh = new ChunkedLazyMapMesh(tiles, options)
+            // this._scene.add(this._mapMesh)
+            // mesh.loaded.then(() => {
+            //     if (this._onLoaded) this._onLoaded()
+            // })
+            // console.info("using ChunkedLazyMapMesh with " + mesh.numChunks + " chunks for " + (tiles.width * tiles.height) + " tiles")
         }
     }
 
@@ -511,7 +509,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 improvement.nextTile = { q: t.q, r: t.r }
             }
         }
-
+        this.updateCityLabel(tile);
         // check for cuttoff tiles
         this.checkForCutOffTiles(tile);
 
@@ -834,14 +832,17 @@ export default class MapView implements MapViewControls, TileDataSource {
             tile.yields = { "gold": 0 }
             switch(tile.terrain) {
                 case 'grass':
-                    tile.yields = { "food": 1, "production": 1, "gold": 1 }
+                    tile.yields = { "food": 1, "production": 1, "gold": 1 };
+                    break;
                 case 'plains':
-                    tile.yields = { "food": 1, "production": 1, "gold": 1 }
+                    tile.yields = { "food": 1, "production": 1, "gold": 1 };
+                    break;
                 case 'ocean':
-                    tile.yields = { "food": 1, "gold": 1 }                    
+                    tile.yields = { "food": 1, "gold": 1 };
+                    break;
                 case 'tundra':
-                    tile.yields = { "production": 1, "gold": 0 }
-                break;
+                    tile.yields = { "production": 1, "gold": 0 };
+                    break;
             }
             if (isMountain(tile.height)) {
                 tile.yields = { }
@@ -859,7 +860,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             const startTile = this.getRandomTile(true);
             const improvement = CreateCity(player)
             this.addImprovementToMap(improvement, startTile);
-
+            this.updateCityLabel(startTile);
             const unit = createUnit("rifleman", player);
             this.addUnitToMap(unit, startTile);
 
@@ -1253,6 +1254,45 @@ export default class MapView implements MapViewControls, TileDataSource {
         tooltip.innerHTML = data.join("</br>");
         tooltip.style.visibility = "visible";
     }
+
+    updateToolTipFromDiv(target: String, x: number, y: number) {
+        const player = this.getPlayer(this.gameState.currentPlayer);
+        const tooltip = document.getElementById("tooltip");
+        tooltip.style.left = x + 30 + "px"; // Offset to avoid cursor overlap
+        tooltip.style.top = y + "px";
+
+        let cityYields = this.getPlayerCityYields(player);
+
+        if (target === "sub-pop") {
+            let [happiness, happinessInfo] = this.getHappiness(player, cityYields);
+            tooltip.innerHTML = happinessInfo;
+            tooltip.style.visibility = "visible";
+            return;
+        }
+        if (target === "sub-gold") {
+            let diplomaticSummary = GetDiplomaticActionsSummary(this._gameState, player);
+            let [goldPerTurn, goldPerTurnInfo] = this.getGoldPerTurn(player, diplomaticSummary, cityYields);
+            tooltip.innerHTML = goldPerTurnInfo;
+            tooltip.style.visibility = "visible";
+            return;
+        }
+        if (target === "sub-research") {
+            let [rpt, rptInfo] = this.getResearch(player, cityYields);
+            tooltip.innerHTML = rptInfo;
+            tooltip.style.visibility = "visible";
+            return;
+        }
+        tooltip.innerHTML = `HHHHEEYYY ${target}`;
+        tooltip.style.visibility = "visible";
+        return;
+    }
+
+    hideTooltip() {
+        const tooltip = document.getElementById("tooltip");
+        tooltip.style.visibility = "hidden";
+        return;
+    }
+
     private generateTileInfo(tile: TileData): string {
         let height = '';
         if (tile.height > 0) {
@@ -1687,19 +1727,16 @@ export default class MapView implements MapViewControls, TileDataSource {
         // updateMaterialColor(targetTile.improvement.model.material, p2.color);
         this.updateResourcePanel();
         this.updateGameStatePanel();
-
-        const nation = Nations[p2.name];
-        const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
-        const roundedPopulation = Math.floor(targetTile.improvement.population);
-        const label = `<span class="city-label" data-target="${targetTile.improvement.id}">${img} ${targetTile.improvement.name} (${roundedPopulation})</span>`
-        updateLabel(targetTile.improvement.id, label);
+        this.updateCityLabel(targetTile);
     }
 
     pickResearch() {
         this.CloseMenu();
         this.showMenu("", "center");
         const currentPlayer = this.getPlayer(this.gameState.currentPlayer);
-        RenderTechTree(currentPlayer.research.current, currentPlayer.research.researched, (tech: Technology) => {
+        let [rpt, rptInfo] = this.getResearch(currentPlayer, this.getPlayerCityYields(currentPlayer));
+
+        RenderTechTree(currentPlayer.research.current, currentPlayer.research.researched, rpt, (tech: Technology) => {
             currentPlayer.research.current = tech.id;
             currentPlayer.research.progress = 0;
             this.updateResourcePanel();
@@ -2312,15 +2349,13 @@ export default class MapView implements MapViewControls, TileDataSource {
         for (const [key, improvement] of Object.entries(player.improvements)) {
             let t =  this.getTile(improvement.tileInfo.q, improvement.tileInfo.r);
             // population
-            updatePopulationAndProductionRates(player, improvement);
+            this.updatePopulationAndProductionRates(player, improvement);
             const previousPopulation = Math.floor(improvement.population);
             improvement.population += improvement.population_rate;
+            improvement.population = Math.round(improvement.population * 10) / 10;
             const newPopulation = Math.floor(improvement.population);
 
-            const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
-            const label = `<span class="city-label" data-target="${improvement.id}">${img} ${improvement.name} (${newPopulation})</span>`
-            updateLabel(improvement.id, label);
-
+            this.updateCityLabel(t);
 
             // if poplation increased; expand city borders;
             if (newPopulation > previousPopulation) {
@@ -2355,11 +2390,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
             // gold
             let yields = this.getYieldsForCity(t);
-            if ("gold" in yields) {
-                player.gold += yields["gold"];
-            }
-            player.gold += Math.round(improvement.population * player.taxRate);
-            player.gold += diplomaticSummary.gold_per_turn;
 
             // advance production in cities
             if ("production" in yields) {
@@ -2414,43 +2444,45 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             resources[resource_name] +=  amount;
         }
-        for (const [key, number] of Object.entries(resources)) {
-            player.gold += ResourceMap[key].gold * number;
-        }
+
+
+        let cityYields = this.getPlayerCityYields(player);
+        // let [happiness, happinessInfo] = this.getHappiness(player, cityYields);
+        let [rpt, rptInfo] = this.getResearch(player, cityYields);
+        let [goldPerTurn, goldPerTurnInfo] = this.getGoldPerTurn(player, diplomaticSummary, cityYields);
+
+        player.gold += goldPerTurn;
 
         // calculate research for player 
-        player.research.progress += 15;
-        if (player.research.progress >= 100 && player.research.current !== "") {
-            player.research.progress -= 100;
-            player.research.researched[player.research.current] = true;
-
-            if (this._gameState.playersTurn === this._gameState.currentPlayer) {
-                const tech = Technologies.get(player.research.current);
-                const mm = this;
-                this.toast({
-                    icon: "../../assets/map/icons/star.png",
-                    text: `${tech.name} research complete!`,
-                    onClick: function () {
-                        mm.pickResearch();
-                    }
-                });
-                let info = DisplayResearchFinished(tech);
-                this.CloseMenu();
-                this.showMenu(info, "center");
-                if (tech.quote_audio) {
-                    this.playSound(asset(tech.quote_audio));
-                }
+        player.research.progress += rpt;
+        if (player.research.current !== "") {
+            let tech = Technologies.get(player.research.current);
+            if (tech.cost <= player.research.progress) {
+                player.research.progress -= tech.cost;
+                player.research.researched[player.research.current] = true;
                 player.research.current = "";
-                this.showEndTurnInActionPanel();
+                if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+                    const mm = this;
+                    this.toast({
+                        icon: "../../assets/map/icons/star.png",
+                        text: `${tech.name} research complete!`,
+                        onClick: function () {
+                            mm.pickResearch();
+                        }
+                    });
+                    let info = DisplayResearchFinished(tech);
+                    this.CloseMenu();
+                    this.showMenu(info, "center");
+                    if (tech.quote_audio) {
+                        this.playSound(asset(tech.quote_audio));
+                    }
+                }
             } else {
                 let tech = AIChooseResearch();
                 if (tech !== undefined) {
                     player.research.current = tech.id;
                 }
             }
-
-            // TODO AI pick next tech
-
         }
 
         // refresh units movement / health if in city/terittories (todo)
@@ -2469,6 +2501,17 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this._gameState.playersTurn !== this._gameState.currentPlayer) {
             takeTurn(this, player);
         }
+    }
+
+    updateCityLabel(t: TileData) {
+        let improvement = t.improvement;
+        let nation = Nations[improvement.owner];
+        const newPopulation = Math.floor(improvement.population);
+        const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
+        let label = `<span class="city-label" data-target="${improvement.id}">${img} ${improvement.name} (${newPopulation})`
+        let progress = this.getCityProgress(t);
+        label += ` (${progress.pop_turns} -pop turns) (${progress.prod_turns} - prod turns)</span>`
+        updateLabel(improvement.id, label);
     }
 
     showTurnBanner() {
@@ -2495,6 +2538,172 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._selectedUnit = undefined;
     }
 
+    getPlayerCityYields(player: Player): { [key: string]: number } {
+        let yields = {
+            building_maintance: 0,
+            gold: 0,
+            happiness: 0,
+            population: 0,
+            research: 0,
+        };
+
+        for (const [key, improvement] of Object.entries(player.improvements)) {
+            yields.population += improvement.population;
+
+            let t = this.getTile(improvement.tileInfo.q, improvement.tileInfo.r);
+            let cityYields = this.getYieldsForCity(t);
+            if ("gold" in cityYields) {
+                yields.gold += cityYields["gold"];
+            }
+            if ("research" in cityYields) {
+                yields.research += cityYields["research"];
+            }
+            if ("happiness" in cityYields) {
+                yields.research += cityYields["happiness"];
+            }
+        }
+        return yields;
+    }
+
+    getCityProgress(tile: TileData): { [key: string]: any } {
+        let result = {
+            prod_percent: 0,
+            prod_turns: 0,
+            prod_image: "",
+            pop_percent: 0,
+            pop_turns: 0,
+        }
+
+        let cityYields = this.getYieldsForCity(tile);
+        let avialable_prod = 0;
+        if ("production" in cityYields) {
+            avialable_prod = cityYields["production"];
+        }
+
+        if (tile.improvement.production_queue.length > 0) {
+            let prod_item = tile.improvement.production_queue[0];
+            if (prod_item in UnitMap) {
+                let unit = UnitMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                result.prod_percent = Math.ceil(tile.improvement.work_done / tile.improvement.work_total * 100);
+                result.pop_turns = turns;
+                result.prod_image = unit.image;
+            }
+            if (prod_item in BuildingMap) {
+                let building = BuildingMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                result.prod_percent = Math.ceil(tile.improvement.work_done / tile.improvement.work_total * 100);
+                result.pop_turns = turns;
+                result.prod_image = building.image;
+            }
+        }
+
+        result.pop_percent = tile.improvement.population % 1;
+        let needed = 1 - result.pop_percent;
+        result.pop_turns =  Math.ceil(needed / tile.improvement.population_rate);
+        return result;
+    }
+    
+    updatePopulationAndProductionRates(player: Player, improvement: Improvement) {
+        let cityYields = this.getYieldsForCity(this.getTile(improvement.tileInfo.q, improvement.tileInfo.r));
+        let excess_food = cityYields.food - improvement.population;
+        excess_food += 1; // base food
+        if (excess_food > 0) {
+            improvement.population_rate = excess_food / 10;
+        }
+        if (excess_food < 0) {
+            improvement.population_rate = 0;
+        }
+    }
+
+    getHappiness(player: Player, cityYields: {[key: string]: number }): [number, string] {
+        let info = "Happiness: </br><table>";
+        let happiness = 0;
+
+        let population = cityYields.population; 
+        population = Math.floor(population);
+        happiness -= population;
+        info += `<tr><td>-${population}</td><td>from population</td></tr>`;
+        info += `<tr><td></td></tr>`;
+        
+        let improvements = cityYields.happiness;
+        happiness += improvements;
+        info += `<tr><td>+${improvements}</td><td>from buildings/improvements</td></tr>`;
+
+        let resources = this.getResourcesForPlayer(player);
+        for (const [resource_name, amount] of Object.entries(resources)) {
+            let amount = 4;
+            happiness += amount;
+            info += `<tr><td>+${amount}</td><td>from resource: ${resource_name}</td></tr>`;
+        }
+
+        // bonuses;
+
+        let difficulty = 3;
+        happiness += difficulty;
+        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+
+        info += `</table>`;
+
+        happiness = Math.round(happiness);
+        return [happiness, info];
+    }
+
+    getGoldPerTurn(player: Player, diplomaticSummary: DiplomaticSummary, cityYields: {[key: string]: number }): [number, string] {
+        let info = "Gold: </br><table>";
+        let gpt = 0;
+
+        // units
+        let unitMainance = Object.keys(player.units).length;
+        gpt -= unitMainance;
+        info += `<tr><td>-${unitMainance}</td><td>from units maintaince</td></tr>`;
+
+        // cities
+        let building_maintance = cityYields.building_maintance;
+        gpt -= building_maintance;
+        info += `<tr><td>-${building_maintance}</td><td>from buildings maintaince</td></tr>`;
+
+
+        // cities and population
+        let yieldsGold = cityYields.gold;
+        gpt += cityYields.gold;
+        info += `<tr><td>+${yieldsGold}</td><td>from buildings/improvements</td></tr>`;
+
+        info += `<tr><td></td></tr>`;
+        
+        gpt += diplomaticSummary.gold_per_turn;
+        info += diplomaticSummary.gold_summary;
+
+        let difficulty = 3;
+        gpt += difficulty;
+        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+
+        info += `</table>`;
+        gpt = Math.round(gpt);
+        return [gpt, info];
+    }
+
+    getResearch(player: Player, cityYields: {[key: string]: number }): [number, string] {
+        let info = "Research: </br><table>";
+        let research = 0;
+
+        // cities and population
+        let yieldsResearch = cityYields.research;
+        research += yieldsResearch;
+        info += `<tr><td>+${yieldsResearch}</td><td>from buildings/improvements</td></tr>`;
+
+        // bonuses;
+
+        let difficulty = 1;
+        research += difficulty;
+        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+
+        info += `</table>`;
+        return [research, info];
+    }
+
     updateResourcePanel() {
         if (this.resourcePanel == null) {
             return;
@@ -2505,10 +2714,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // const units = Object.keys(player.units).length;
         // const cities = Object.keys(player.improvements).length;
-        let population = 0;
-        let populationPerTurn = 0;
-        let goldPerTurn = 0;
-
 
         let resources = this.getResourcesForPlayer(player);
         for (const [resource_name, amount] of Object.entries(diplomaticSummary.resources)) {
@@ -2521,51 +2726,52 @@ export default class MapView implements MapViewControls, TileDataSource {
         let resourcesString = "";
         for (const [key, number] of Object.entries(resources)) {
             resourcesString += ` <img src="../../assets/map/resources/${key}.png" style="padding-left: 5px; padding-right: 5px; width: 25px; height: 25px;"/> ${number} `;
-            goldPerTurn += ResourceMap[key].gold;
+            // goldPerTurn += ResourceMap[key].gold;
         }
 
-
-        for (const [key, improvement] of Object.entries(player.improvements)) {
-            population += Math.floor(improvement.population);
-            populationPerTurn += improvement.population_rate;
-            goldPerTurn += improvement.population * player.taxRate * 10;
-        }
-        goldPerTurn = Math.round(goldPerTurn);
-        goldPerTurn += diplomaticSummary.gold_per_turn;
+        let cityYields = this.getPlayerCityYields(player);
+        let [happiness, happinessInfo] = this.getHappiness(player, cityYields);
+        let [rpt, rptInfo] = this.getResearch(player, cityYields);
+        let [goldPerTurn, goldPerTurnInfo] = this.getGoldPerTurn(player, diplomaticSummary, cityYields);
+        
         let goldPerTurnStr = `${goldPerTurn}`;
         if (goldPerTurn >= 0) {
             goldPerTurnStr = `+${goldPerTurn}`;
         }
+
+
         let taxRate = (player.taxRate * 100).toFixed(0) + '%';
 
-        let gold_icon = `<img src="../../assets/ui/resources/gold.png" style="padding-right: 5px; width: 25px; height: 25px;"/>`
-        let pop_icon = `<img src="../../assets/ui/resources/population.png" style="padding-left: 15px; padding-right: 5px; width: 25px; height: 25px;"/>`
-        let taxes_icon = `<img src="../../assets/ui/resources/taxes.png" style="padding-left: 15px; padding-right: 5px; width: 25px; height: 25px;"/>`
+        let pop_icon = `<img src="../../assets/ui/resources/population.png" style="padding-right: 5px; width: 20px; height: 20px;"/>`
+        let gold_icon = `<img src="../../assets/ui/resources/gold.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
+        let taxes_icon = `<img src="../../assets/ui/resources/taxes.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
 
 
-        let research_icon = `<img src="../../assets/ui/resources/research.png" style="padding-left: 15px; padding-right: 5px; width: 25px; height: 25px;"/>`
-        let research_amount = `<div class="loading-bar"><div class="loading-text">0%</div></div>`
-        let research_percentage = `${player.research.progress}%`;
-
+        let research_icon = `<img src="../../assets/ui/resources/research.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
+        let research_percentage = `0%`;
+        let research_info = "";
         let tech_name = '';
         if (Technologies.has(player.research.current)) {
             let tech = Technologies.get(player.research.current);
             tech_name = tech.name;
-            research_percentage = `${player.research.progress}%`;
+            let percent = Math.round(player.research.progress / tech.cost * 100);
+            let turns = Math.ceil((tech.cost - player.research.progress) / rpt);
+            research_percentage = `${percent}%`;
+            research_info = `${percent}% (${turns} turns left)`
         } else {
             tech_name = "Pick a technology to research";
-            research_percentage = '';
+            research_percentage = '0%';
         }
         let research = `<span class="research highlight-hover">
           <div id="progressBarContainer">
             <div style="width: ${research_percentage};" class="progressBar research" id="progressBar"></div>
-            <div class="progressText research" id="progressText">${tech_name}  ${research_percentage}</div>
+            <div class="progressText research" id="progressText">${tech_name} ${research_info}</div>
         </div></span> `
 
         let government = GovernmentsMap[player.government];
 
         let taxes = `${taxes_icon}<span class="taxes highlight-hover">${government.name}</span>`
-        let info = `${gold_icon} ${player.gold} (${goldPerTurnStr}) ${pop_icon} ${population} (+${populationPerTurn}) ${research_icon} ${research}  ${taxes} ${resourcesString}`;
+        let info = `<span class="sub" id="sub-pop">${pop_icon} ${happiness}</span><span class="sub" id="sub-gold">${gold_icon} ${player.gold} (${goldPerTurnStr})</span><span class="sub" id="sub-research" style="padding-right: 10px;">${research_icon} (+${rpt})</span> ${research}  ${taxes} ${resourcesString}`;
         this.resourcePanel.innerHTML = info;
     }
 
@@ -2866,22 +3072,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         // get all the city tiles;
-        let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
-        let yields: {[key: string]: number} = {};
-        let resources: {[key: string]: number} = {};
-
-        tiles.forEach(t => {
-            for (const [key, value] of Object.entries(t.yields)) {
-                if (yields[key] === undefined) {
-                    yields[key] = 0;
-                }
-                yields[key] += value;
-            }
-            if (tile.resource !== undefined) {
-                resources[tile.resource.name] += 1;
-            }
-        });
-
         let yield_info = `<table class="city_yields">`
         yield_info += `<tr><td>Population:</td> <td>${tile.improvement.population} (+${tile.improvement.population_rate})</td></tr>`
         let round = Math.round(tile.improvement.population);
@@ -2894,32 +3084,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         yield_info += "</table>"
 
-        let avialable_prod = 0;
-        if ("production" in tileYields) {
-            avialable_prod = tileYields["production"];
-        }
-
-        let production_info = `<table class="city_yields"><tr><td>Production: </td>`
-        if (tile.improvement.production_queue.length > 0) {
-            let prod_item = tile.improvement.production_queue[0];
-            if (prod_item in UnitMap) {
-                let unit = UnitMap[prod_item];
-                let cost = tile.improvement.work_total - tile.improvement.work_done;
-                let turns = Math.ceil(cost / avialable_prod);
-                let percent = Math.ceil(tile.improvement.work_done / tile.improvement.work_total * 100);
-                production_info += `<td>${unit.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
-            }
-            if (prod_item in BuildingMap) {
-                let building = BuildingMap[prod_item];
-                let cost = tile.improvement.work_total - tile.improvement.work_done;
-                let turns = Math.ceil(cost / avialable_prod);
-                let percent = Math.ceil(  tile.improvement.work_done /  tile.improvement.work_total * 100);
-                production_info += `<td>${building.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
-            }
-        }
-        production_info += `</table>`
-        console.log(production_info)
-
         let building_info = `<table class="city_yields"><tr><td>Buildings:</td> <td></td></tr>`
         for (const [key, _] of Object.entries(tile.improvement.cityBuildings)) {
             let b = BuildingMap[key];
@@ -2927,13 +3091,40 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         building_info += "</table>"
 
+        let avialable_prod = 0;
+        if ("production" in tileYields) {
+            avialable_prod = tileYields["production"];
+        }
+
+        let production_info = `<table class="city_yields"><tr><td>Currently Making:</td></tr>`
+        if (tile.improvement.production_queue.length > 0) {
+            let prod_item = tile.improvement.production_queue[0];
+            if (prod_item in UnitMap) {
+                let unit = UnitMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                let percent = Math.ceil(tile.improvement.work_done / tile.improvement.work_total * 100);
+                production_info += `<tr><td>${unit.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
+            }
+            if (prod_item in BuildingMap) {
+                let building = BuildingMap[prod_item];
+                let cost = tile.improvement.work_total - tile.improvement.work_done;
+                let turns = Math.ceil(cost / avialable_prod);
+                let percent = Math.ceil(  tile.improvement.work_done /  tile.improvement.work_total * 100);
+                production_info += `<tr><td>${building.name}</td><td>${turns} turns left (${percent}%)</td></tr>`
+            }
+        } else {
+            production_info += `<tr><td>Nothing</td></tr>`
+        }
+        production_info += `</table>`
+
  
         let option_info = ""
         for (const [name, label, cost, image] of options) {
             let turns = Math.ceil(cost / avialable_prod)/10;
             option_info += `<tr>`
-            option_info += `<td><button class="city-menu" data-name="queue" data-target="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${label} ${turns}<img id="menu-unit-cost" src="../../assets/ui/resources/production.png"></button></td>`
-            option_info += `<td><button class="city-menu" data-name="buy" data-target="${name}">${cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td>`
+            option_info += `<td><button class="city-menu" data-name="queue" data-target="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${label} (${turns} turns)</button></td>`
+            option_info += `<td><button class="city-menu" data-name="buy" data-target="${name}">${cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td>`
             option_info += `</tr>`
         }
 
@@ -2943,8 +3134,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                 continue;
             }
             let turns = Math.ceil(building.cost / avialable_prod)/10;
-            option_info += `<tr><td><button class="city-menu" data-name="queue_building" data-target="${key}"><img id="menu-unit-img" src="${building.menu_image}">${building.name} ${turns}<img id="menu-unit-cost" src="../../assets/ui/resources/production.png"></button></td>`
-            option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost}<img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"</button></td></tr>`
+            option_info += `<tr><td><button class="city-menu" data-name="queue_building" data-target="${key}"><img id="menu-unit-img" src="${building.menu_image}">${building.name} (${turns} turns)</button></td>`
+            option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"</button></td></tr>`
         }
         let info = `
             <button class="close-button" onclick="CloseMenu();">&times;</button>
@@ -2955,10 +3146,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                 ${yield_info}
             </p>
             <p class="small">
-                ${production_info}
+                ${building_info}
             </p>
             <p class="small">
-                ${building_info}
+                ${production_info}
             </p>
             <div class="options">
                 <table>
@@ -2970,6 +3161,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     getYieldsForCity(tile: TileData) {
+        // from worked tiles
         let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
         let tt = this.getBestYield(tiles, tile);
 
@@ -2993,7 +3185,17 @@ export default class MapView implements MapViewControls, TileDataSource {
                 resources[tile.resource.name] += 1;
             }
         });
-        console.log(yields)
+
+        // from buildings
+        for (const [key, building] of Object.entries(tile.improvement.cityBuildings)) {
+            let b = BuildingMap[key];
+            for (const [key, value] of Object.entries(b.yields)) {
+                if (yields[key] === undefined) {
+                    yields[key] = 0;
+                }
+                yields[key] += value as number;
+            }
+        }
         return yields;
     }
 
@@ -3122,7 +3324,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             player.taxRate += 0.1;
             for (const [key, improvement] of Object.entries(player.improvements)) {
-                updatePopulationAndProductionRates(player, improvement);
+                this.updatePopulationAndProductionRates(player, improvement);
             }
             this.playSound(asset("sounds/ui/buy.mp3"));
         }
@@ -3132,7 +3334,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             player.taxRate -= 0.1;
             for (const [key, improvement] of Object.entries(player.improvements)) {
-                updatePopulationAndProductionRates(player, improvement);
+                this.updatePopulationAndProductionRates(player, improvement);
             }
             this.playSound(asset("sounds/ui/buy.mp3"));
         }
@@ -3154,7 +3356,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.getTextInput(`<h3>City Name</h3>`, defaultName, (name) => {
                 let player = this.getPlayer(this.gameState.currentPlayer);
                 let city = CreateCity(player, name);
+                this.updatePopulationAndProductionRates(player, city);
                 this.addImprovementToMap(city, tile);
+                this.updateCityLabel(tile);
 
                 // remove settler
                 while (tile.unit.model.children.length > 0) {

@@ -1,12 +1,11 @@
 import MapView from '../../src/MapView';
 import { loadFile, loadJSON, loadTexture } from '../../src/util';
 import { TextureAtlas, isMountain, isWater, TileData } from '../../src/interfaces';
-import {generateRandomMap} from "../../src/map-generator"
+import {generateRandomMap} from "../../src/map/map-generator"
 import { varying } from './util';
 import { TextureLoader, Color } from 'three';
-import { MapMeshOptions } from '../../src/MapMesh';
+import { MapMeshOptions } from '../../src/map/MapMesh';
 import DefaultMapViewController from "../../src/DefaultMapViewController";
-import { Grid } from '../../dist/threejs-hex-map';
 
 function asset(relativePath: string): string {
     return "../../assets/" + relativePath
@@ -201,6 +200,22 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     }
 
+    let lastDivToolTipTarget = "";
+    document.getElementById("resource-info").addEventListener('mouseover', (event) => {
+        const tt = event.target as Element;
+        const target = tt.closest('span.sub');
+        if (!target) return;
+        
+        if (lastDivToolTipTarget === target.id) return;
+        lastDivToolTipTarget = target.id;
+
+        mapView.updateToolTipFromDiv(target.id, event.x, event.y);
+    });
+    document.getElementById("resource-info").addEventListener('mouseleave', (event) => {
+        lastDivToolTipTarget = "";
+        mapView.hideTooltip();
+    });
+
     mapView.onTileSelected = (tile: TileData) => {
         // uncover tiles around selection
         setFogAround(mapView, tile,  2, false, false)
@@ -231,7 +246,7 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 function setFogAround(mapView: MapView, tile: TileData, range: number, fog: boolean, clouds: boolean) {
     const tiles = mapView.getTileGrid().neighbors(tile.q, tile.r, range)
 
-    const updated = tiles.map(t => {
+    const updated = tiles.map((t: TileData) => {
         t.fog = fog
         t.clouds = clouds
         return t

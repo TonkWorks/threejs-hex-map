@@ -1,7 +1,7 @@
-import MapMesh from './MapMesh';
-import { MapMeshOptions } from './MapMesh';
+import MapMesh from './map/MapMesh';
+import { MapMeshOptions } from './map/MapMesh';
 import DefaultMapViewController from "./DefaultMapViewController"
-import Grid from './Grid';
+import Grid from './map/Grid';
 import {TileData} from "./interfaces"
 import {Nations} from "./Nations"
 export {

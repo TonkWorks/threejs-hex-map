@@ -313,7 +313,7 @@ export const Nations: { [key: string]: any } = {
   "Ottoman": {
     "name": "Ottoman",
     "leader": "Suleiman the Magnificent",
-    "flag_image": "../../assets/ui/flags/icons8-tukey-100.png",
+    "flag_image": "../../assets/ui/flags/icons8-turkey-100.png",
     "description": "A majestic empire bridging continents, renowned for its cultural and military might.",
     "cities": [
       "Istanbul",

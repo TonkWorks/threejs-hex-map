@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "build": "tsc && webpack",
-    "dev": "concurrently \"tsc --watch\" \"node server.js\"",
-    "deve": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
+    "dev": "concurrently \"tsc --watch\" \"webpack --watch\" \"node server.js\"",
+    "deve": "concurrently \"tsc --watch\" \"node server.js\"",
     "test": "echo \"No tests yet.\" && exit 0"
   },
   "author": "Kevin Dagostino <kevin@tonkworks.com>",
@@ -15,6 +15,7 @@
     "concurrently": "^9.1.2",
     "electron": "^34.2.0",
     "postprocessing": "v6.20",
+    "three": "^0.128.0",
     "uuid": "^11.0.4"
   },
   "devDependencies": {

@@ -57,6 +57,9 @@
             height: 35px;
             text-align: left;
         }
+        .sub {
+            display: flex;
+        }
 
         #game-info {
             display: flex;
@@ -317,6 +320,7 @@
         #menu-unit-cost {
             width: 25px;
             padding-right: 10px;
+            padding-left: 10px;
         }
 
         .player-info-labels {
@@ -363,11 +367,11 @@
             font-size: 0.75em;
         }
         .research_benefit_compact {
-            margin-top: 5px;
+            margin-top: 2px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
+            align-items: left;
+            justify-content: left;
+            text-align: left;
             font-size: .75em;
         }
         .grey {
@@ -380,17 +384,15 @@
             border: 2px solid #333;
             border-radius: 5px;
             padding: 5px;
-            text-align: center;
             cursor: pointer;
             transition: all 0.2s;
             background-color:rgba(84, 18, 138, 0.75);
             font-family: 'Trajan Pro', serif;
             font-size: .5em;
-            text-align: center;
             color: white;
             text-shadow: 0 0 1px black;
             box-sizing: border-box;
-
+            text-align: left;
         }
         .tech-node:hover {
             transform: scale(1.05);
@@ -504,7 +506,7 @@
             min-width: 350px;
             width: 350px;
             max-width: 350px;
-            z-index: 900;
+            z-index: 2;
         }
 
         .toastify.on {

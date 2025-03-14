@@ -126,9 +126,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            // ── Create the meshes: separate land, mountains, water, and trees ──
 	            // NOTE: We now filter water tiles out of the land mesh and create a new water mesh.
 	            this.loaded = Promise.all([
-	                this.createLandMesh(this.tiles.filter(t => !(0, interfaces_1.isWater)(t.height) && !t.isMountain)),
 	                this.createMountainMesh(this.tiles.filter(t => t.isMountain)),
-	                this.createWaterMesh(this.tiles.filter(t => (0, interfaces_1.isWater)(t.height))),
+	                this.createLandMesh(this.tiles.filter(t => !t.isMountain)),
+	                // this.createLandMesh(this.tiles.filter(t => !isWater(t.height) && !t.isMountain)),
+	                // this.createWaterMesh(this.tiles.filter(t => isWater(t.height))),
 	                this.createTrees()
 	            ]).then(() => {
 	                // All promises resolved; return nothing to make this a Promise<void>
@@ -167,8 +168,8 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        updateFogAndClouds(tiles) {
 	            const landGeometry = this.land.geometry;
 	            const landStyleAttr = landGeometry.getAttribute("style");
-	            const waterGeometry = this.water.geometry;
-	            const waterStyleAttr = waterGeometry.getAttribute("style");
+	            // const waterGeometry = this.water.geometry as InstancedBufferGeometry;
+	            // const waterStyleAttr = waterGeometry.getAttribute("style") as InstancedBufferAttribute;
 	            const mountainsGeometry = this.mountains.geometry;
 	            const mountainsStyleAttr = mountainsGeometry.getAttribute("style");
 	            tiles.forEach(updated => {
@@ -182,9 +183,6 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                    if (old.isMountain) {
 	                        attribute = mountainsStyleAttr;
 	                    }
-	                    else if ((0, interfaces_1.isWater)(old.height)) {
-	                        attribute = waterStyleAttr;
-	                    }
 	                    else {
 	                        attribute = landStyleAttr;
 	                    }
@@ -193,7 +191,6 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            });
 	            landStyleAttr.needsUpdate = true;
 	            mountainsStyleAttr.needsUpdate = true;
-	            waterStyleAttr.needsUpdate = true;
 	        }
 	        updateFogStyle(attr, index, fog, clouds) {
 	            const style = attr.getY(index);
@@ -703,7 +700,8 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        const mv = new three_1.Vector3((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1, 0.5);
 	        const raycaster = new three_1.Raycaster();
 	        raycaster.setFromCamera(mv, camera);
-	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, new three_1.Vector3());
+	        const target = new three_1.Vector3();
+	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, target);
 	        return intersection ? intersection : null;
 	    }
 	    /**
@@ -713,7 +711,8 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        const mv = new three_1.Vector3((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1, 0.5);
 	        const raycaster = new three_1.Raycaster();
 	        raycaster.setFromCamera(mv, camera);
-	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, new three_1.Vector3());
+	        const target = new three_1.Vector3();
+	        const intersection = raycaster.ray.intersectPlane(Z_PLANE, target);
 	        return intersection ? intersection : null;
 	    }
 	    /**
@@ -2486,6 +2485,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Beacon's Rest",
 	                "Illumindor"
 	            ],
+	            "bonuses": [
+	                "celestial_radiance"
+	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
 	                "insulted": ["../../assets/leaders/default.png"]
@@ -2532,27 +2534,10 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Austin",
 	                "Nashville",
 	                "Charlotte",
-	                "Salt Lake City",
-	                "Portland",
-	                "Indianapolis",
-	                "Cincinnati",
-	                "Buffalo",
-	                "Oklahoma City",
-	                "Albuquerque",
-	                "Tucson",
-	                "Memphis",
-	                "Milwaukee",
-	                "Orlando",
-	                "Tampa",
-	                "Sacramento",
-	                "Columbus",
-	                "Raleigh",
-	                "Richmond",
-	                "San Jose",
-	                "Birmingham",
-	                "Providence",
-	                "Anchorage",
-	                "Honolulu"
+	                "Salt Lake City"
+	            ],
+	            "bonuses": [
+	                "manifest_destiny"
 	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
@@ -2587,9 +2572,12 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Vilnius",
 	                "Murmansk"
 	            ],
+	            "bonuses": [
+	                "resilient_unity"
+	            ],
 	            "leader_images": {
-	                "default": ["../../assets/leaders/stalin.webp"],
-	                "angry": ["../../assets/leaders/stalin-angry.webp"]
+	                "default": ["../../assets/leaders/h.png"],
+	                "angry": ["../../assets/leaders/h.png"]
 	            },
 	            "quotes": {
 	                "greeting": ["Comrade, let us discuss the future of the proletariat."],
@@ -2615,6 +2603,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Hangzhou",
 	                "Nanjing",
 	                "Tianjin"
+	            ],
+	            "bonuses": [
+	                "scientific_breakthrough"
 	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
@@ -2645,6 +2636,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Brundisium",
 	                "Capua"
 	            ],
+	            "bonuses": [
+	                "imperial_ambition"
+	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
 	                "angry": ["../../assets/leaders/default.png"]
@@ -2673,6 +2667,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Tanis",
 	                "Hermopolis",
 	                "Bubastis"
+	            ],
+	            "bonuses": [
+	                "divine_providence"
 	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
@@ -2703,6 +2700,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Argos",
 	                "Pergamon"
 	            ],
+	            "bonuses": [
+	                "artistic_flourish"
+	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
 	                "angry": ["../../assets/leaders/default.png"]
@@ -2732,6 +2732,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "Belfast",
 	                "Bristol"
 	            ],
+	            "bonuses": [
+	                "maritime_dominance"
+	            ],
 	            "leader_images": {
 	                "default": ["../../assets/leaders/default.png"],
 	                "angry": ["../../assets/leaders/default.png"]
@@ -2742,6 +2745,294 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                "victory": ["Rule Britannia! Our empire stands victorious!"],
 	                "angry": ["You dare challenge the Crown?"],
 	                "defeat": ["Even the greatest empire must weather storms..."]
+	            }
+	        },
+	        "France": {
+	            "name": "France",
+	            "leader": "Napoleon Bonaparte",
+	            "flag_image": "../../assets/ui/flags/icons8-france-100.png",
+	            "description": "A nation of art, revolution, and military prowess, led by a charismatic visionary.",
+	            "cities": [
+	                "Paris",
+	                "Marseille",
+	                "Lyon",
+	                "Toulouse",
+	                "Nice",
+	                "Nantes",
+	                "Strasbourg",
+	                "Montpellier",
+	                "Bordeaux",
+	                "Lille"
+	            ],
+	            "bonuses": [
+	                "age_of_enlightenment"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Bonjour, welcome to the heart of innovation and revolution."],
+	                "farewell": ["Au revoir, until our paths cross again in glory."],
+	                "victory": ["Vive la victoire! Our spirit is unyielding!"],
+	                "angry": ["Do not test the resolve of France!"],
+	                "defeat": ["Even in defeat, our legacy shines eternal."]
+	            }
+	        },
+	        "Ottoman": {
+	            "name": "Ottoman",
+	            "leader": "Suleiman the Magnificent",
+	            "flag_image": "../../assets/ui/flags/icons8-turkey-100.png",
+	            "description": "A majestic empire bridging continents, renowned for its cultural and military might.",
+	            "cities": [
+	                "Istanbul",
+	                "Ankara",
+	                "Izmir",
+	                "Bursa",
+	                "Adana",
+	                "Gaziantep",
+	                "Konya",
+	                "Antalya",
+	                "Kayseri",
+	                "Mersin"
+	            ],
+	            "bonuses": [
+	                "diplomatic_eminence"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Welcome to the crossroads of East and West."],
+	                "farewell": ["Farewell, may fortune guide your journey."],
+	                "victory": ["Our empire stands mighty and unyielding!"],
+	                "angry": ["Tread carefully, for our wrath is legendary!"],
+	                "defeat": ["Even in loss, our legacy endures."]
+	            }
+	        },
+	        "Japan": {
+	            "name": "Japan",
+	            "leader": "Tokugawa Ieyasu",
+	            "flag_image": "../../assets/ui/flags/icons8-japan-100.png",
+	            "description": "An island nation blending tradition and innovation, guided by honor and resilience.",
+	            "cities": [
+	                "Tokyo",
+	                "Osaka",
+	                "Kyoto",
+	                "Yokohama",
+	                "Nagoya",
+	                "Sapporo",
+	                "Fukuoka",
+	                "Kobe",
+	                "Hiroshima",
+	                "Sendai"
+	            ],
+	            "bonuses": [
+	                "unyielding_valor"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Konnichiwa, welcome to the land of the rising sun."],
+	                "farewell": ["Sayonara, until our spirits meet again."],
+	                "victory": ["Our honor shines in every victory!"],
+	                "angry": ["Challenge our legacy and face our fury!"],
+	                "defeat": ["Even in defeat, our spirit remains unbroken."]
+	            }
+	        },
+	        "Germany": {
+	            "name": "Germany",
+	            "leader": "Otto von Bismarck",
+	            "flag_image": "../../assets/ui/flags/icons8-germany-100.png",
+	            "description": "A nation forged by unity and modern industry, with a legacy of innovation and power.",
+	            "cities": [
+	                "Berlin",
+	                "Munich",
+	                "Frankfurt",
+	                "Hamburg",
+	                "Cologne",
+	                "Stuttgart",
+	                "Düsseldorf",
+	                "Dresden",
+	                "Leipzig",
+	                "Hanover"
+	            ],
+	            "bonuses": [
+	                "industrial_ascendance"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Willkommen, to a land of precision and progress."],
+	                "farewell": ["Auf Wiedersehen, until our unity prevails again."],
+	                "victory": ["Our resolve and unity forge our destiny!"],
+	                "angry": ["Challenge our might at your own peril!"],
+	                "defeat": ["In every setback, we find a spark for resurgence."]
+	            }
+	        },
+	        "Russia": {
+	            "name": "Russia",
+	            "leader": "Peter the Great",
+	            "flag_image": "../../assets/ui/flags/icons8-russia-100.png",
+	            "description": "A vast empire of rich culture and ambition, spanning across continents with enduring strength.",
+	            "cities": [
+	                "Moscow",
+	                "Saint Petersburg",
+	                "Novosibirsk",
+	                "Yekaterinburg",
+	                "Kazan",
+	                "Nizhny Novgorod",
+	                "Chelyabinsk",
+	                "Samara",
+	                "Omsk",
+	                "Rostov-on-Don"
+	            ],
+	            "bonuses": [
+	                "religious_fervor"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Добро пожаловать, welcome to the vast expanse of Russia."],
+	                "farewell": ["До свидания, until destiny brings us together again."],
+	                "victory": ["Victory is our destiny, forged in ambition!"],
+	                "angry": ["Do not provoke the might of the Russian bear!"],
+	                "defeat": ["Even in defeat, our spirit will rise."]
+	            }
+	        },
+	        "India": {
+	            "name": "India",
+	            "leader": "Ashoka the Great",
+	            "flag_image": "../../assets/ui/flags/icons8-india-100.png",
+	            "description": "A land of ancient wisdom, vibrant traditions, and epic cultural heritage.",
+	            "cities": [
+	                "Delhi",
+	                "Mumbai",
+	                "Kolkata",
+	                "Chennai",
+	                "Bangalore",
+	                "Hyderabad",
+	                "Ahmedabad",
+	                "Pune",
+	                "Jaipur",
+	                "Surat"
+	            ],
+	            "bonuses": [
+	                "cultural_renaissance"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Namaste, welcome to a tapestry of culture and history."],
+	                "farewell": ["Farewell, may wisdom guide your steps."],
+	                "victory": ["Our spirit triumphs as brightly as our heritage!"],
+	                "angry": ["Defy our legacy and face our unwavering resolve!"],
+	                "defeat": ["Every defeat sows the seeds for future triumphs."]
+	            }
+	        },
+	        "Mongolia": {
+	            "name": "Mongolia",
+	            "leader": "Genghis Khan",
+	            "flag_image": "../../assets/ui/flags/icons8-mongolia-100.png",
+	            "description": "A fierce nomadic empire that once conquered vast lands under the great Khan.",
+	            "cities": [
+	                "Ulaanbaatar",
+	                "Erdenet",
+	                "Darkhan",
+	                "Choibalsan",
+	                "Öndörkhaan",
+	                "Khovd",
+	                "Arvaikheer",
+	                "Sükhbaatar",
+	                "Darhan",
+	                "Ulaangom"
+	            ],
+	            "bonuses": [
+	                "martial_legacy"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Welcome to the boundless steppes of Mongolia."],
+	                "farewell": ["Farewell, may the spirit of the steppe guide you."],
+	                "victory": ["Our conquests echo through the ages!"],
+	                "angry": ["Do not provoke the wrath of the great Khan!"],
+	                "defeat": ["Even in defeat, our legacy roams free."]
+	            }
+	        },
+	        "Spain": {
+	            "name": "Spain",
+	            "leader": "Isabella I",
+	            "flag_image": "../../assets/ui/flags/icons8-spain-100.png",
+	            "description": "A nation of passionate exploration and conquest, where Renaissance spirit thrives.",
+	            "cities": [
+	                "Madrid",
+	                "Barcelona",
+	                "Valencia",
+	                "Seville",
+	                "Bilbao",
+	                "Granada",
+	                "Zaragoza",
+	                "Malaga",
+	                "Murcia",
+	                "Palma"
+	            ],
+	            "bonuses": [
+	                "pioneering_spirit"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Bienvenido, step into a world of passion and discovery."],
+	                "farewell": ["Adiós, until our adventures intertwine again."],
+	                "victory": ["Our conquests burn with the fire of passion!"],
+	                "angry": ["Defy us and face the fury of Spanish might!"],
+	                "defeat": ["In every loss, the seed of future triumph is sown."]
+	            }
+	        },
+	        "Netherlands": {
+	            "name": "Netherlands",
+	            "leader": "William of Orange",
+	            "flag_image": "../../assets/ui/flags/icons8-netherlands-100.png",
+	            "description": "A small yet influential nation renowned for its trade, innovation, and maritime mastery.",
+	            "cities": [
+	                "Amsterdam",
+	                "Rotterdam",
+	                "The Hague",
+	                "Utrecht",
+	                "Eindhoven",
+	                "Maastricht",
+	                "Groningen",
+	                "Leiden",
+	                "Nijmegen",
+	                "Delft"
+	            ],
+	            "bonuses": [
+	                "economic_supremacy"
+	            ],
+	            "leader_images": {
+	                "default": ["../../assets/leaders/default.png"],
+	                "angry": ["../../assets/leaders/angry.png"]
+	            },
+	            "quotes": {
+	                "greeting": ["Welkom, step into a realm of commerce and creativity."],
+	                "farewell": ["Tot ziens, until we sail the tides of fortune again."],
+	                "victory": ["Our spirit sails victorious against all odds!"],
+	                "angry": ["Challenge our trade and incur our wrath!"],
+	                "defeat": ["Even in defeat, we chart a course for renewal."]
 	            }
 	        }
 	    };

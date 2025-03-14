@@ -5,6 +5,7 @@ export interface Technology {
     name: string;
     image: string;
     quote: string;
+    cost: number;
     quote_audio?: string;
     population_growth_multiplier?: number;
     gold_growth_multiplier?: number;
@@ -22,35 +23,35 @@ interface TechTree {
 }
 
 export const Technologies = new Map<string, Technology>([
-    ['agriculture', { id: 'agriculture', name: 'Agriculture', dependencies: [], population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
-    ['pottery', { id: 'pottery', name: 'Pottery', dependencies: ['agriculture'], population_growth_multiplier: 20, quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
-    ['writing', { id: 'writing', name: 'Writing', dependencies: ['pottery'], population_growth_multiplier: 20, quote: "Writing: because history isn't going to exaggerate itself!", image: "../../assets/research/embassy.webp" }],
-    ['mathematics', { id: 'mathematics', name: 'Mathematics', dependencies: ['iron_working',], gold_growth_multiplier: 20, quote: "Mathematics: where numbers go to have a party and leave their logic behind.", image: "../../assets/research/mining.webp" }],
-    ['engineering', { id: 'engineering', name: 'Engineering', dependencies: ['writing', 'mathematics'], quote: "Engineering: the art of fixing problems you didn't know you had, in ways you don't understand.", image: "../../assets/research/mining.webp" }],
+    ['agriculture', { id: 'agriculture', name: 'Agriculture', dependencies: [], cost: 4, population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
+    ['pottery', { id: 'pottery', name: 'Pottery', dependencies: ['agriculture'], cost: 4, population_growth_multiplier: 20, quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
+    ['writing', { id: 'writing', name: 'Writing', dependencies: ['pottery'], cost: 4, population_growth_multiplier: 20, quote: "Writing: because history isn't going to exaggerate itself!", image: "../../assets/research/embassy.webp" }],
+    ['mathematics', { id: 'mathematics', name: 'Mathematics', dependencies: ['iron_working',], cost: 4, gold_growth_multiplier: 20, quote: "Mathematics: where numbers go to have a party and leave their logic behind.", image: "../../assets/research/mining.webp" }],
+    ['engineering', { id: 'engineering', name: 'Engineering', dependencies: ['writing', 'mathematics'], cost: 4, quote: "Engineering: the art of fixing problems you didn't know you had, in ways you don't understand.", image: "../../assets/research/mining.webp" }],
 
-    ['mining', { id: 'mining', name: 'Mining', dependencies: [], gold_growth_multiplier: 20, quote: "Mining: giving rocks a chance to see the sun, one explosion at a time.", image: "../../assets/research/mining.webp" }],
-    ['iron_working', { id: 'iron_working', name: 'Iron Working', dependencies: ['mining'], gold_growth_multiplier: 20, quote: "Iron Working: because stabbing someone with a bronze sword was so last millennium.", image: "../../assets/research/mining.webp" }],
-
-
-
-    ['rifles', { id: 'rifles', name: 'Rifle Upgrades', dependencies: [], quote: "Rifles: because sometimes you just need to reach out and touch someone.", image: "../../assets/research/rifles.webp" }],
-    ['infantry', { id: 'infantry', name: 'Infrantry', dependencies: ["rifles"], unlocks: ["infantry"], quote: "Infantry: because sometimes you just need to take the fight to the ground.", image: "../../assets/research/rifles.webp" }],
+    ['mining', { id: 'mining', name: 'Mining', dependencies: [], cost: 4, gold_growth_multiplier: 20, quote: "Mining: giving rocks a chance to see the sun, one explosion at a time.", image: "../../assets/research/mining.webp" }],
+    ['iron_working', { id: 'iron_working', name: 'Iron Working', dependencies: ['mining'], cost: 4, gold_growth_multiplier: 20, quote: "Iron Working: because stabbing someone with a bronze sword was so last millennium.", image: "../../assets/research/mining.webp" }],
 
 
-    ['fishing', { id: 'fishing', name: 'Fishing', dependencies: [], population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Fishing.", image: "../../assets/research/fishing.webp" }],
-    ['warships', { id: 'warships', name: 'Warships', dependencies: ['fishing'], unlocks: ["warship"], quote: "Warship: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/warship.webp" }],
 
-    ['tractors', { id: 'tractors', name: 'Tractors', dependencies: ["engineering"], population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
-    ['rail_roads', { id: 'rail_roads', name: 'Railroads', dependencies: ["engineering"], gold_growth_multiplier: 40, quote: "Railroads: choochoo", image: "../../assets/research/railroads.webp" }],
-    ['blimps', { id: 'blimps', name: 'Blimps', dependencies: ["engineering"], quote: "Blimps: because sometimes you just need to take the fight to the sky.", image: "../../assets/research/blimps.webp" }],
-    ['destroyer', { id: 'destroyer', name: 'Destroyers', dependencies: ['warships', 'engineering'], unlocks: ["destoyer"], quote: "Destroyer: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/destroyer.webp" }],
-    ['tank', { id: 'tank', name: 'Tanks', dependencies: ['engineering'], unlocks: ["tank"], quote: "Tanks: because walking into battle is so last century.", image: "../../assets/research/tank.webp" }],
-    ['nuke', { id: 'nuke', name: 'Nukes', dependencies: ['engineering'], unlocks: ["missile"], quote: "Nuke: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/nuke.webp" }],
+    ['rifles', { id: 'rifles', name: 'Rifle Upgrades', dependencies: [], cost: 4, quote: "Rifles: because sometimes you just need to reach out and touch someone.", image: "../../assets/research/rifles.webp" }],
+    ['infantry', { id: 'infantry', name: 'Infrantry', dependencies: ["rifles"], cost: 4, unlocks: ["infantry"], quote: "Infantry: because sometimes you just need to take the fight to the ground.", image: "../../assets/research/rifles.webp" }],
 
-    ['gmos', { id: 'tractors', name: 'GMOs', dependencies: ["tractors"], population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
-    ['planes', { id: 'tractors', name: 'Planes', dependencies: ["rail_roads"], gold_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
 
-    ['gunships', { id: 'gunships', name: 'Gunships', dependencies: ["blimps"], unlocks: ["gunship"], quote: "Gunships: because sometimes you just need to take the fight to the sky.", image: "../../assets/research/gunship.webp" }],
+    ['fishing', { id: 'fishing', name: 'Fishing', dependencies: [], cost: 4, population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Fishing.", image: "../../assets/research/fishing.webp" }],
+    ['warships', { id: 'warships', name: 'Warships', dependencies: ['fishing'], cost: 4, unlocks: ["warship"], quote: "Warship: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/warship.webp" }],
+
+    ['tractors', { id: 'tractors', name: 'Tractors', dependencies: ["engineering"], cost: 4, population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
+    ['rail_roads', { id: 'rail_roads', name: 'Railroads', dependencies: ["engineering"], cost: 4, gold_growth_multiplier: 40, quote: "Railroads: choochoo", image: "../../assets/research/railroads.webp" }],
+    ['blimps', { id: 'blimps', name: 'Blimps', dependencies: ["engineering"], cost: 4, quote: "Blimps: because sometimes you just need to take the fight to the sky.", image: "../../assets/research/blimps.webp" }],
+    ['destroyer', { id: 'destroyer', name: 'Destroyers', dependencies: ['warships', 'engineering'], cost: 4, unlocks: ["destoyer"], quote: "Destroyer: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/destroyer.webp" }],
+    ['tank', { id: 'tank', name: 'Tanks', dependencies: ['engineering'], cost: 4, unlocks: ["tank"], quote: "Tanks: because walking into battle is so last century.", image: "../../assets/research/tank.webp" }],
+    ['nuke', { id: 'nuke', name: 'Nukes', dependencies: ['engineering'], cost: 4, unlocks: ["missile"], quote: "Nuke: because sometimes you just need to take the fight to the sea.", image: "../../assets/research/nuke.webp" }],
+
+    ['gmos', { id: 'tractors', name: 'GMOs', dependencies: ["tractors"], cost: 4, population_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
+    ['planes', { id: 'tractors', name: 'Planes', dependencies: ["rail_roads"], cost: 4, gold_growth_multiplier: 40, quote: "Tractors: because sometimes you just need to take the fight to the farm.", image: "../../assets/research/tractors.webp" }],
+
+    ['gunships', { id: 'gunships', name: 'Gunships', dependencies: ["blimps"], cost: 4, unlocks: ["gunship"], quote: "Gunships: because sometimes you just need to take the fight to the sky.", image: "../../assets/research/gunship.webp" }],
 
 
     
@@ -158,6 +159,7 @@ function setupDragScroll(container: HTMLElement): void {
 export function RenderTechTree(
     currentlyResearching: string, 
     researchedTechs: { [key: string]: boolean }, 
+    rpt: number,
     onTechClick: (tech: Technology) => void
 ): void {
     const container = document.getElementById('menu');
@@ -263,10 +265,11 @@ export function RenderTechTree(
             techDiv.style.backgroundColor = 'grey';
         }
 
+        let turns = Math.round(tech.cost / rpt * 100);
         techDiv.innerHTML = `
         <div class="tech-content">
-            </br>
             <strong>${tech.name}</strong>
+            <span class="research_benefit_compact">${tech.cost} turns</span>
             <p class="research_benefit_compact">${BenefitCompact(tech)}</p>
         </div>
         `;
