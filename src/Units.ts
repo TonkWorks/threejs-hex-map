@@ -66,10 +66,10 @@ export const UnitMap: { [key: string]: UnitConfig } = {
         cost: 100,
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [],
-        texture: "../../assets/map/units/rifleman.png",
-        icon: "../../assets/map/icons/rifleman.png",
+        texture: "../../assets/map/units/settler.png",
+        icon: "../../assets/map/icons/settler.png",
         image: "../../assets/rifleman.webp",
-        geometry: { width: 4/3, height: 2/3 },
+        geometry: { width: 1, height: 1 },
         stats: {
             health_max: 1,
             movement_max: 3,
@@ -78,7 +78,47 @@ export const UnitMap: { [key: string]: UnitConfig } = {
             attack_range: 0,
             land: true,
             water: false,
+            offset:  0.2,
+        }
+    },
+    "worker": {
+        name: "worker",
+        cost: 30,
+        moveSounds: [asset("sounds/units/rifelman.mp3")],
+        attackSounds: [],
+        texture: "../../assets/map/units/worker.png",
+        icon: "../../assets/map/icons/worker.png",
+        image: "../../assets/rifleman.webp",
+        geometry: { width: 3/5, height: 3/5 },
+        stats: {
+            health_max: 1,
+            movement_max: 2,
+            attack: 0,
+            defence: 0,
+            attack_range: 0,
+            land: true,
+            water: false,
             offset: 0,
+        }
+    },
+    "scout": {
+        name: "scout",
+        cost: 30,
+        moveSounds: [asset("sounds/units/rifelman.mp3")],
+        attackSounds: [],
+        texture: "../../assets/map/units/scout.png",
+        icon: "../../assets/map/icons/scout.png",
+        image: "../../assets/rifleman.webp",
+        geometry: { width: 3/5, height: 3/5 },
+        stats: {
+            health_max: 5,
+            movement_max: 4,
+            attack: 3,
+            defence: 0,
+            attack_range: 0,
+            land: true,
+            water: false,
+            offset:  0.1,
         }
     },
     "rifleman": {
@@ -274,7 +314,7 @@ export function createUnit(type: string, player: Player): Unit {
     const config = UnitMap[type];
     const textureLoader = new TextureLoader();
     const texture = textureLoader.load(config.texture);
-    
+
     if (config.textureFilter === 'nearest') {
         texture.magFilter = NearestFilter;
     }
@@ -337,6 +377,41 @@ export function createUnitModel(image:string) {
     return model;
 }
 
+
+export function HeathBarDivHtml(id: string, percentage: number = 1) {
+    // Health bar configuration with defaults
+    const healthConfig = {
+        width: 10,
+        height: 100,
+        offsetX: 100,
+        offsetY: 0,
+        healthyColor:'#00ff00',
+        damagedColor: '#ff0000',
+        background: 'rgba(0,0,0,0.5)'
+    };
+
+    return `
+        <div id="${id}-health" style="
+            display: inline-block;
+            position: relative;
+            width: ${healthConfig.width}px;
+            height: 100%;
+            background: ${healthConfig.background};
+            border-radius: 3px;
+            overflow: hidden;">
+            <div id="${id}-health-bar" style="
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+                height: 100%;
+                background: ${healthConfig.healthyColor};
+                transform: scaleY(${percentage});
+                transform-origin: bottom;
+                transition: transform 0.2s ease-in-out;">
+            </div>
+        </div>
+    `;
+}
 export function AddUnitLabel(
     unitModel: Mesh, 
     unitID: string, 
@@ -459,7 +534,6 @@ export function getNextCityName(player: Player): string {
     }
     return nation.cities[player.cityIndex];
 }
-
 
 export interface Improvement {
     id: string; // Unique identifier

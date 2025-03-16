@@ -171,7 +171,14 @@ export default class Grid<T extends QR> {
               (copy as any)[key] = { ...(item as any)[key] };
               delete (copy as any)[key].model;
               delete (copy as any)[key].image;
-            } else if (key === "clouds" && (item as any)[key] === false) {
+            } else if (key === "worker_improvement") {
+                // Create a shallow copy of resource so modifications do not affect the original.
+                (copy as any)[key] = { ...(item as any)[key] };
+                delete (copy as any)[key].model;
+                delete (copy as any)[key].images;
+                delete (copy as any)[key].yields;
+            } 
+            else if (key === "clouds" && (item as any)[key] === false) {
               // Omit this property.
             } else if (key === "fog" && (item as any)[key] === false) {
               // Omit this property.

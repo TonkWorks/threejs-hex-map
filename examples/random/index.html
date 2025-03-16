@@ -164,7 +164,11 @@
             border-radius: 5px;
             border-radius: 5px;
             font-size: 16px;
+            height: 35px;
             cursor: pointer;
+        }
+        .city-label-lower {
+            margin-bottom: -13px;
         }
         .city-label-enemy {
             background-color:rgba(156, 21, 28, 0.75);
@@ -657,6 +661,7 @@
 
     function CloseMenu() {
         document.getElementById('menu-modal').style.visibility = 'hidden';
+        document.getElementById('menu').innerHTML = '';
         document.getElementById('menu').style.visibility = 'hidden';
     }
 

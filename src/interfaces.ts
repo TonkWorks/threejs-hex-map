@@ -1,5 +1,6 @@
 import { Mesh, Texture } from 'three';
 import { Unit, Improvement, Resource } from './Units';
+import { WorkerImprovement } from './ImprovementsWorker';
 /**
  * Height between -1.0 and 1.0:
  * [-1.00,-0.25) == deep water
@@ -23,6 +24,7 @@ export interface TileData {
     city?: string | null;
     yields?: { [key: string]: number } | null;
     improvement?: Improvement | null;
+    worker_improvement?: WorkerImprovement | null;
     improvementOverlay?: Mesh | null;
     territoryOverlay?: Mesh | null;
     resource?: Resource | null;

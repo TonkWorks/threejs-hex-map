@@ -917,6 +917,13 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                        delete copy[key].model;
 	                        delete copy[key].image;
 	                    }
+	                    else if (key === "worker_improvement") {
+	                        // Create a shallow copy of resource so modifications do not affect the original.
+	                        copy[key] = Object.assign({}, item[key]);
+	                        delete copy[key].model;
+	                        delete copy[key].images;
+	                        delete copy[key].yields;
+	                    }
 	                    else if (key === "clouds" && item[key] === false) {
 	                        // Omit this property.
 	                    }

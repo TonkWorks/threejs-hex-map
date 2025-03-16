@@ -1,8 +1,4 @@
-# threejs-hex-map
-
-[![Build Status](https://travis-ci.org/Bunkerbewohner/threejs-hex-map.svg?branch=master)](https://travis-ci.org/Bunkerbewohner/threejs-hex-map)
-
-A simple 3D hexagonal terrain map based on three.js.
+# Rising Powers
  
 ![Screenshot](examples/random/screenshot.jpg)
 
@@ -20,6 +16,12 @@ https://icons8.com/icon/set/flags/stickers
 
 For an example check out the code in `examples/random`. To test it in the browser
 simply `npm start` and open `http://localhost:3000/examples/random/`.
+
+
+
+## prompting
+map units -- cahtgpt 4.0
+Generate a texture for a Three.js projec, designed to depict a  3D revolutionary era military axe man in a hex map perspective view - scale to 2/3 of image so that it is not cut off
 
 
 ## Packaging to windows

@@ -1,4 +1,6 @@
+import { BuildingMap } from './CityImprovements';
 import { Player, DeclareWarBetweenPlayers } from './GameState';
+import { CreateWorkerImprovement } from './ImprovementsWorker';
 import { TileData } from './interfaces';
 import MapView from './MapView';
 import Unit, { CreateCity, createUnit } from './Units';
@@ -26,7 +28,7 @@ export async function takeTurn(mapView: MapView, player: Player) {
     }
 
     determineStrategy(player);
-    buildEconomy(player);
+    buildEconomy(mapView, player);
 
     if (Object.keys(player.improvements).length < 2 && player.gold >= 100) {
         placeACity(mapView, player);
@@ -43,8 +45,27 @@ export function determineStrategy(player: Player) {
     //
 }
 
-export function buildEconomy(player: Player) {
-    //
+export function buildEconomy(mapView: MapView, player: Player) {
+    // go through cities and set production queues
+    for (const [key, improvement] of Object.entries(player.improvements)) {
+        if (improvement.production_queue.length === 0) {
+            let rec = getRecommendedEconomic(improvement, player);
+            if (rec !== "") {
+                improvement.production_queue = [rec];
+                if (Object.keys(BuildingMap).includes(rec)) {
+                    improvement.work_building = true;                
+                }
+            }
+        }
+    }
+    // go through workers
+    let tilesBeingWorked: TileData[] = [];
+    for (const [key, unit] of Object.entries(player.units)) {
+        if (unit.type === "worker") {
+            let t = findTargetForWorker(mapView, mapView.getTile(unit.tileInfo.q, unit.tileInfo.r), tilesBeingWorked);
+            tilesBeingWorked.push(t);
+        }
+    }
 }
 
 export function buildArmy(mapView: MapView, player: Player) {
@@ -175,6 +196,80 @@ export async function attack(mapView: MapView, player: Player, targets: TileData
     }
   }
   
+
+// General AI
+function getRecommendedEconomic(improvement: any, player: Player) {
+    // if not at least 1 worker build a worker
+    if (!hasEnoughWorkers(player)) {
+        return "worker";
+    }
+
+    // available buildings
+    let available_buildings = [];
+    for (const [key, building] of Object.entries(BuildingMap)) {
+        if (key in improvement.cityBuildings) {
+            continue;
+        }
+        available_buildings.push(key);
+    }
+
+    const randomIndex = Math.floor(Math.random() * available_buildings.length);
+    if (available_buildings.length > 0) {
+        return available_buildings[randomIndex];
+    }
+
+    //default 
+    return ""; // or gold?
+}
+
+export function findTargetForWorker(mapView: MapView, tile: TileData, tilesBeingWorked: TileData[]) {
+    const tiles = mapView.getTileGrid().neighbors(tile.q, tile.r, 6)
+    let tt = mapView.getBestYield(tiles, tile);
+
+    for (const t of tt) {
+        if (t.worker_improvement) {
+            continue;
+        }
+        if (t.improvement) {
+            continue;
+        }
+        if (t.owner === undefined) {
+            continue;
+        }
+        if (t.owner !== tile.unit.owner) {
+            continue;
+        }
+        console.log(tilesBeingWorked);
+        if (tilesBeingWorked.includes(t)) {
+            console.log("AA");
+            continue;
+        }
+
+        let options = ["farm", "mine"];
+        let randomTypeIndex = Math.floor(Math.random() * options.length);
+        let type = options[randomTypeIndex];
+
+        let target = t;
+        if (tile !== target) {
+            mapView.moveUnit(tile, t);
+        } else {
+            mapView.addWorkerImprovementToMap(CreateWorkerImprovement(type), t);
+        }
+        return t;
+    }
+}
+
+function hasEnoughWorkers(player: Player) {
+    let count = 0;
+    for (const [key, unit] of Object.entries(player.units)) {
+        if (unit.type === "worker") {
+            count += 1;
+        }
+    }
+    return count >= 1;
+}
+
+// General
 function findTargetForUnit(currentTile: TileData, targets: TileData[]) {
     // spice it up by removing a random target
     // TODO: add more spice (maybe first, second, third closest?)
