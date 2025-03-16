@@ -33,7 +33,8 @@ cd election
 export PATH=$PATH:/usr/lib/wine
 rm -fr build
 electron-packager dist risingpowers --platform=win32 --arch=x64 --out build/win --overwrite --icon dist/assets/branding/icon.ico
-zip -r build/a.zip build/win/risingpowers-win32-x64/
+(cd build/win/risingpowers-win32-x64 && zip -r ../a.zip .)
+
 # right click download
 # wait like 2 minutes to finish
-# send to -> compress in folder that has .exe upload to steamworks.
+# https://partner.steamgames.com/apps/depotuploads/3486440

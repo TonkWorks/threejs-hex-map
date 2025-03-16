@@ -239,9 +239,7 @@ export function findTargetForWorker(mapView: MapView, tile: TileData, tilesBeing
         if (t.owner !== tile.unit.owner) {
             continue;
         }
-        console.log(tilesBeingWorked);
         if (tilesBeingWorked.includes(t)) {
-            console.log("AA");
             continue;
         }
 

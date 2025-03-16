@@ -1,7 +1,9 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, Menu } = require('electron')
 // const steamworks = require('steamworks.js')
 
 function createWindow() {
+    Menu.setApplicationMenu(null);
+
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,

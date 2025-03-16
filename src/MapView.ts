@@ -899,7 +899,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     toast({ text, icon, onClick }: { text: string; icon: string; onClick: () => void }): void {
-        this.playSound(asset("sounds/ui/notification.mp3"));
+        // this.playSound(asset("sounds/ui/notification.mp3"));
         new Toastify({
             text: text,
             position: "left",
@@ -2424,6 +2424,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         const nation = Nations[player.nation];
 
         if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+            this.checkVictoryConditions();
             this.showEndTurnInActionPanel();
             this.showTurnBanner();
         } else {
@@ -2610,7 +2611,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     updateCityLabel(t: TileData) {
         let improvement = t.improvement;
-        let nation = Nations[improvement.owner];
+        let player = this._gameState.players[improvement.owner];
+        let nation = Nations[player.nation];
         const newPopulation = Math.floor(improvement.population);
         const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
         let label = `<span class="city-label" data-target="${improvement.id}">${img} ${newPopulation} ${improvement.name}</span>`;
@@ -3626,7 +3628,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         const currentPlayer = this._gameState.players[this._gameState.currentPlayer];
         if (Object.keys(currentPlayer.improvements).length === 0) {
             console.log("Lost!");
-            let info = `<h1 class="text-info">Defeat!</h1>`;
+            let info = `<h1>Defeat!</h1>`;
+            info += `<p>`;
+            info += `<img class="event-img" src="../../assets/ui/events/defeat.png">`;
+            info += `</p>`;
+            this.playSound(asset("sounds/ui/violin-lose.mp3"));
             this.showMenu(info)
             return;
         }
@@ -3659,8 +3665,12 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
         }
 
-        console.log("Winner!");
-        let info = `<h1 class="text-info">Victory!</h1>`;
+        console.log("Victory!");
+        let info = `<h1>Victory!</h1>`;
+        info += `<p>`;
+        info += `<img class="event-img" src="../../assets/ui/events/victory.png">`;
+        info += `</p>`;
+        this.playSound(asset("sounds/ui/violin-win.mp3"));
         this.showMenu(info);
     }
 
