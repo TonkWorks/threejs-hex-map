@@ -11,6 +11,7 @@ export interface Player {
     image: string;
     taxRate: number;
     cityIndex: number;
+    isBarbarian?: boolean;
     units: {  [key: string]: any };
     improvements: {  [key: string]: any};
     diplomatic_actions: { [key: string]: any};
@@ -121,6 +122,15 @@ export function InitGameState(): GameState {
 
         playersList = [player1, player2, player3];
     }
+
+    let barbarianPlayer = createPlayer();
+    barbarianPlayer.name = 'barbarians';
+    barbarianPlayer.nation = 'USA';
+    barbarianPlayer.color = '#FF0000'; // red
+    barbarianPlayer.isBarbarian = true;
+    barbarianPlayer.isDefeated = true;
+    playersList.push(barbarianPlayer);
+
 
     const players: { [key: string]: Player } = {};
     for (const player of  playersList) {

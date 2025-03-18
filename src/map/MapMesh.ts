@@ -189,7 +189,8 @@ export default class MapMesh extends Group implements TileDataSource {
 
     water: Mesh
     waterMaterial: RawShaderMaterial
-    private land: Mesh
+    land: Mesh
+    landMaterial: RawShaderMaterial
     private mountains: Mesh
     private trees: Forests
     private units: Mesh
@@ -459,6 +460,7 @@ export default class MapMesh extends Group implements TileDataSource {
         })
 
         this.land = new Mesh(geometry, material)
+        this.landMaterial = material;
         this.land.frustumCulled = false
         this.land.layers.enable(10)
 

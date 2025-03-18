@@ -36,7 +36,7 @@ import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
 import { BuildingMap } from './CityImprovements';
 import { CreateWorkerImprovement, WorkerImprovement } from './ImprovementsWorker';
-import { Triangle } from './three';
+import { RawShaderMaterial, Triangle } from './three';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -420,6 +420,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     updateAllVisilibility() {
         let tiles = this.getTileGrid().toArray();
+        let revealed_goodie_hut = null;
+
         for (const tile of tiles) {
             if (tile.clouds) {
                 continue;
@@ -427,11 +429,18 @@ export default class MapView implements MapViewControls, TileDataSource {
             if (tile.fog == true) {
                 if (tile.unit !== undefined) {
                     tile.unit.model.visible = false;
+                    if (tile.unit.type === "goodie_hut") {
+                        tile.unit.model.visible = true;
+                    }
                 }
             }
             if (tile.fog == false) {
                 if (tile.unit !== undefined) {
+                    if (tile.unit.type === "goodie_hut" && tile.unit.model.visible === false) {
+                        revealed_goodie_hut = tile;
+                    }
                     tile.unit.model.visible = true;
+                    
                 }
                 if (tile.improvement !== undefined) {
                     tile.improvement.model.visible = true;
@@ -452,6 +461,27 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
         }
         this._renderMinimap = true;
+
+        if (revealed_goodie_hut) {
+            let sound = "";
+            for (let tile of tiles) {
+                if (tile.unit && tile.unit.type === "goodie_hut") {
+                    sound = asset("sounds/units/rank_up.mp3");
+                }
+            }
+            if (sound !== "") {
+                this.playSound(sound);
+            }
+            const mm = this;
+            this.toast({
+                icon: "../../assets/map/icons/star.png",
+                text: "Goodie Hut Discovered",
+                onClick: function () {
+                    mm.selectTile(revealed_goodie_hut);
+                    mm.focus(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
+                }
+            });
+        }
     }
     addUnitToMap(unit: Unit, tile: TileData, fromSaved: boolean = false) {
         // Bad Cases
@@ -899,6 +929,9 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // set up players initial locations
         for (const [key, player] of Object.entries(this._gameState.players)) {
+            if (player.isBarbarian) {
+                continue
+            }
             const startTile = this.getRandomTile(true);
             const improvement = CreateCity(player)
             this.addImprovementToMap(improvement, startTile);
@@ -911,6 +944,22 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.selectTile(startTile);
             }
         }
+        
+
+        // set up good huts / barbarians
+        amount = 200;
+        // if (new_game_settings.resources) {
+        //     amount = new_game_settings.resources;
+        // }
+        for (let i = 0; i < amount; i++) {
+            let tile = this.getRandomTile(false);
+            if (tile && tile.unit === undefined && !isMountain(tile.height) && !isWater(tile.height)) {
+                // get random from resource map
+
+                this.addUnitToMap(createUnit("goodie_hut", this._gameState.players['barbarians']), tile);
+            }
+        }
+
         this.updateGlobalFog();
         this.addUnitSelectors();
         this.showTurnBanner();
@@ -970,10 +1019,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         //     (this._mapMesh as MapMesh).waterMaterial.uniforms.sineTime.value = timestamp / 900;
         //     (this._mapMesh as MapMesh).waterMaterial.needsUpdate = true;
         // }
-        // if (this._mapMesh && (this._mapMesh as MapMesh).landMaterial) {
-        //     (this._mapMesh as MapMesh).landMaterial.uniforms.sineTime.value = timestamp / 10;
-        //     (this._mapMesh as MapMesh).landMaterial.needsUpdate = true;
-        // }
+        if (this._mapMesh && (this._mapMesh as MapMesh).land) {
+            let l = (this._mapMesh as MapMesh).landMaterial;
+            l.uniforms.sineTime.value = dtS;
+            l.needsUpdate = true;
+        }
         for (const ps of ParticleSystems) {
             ps.update(dtS);
             if (!ps.isActive()) {
@@ -1491,12 +1541,24 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         currentTile.unit.moving = true;
 
+        // check for goodie hut
+        if (nextMovementTile.unit !== undefined &&
+            currentTile.unit !== undefined &&
+            currentTile.unit.owner !== nextMovementTile.unit.owner &&
+            nextMovementTile.unit.type === "goodie_hut"
+        ) {
+            console.log("goodie hut");
+            this.goodieHut(currentTile, nextMovementTile)
+            return;
+        }
+
         // check for battling a unit
         if (nextMovementTile.unit !== undefined &&
             currentTile.unit !== undefined &&
             currentTile.unit.owner !== nextMovementTile.unit.owner
         ) {
             console.log("battle");
+            console.log(nextMovementTile.unit);
             this.battle(currentTile, nextMovementTile)
             return;
         }
@@ -1586,16 +1648,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         if (nextMovementTile.unit.owner === this.gameState.currentPlayer) {
-            this.setFogAround(nextMovementTile, 1, false);
+            //this.setFogAround(nextMovementTile, 1, false);
+            this.updateGlobalFog();
         }
 
         animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y, .2, easeOutQuad, () => {
             if (nextMovementTile.unit) {
                 nextMovementTile.unit.moving = false;
-                if (playerInitiated) {
-                    this.updateGlobalFog();
-                };
-                this.moveUnit(nextMovementTile, targetTile);
+                nextMovementTile.unit.owner
             }
         });
     }
@@ -1691,6 +1751,72 @@ export default class MapView implements MapViewControls, TileDataSource {
                 }
             }
         });
+    }
+
+    goodieHut(currentTile: TileData, targetTile: TileData) {
+
+        targetTile.unit.model.clear();
+        targetTile.unit.model.parent.remove(targetTile.unit.model);
+        let barb = this.getPlayer(targetTile.unit.owner);
+        delete barb.units[targetTile.unit.id];
+        targetTile.unit = undefined;
+
+
+        // All the good stuff
+
+        let player = this.getPlayer(currentTile.unit.owner);
+
+        let events = [
+            "gold",
+            "research",
+            "pop",
+        ]
+        let sound = asset("sounds/ui/buy.mp3");
+        let notification_text = `Gained 100 gold from a goodie hut.`;
+        let notification_icon = `../../assets/map/icons/star.png`;
+
+        let event = events[Math.floor(Math.random() * events.length)];
+        if (event === "research") {
+            if (player.research.current !== "") {
+                let tech = Technologies.get(player.research.current);
+                this.completeResearch(player, tech);
+                notification_text = `Research of ${tech.name} greatly advanced.`;
+                player.research.progress = 0;
+            } else {
+                event = "gold";
+            }
+        }
+        if (event === "pop") {
+            let cityKeys = Object.keys(player.improvements);
+            let cityIndex = Math.floor(Math.random() * cityKeys.length);
+            let city = player.improvements[cityKeys[cityIndex]];
+
+            city.population += 1;
+            let tt = this.getTile(city.tileInfo.q, city.tileInfo.r);
+            this.updateCityLabel(tt);
+            notification_text = `1 population added to ${city.name}`;
+        }
+        if (event === "gold") {
+            player.gold += 100;
+        }
+
+        if (this.gameState.currentPlayer === currentTile.unit.owner) {
+            // create sound and notification
+            const worldPosCur = qrToWorld(targetTile.q, targetTile.r);
+            const mm = this;
+            this.playSound(sound, worldPosCur);
+            this.toast({
+                icon: notification_icon,
+                text: notification_text,
+                onClick: function () {
+                    mm.selectTile(targetTile);
+                    mm.focus(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
+                }
+            });
+            this.updateResourcePanel();
+            this.updateGameStatePanel();
+        }
+        this.moveUnit(currentTile, targetTile);
     }
 
     killUnit(tile: TileData) {
@@ -2352,7 +2478,7 @@ export default class MapView implements MapViewControls, TileDataSource {
       getYieldIconPath(yieldType: string): string {
         switch (yieldType) {
           case 'food':
-            return '../../assets/ui/resources/population.png';
+            return '../../assets/ui/resources/food.png';
           case 'gold':
             return '../../assets/ui/resources/gold.png';
           case 'production':
@@ -2803,29 +2929,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             let tech = Technologies.get(player.research.current);
             if (tech.cost <= player.research.progress) {
                 player.research.progress -= tech.cost;
-                player.research.researched[player.research.current] = true;
-                player.research.current = "";
-                if (this._gameState.playersTurn === this._gameState.currentPlayer) {
-                    const mm = this;
-                    this.toast({
-                        icon: "../../assets/map/icons/star.png",
-                        text: `${tech.name} research complete!`,
-                        onClick: function () {
-                            mm.pickResearch();
-                        }
-                    });
-                    let info = DisplayResearchFinished(tech);
-                    this.CloseMenu();
-                    this.showMenu(info, "center");
-                    if (tech.quote_audio) {
-                        this.playSound(asset(tech.quote_audio));
-                    }
-                } else {
-                    let tech = AIChooseResearch();
-                    if (tech !== undefined) {
-                        player.research.current = tech.id;
-                    }
-                }
+                this.completeResearch(player, tech);
             }
         }
 
@@ -2844,6 +2948,32 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.updateUnitInfoForTile(this.selectedTile);
         if (this._gameState.playersTurn !== this._gameState.currentPlayer) {
             takeTurn(this, player);
+        }
+    }
+
+    completeResearch(player: Player, tech: Technology) {
+        player.research.researched[player.research.current] = true;
+        player.research.current = "";
+        if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+            const mm = this;
+            this.toast({
+                icon: "../../assets/map/icons/star.png",
+                text: `${tech.name} research complete!`,
+                onClick: function () {
+                    mm.pickResearch();
+                }
+            });
+            let info = DisplayResearchFinished(tech);
+            this.CloseMenu();
+            this.showMenu(info, "center");
+            if (tech.quote_audio) {
+                this.playSound(asset(tech.quote_audio));
+            }
+        } else {
+            let tech = AIChooseResearch();
+            if (tech !== undefined) {
+                player.research.current = tech.id;
+            }
         }
     }
 
@@ -3042,7 +3172,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let difficulty = 3;
         gpt += difficulty;
-        info += `<tr><td>difficulty</td><td>+${difficulty}</td></tr>`;
+        info += `<tr><td>Difficulty</td><td>+${difficulty}</td></tr>`;
 
         info += `</table>`;
         gpt = Math.round(gpt);
@@ -3106,7 +3236,20 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let taxRate = (player.taxRate * 100).toFixed(0) + '%';
 
-        let pop_icon = `<img src="../../assets/ui/resources/population.png" style="padding-right: 5px; width: 20px; height: 20px;"/>`
+        let happiness_icon = ``
+        if (happiness <= -10) {
+            happiness_icon = `icons8-angry-48.png`
+        } else if (happiness < -4) {
+            happiness_icon = `icons8-surprised-48.png`
+        } else if (happiness < 1) {
+            happiness_icon = `icons8-boring-48.png`
+        } else if (happiness < 10) {
+            happiness_icon = `icons8-happy-48.png`
+        } else {
+            happiness_icon = `icons8-smiling-48.png`
+        }
+        happiness_icon = `<img src="../../assets/ui/resources/happiness/${happiness_icon}" style="padding-left: 0px; padding-right: 5px; width: 20px; height: 20px;"/>`
+
         let gold_icon = `<img src="../../assets/ui/resources/gold.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
         let taxes_icon = `<img src="../../assets/ui/resources/taxes.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
 
@@ -3135,7 +3278,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let government = GovernmentsMap[player.government];
 
         let taxes = `${taxes_icon}<span class="taxes highlight-hover">${government.name}</span>`
-        let info = `<span class="sub" id="sub-pop">${pop_icon} ${happiness}</span><span class="sub" id="sub-gold">${gold_icon} ${player.gold} (${goldPerTurnStr})</span><span class="sub" id="sub-research" style="padding-right: 10px;">${research_icon} (+${rpt})</span> ${research}  ${taxes} ${resourcesString}`;
+        let info = `<span class="sub" id="sub-pop">${happiness_icon} ${happiness}</span><span class="sub" id="sub-gold">${gold_icon} ${player.gold} (${goldPerTurnStr})</span><span class="sub" id="sub-research" style="padding-right: 10px;">${research_icon} (+${rpt})</span> ${research}  ${taxes} ${resourcesString}`;
         this.resourcePanel.innerHTML = info;
     }
 
@@ -3255,6 +3398,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         let info = ``
         for (const [key, player] of Object.entries(this._gameState.players)) {
+            if (player.isBarbarian) {
+                continue;
+            }
             // const units = Object.keys(player.units).length;
             // const cities = Object.keys(player.improvements).length;
             const nation = Nations[player.nation];
@@ -3676,6 +3822,10 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     checkForClearanceToAttack(player1: Player, player2: Player): boolean {
+        console.log(player2)
+        if (player2.isBarbarian) {
+            return true;
+        }
         const nation = Nations[player2.nation];
         if (player1.diplomatic_actions[player2.name].hasOwnProperty("war")) {
             return true;
@@ -3899,7 +4049,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
 
         for (const [key, player] of Object.entries(this._gameState.players)) {
-            if (player.isDefeated === false && player.name !== this._gameState.currentPlayer) {
+            if (player.isDefeated === false && player.isBarbarian !== false && player.name !== this._gameState.currentPlayer) {
                 return
             }
         }

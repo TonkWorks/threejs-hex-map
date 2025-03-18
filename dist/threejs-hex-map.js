@@ -318,6 +318,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                    transparent: false
 	                });
 	                this.land = new three_1.Mesh(geometry, material);
+	                this.landMaterial = material;
 	                this.land.frustumCulled = false;
 	                this.land.layers.enable(10);
 	                this.add(this.land);
@@ -1326,7 +1327,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    }
 
 	    // FOW
-	    gl_FragColor = gl_FragColor * (vFogOfWar > 0.0 && vHidden == 0.0 ? 0.66 : 1.0);
+	    gl_FragColor = gl_FragColor * (vFogOfWar > 0.0 && vHidden == 0.0 ? 0.5 : 0.95);
 
 	    // Map Texture for hidden tiles
 	    if (vHidden > 0.0) {

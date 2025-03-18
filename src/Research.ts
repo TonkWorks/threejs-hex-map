@@ -336,19 +336,19 @@ export function DisplayResearchFinished(tech: Technology): string {
             benefit += `Unlocks: ${t}`;
         }
     }
-    let research = `<span class="research highlight-hover action small">Pick a new research</action>`
+    let research = `<span class="research highlight-hover action small">Continue</action>`
 
     let info = `
         <button class="close-button" onclick="CloseMenu();">&times;</button>
-        <h3>Research Completed: ${tech.name}</h3>
-        <p style="quote">${tech.quote}</p>
+        <div class="research_complete_title">${tech.name}</div>
+        <div class="research_complete">${tech.quote}</div>
         <div style="text-align: center;">
             <img id="menu-research-img" src="${tech.image}">
         </div>
         <div>
-            <h5>Benefits:</br>
+            <div class="research_complete">Benefits:</br>
                 ${benefit}
-            </h5>
+            </div>
         </div>
         ${research}
         

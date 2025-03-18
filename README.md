@@ -23,6 +23,12 @@ simply `npm start` and open `http://localhost:3000/examples/random/`.
 map units -- cahtgpt 4.0
 Generate a texture for a Three.js projec, designed to depict a  3D revolutionary era military axe man in a hex map perspective view - scale to 2/3 of image so that it is not cut off
 
+Generate a texture for a game Three.js project, designed to depict a 3D c 5 4x iso-style of a farm a hex map perspective view - scale to 2/3 of image
+https://chatgpt.com/c/67d9a3f0-0ae4-8010-b8a0-08d7dd72cd48
+
+
+
+
 
 ## Packaging to windows
 

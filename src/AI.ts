@@ -10,9 +10,15 @@ function sleep(ms: number) {
 }
 
 export async function takeTurn(mapView: MapView, player: Player) {
+    if (player.isBarbarian === true) {
+        // todo unit movements/attacks
+    }
+
     if (player.isDefeated === true) {
+        mapView.endTurn();
         return;
     }
+
     // Generate a random delay between 0.1 and 1.5 seconds
     const randomDelay = Math.random() * (300 - 100) + 100;
     await sleep(randomDelay);
