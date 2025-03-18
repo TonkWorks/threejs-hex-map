@@ -31,34 +31,4 @@ export const GovernmentsMap: { [key: string]: Government } = {
       description: "A government led by religious leaders, where divine guidance is the ultimate policy.",
       goldMultiplier: 1.0,
     },
-    despotismDeluxe: {
-      name: "Despotism Deluxe",
-      description: "Imagine a dictatorship with a twist: mandatory weekly karaoke sessions and lavish, over-the-top parties.",
-      goldMultiplier: 1.3,
-    },
-    bureaucracyBonanza: {
-      name: "Bureaucracy Bonanza",
-      description: "A government so mired in paperwork and red tape that every decision requires three forms and a committee meeting—if you can get past the filing system!",
-      goldMultiplier: 0.8,
-    },
-    technocracy2: {
-      name: "Technocracy 2.0",
-      description: "A futuristic government run entirely by computers and AI, where citizens wonder if they're in a simulation.",
-      goldMultiplier: 1.4,
-    },
-    hipsterocracy: {
-      name: "Hipsterocracy",
-      description: "A quirky regime where local coffee shop owners with vintage beards and ironic mustaches decide the fate of the nation.",
-      goldMultiplier: 1.0,
-    },
-    meritocracy: {
-      name: "Meritocracy",
-      description: "Only the smartest—and possibly the meme-savvy—citizens earn a seat at the leadership table.",
-      goldMultiplier: 1.2,
-    },
-    imperialPlutocracy: {
-      name: "Imperial Plutocracy",
-      description: "A system where the super-rich call the shots, enjoying endless luxury while handing out selective tax breaks.",
-      goldMultiplier: 1.5,
-    }
   };

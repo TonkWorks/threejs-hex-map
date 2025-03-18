@@ -25,6 +25,7 @@ export interface Unit {
     offset: number;
     land: boolean;
     water: boolean;
+    orders: string; // Orders for the unit,
     movement: number; // Remaining movement points
     movementOrders?: {
         q: number;
@@ -388,6 +389,7 @@ export function createUnit(type: string, player: Player): Unit {
         id: unitID,
         type: type,
         name: name,
+        orders: "",
         health: config.stats.health_max,
         health_max: config.stats.health_max,
         movement: config.stats.movement_max,

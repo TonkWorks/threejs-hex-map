@@ -4,7 +4,8 @@ import {
     ShaderMaterial, Points,
     AdditiveBlending,
     Vector2,
-    Mesh
+    Mesh,
+    RingBufferGeometry
 } from 'three';
 import { ParticleSystem, ParticleSystems } from './ParticleSystem';
 
@@ -822,20 +823,21 @@ export class MeshSurfaceSampler {
   export function SelectionParticlesFromGeometry(
     scene: Scene,
     mesh: Mesh, // Using a mesh to sample its surface (e.g. the ground)
-    verticalDrift: number = 0.2 // Base upward speed for the initial dust kick
+    verticalDrift: number = .3 // Base upward speed for the initial dust kick
   ): ParticleSystem {
     // Build a surface sampler for the mesh's geometry.
     const sampler = new MeshSurfaceSampler(mesh).build();
   
     const selectParticle = new ParticleSystem(scene, {
       maxParticles: 15000,
-      particleSize: 0.55,
-      lifetime: 0.8, // Slightly longer lifetime to let the effect evolve
-      spawnRate: 800,
+      particleSize: .55,
+      lifetime: .8, // Slightly longer lifetime to let the effect evolve
+      spawnRate: 5000,
       // spawnPosition and spawnArea aren’t used because we sample from the mesh.
       spawnPosition: new Vector3(),
       spawnArea: new Vector3(),
-      gravity: 0.1, // Gravity (a downward acceleration) that slows the upward burst
+      duration: .25,
+      gravity: .05, // Gravity (a downward acceleration) that slows the upward burst
       shape: 'circle', // or 'hexagon' if your shader supports it.
       // Material options to get a glowing, additive-blended effect:
     //   materialOptions: {
@@ -865,16 +867,16 @@ export class MeshSurfaceSampler {
           // - A small random horizontal push to scatter dust
           // - A stronger upward kick to simulate the burst from the ground
           const initialVelocity = new Vector3(
-            (Math.random() - 0.5) * 0.2,  // random horizontal (x)
-            (Math.random() - 0.5) * 0.2,  // random horizontal (y)
-            verticalDrift + Math.random() * 0.2 // upward (z) with randomness
+            (Math.random() - 0.5) * 0.5,  // random horizontal (x)
+            (Math.random() - 0.5) * 0.5,  // random horizontal (y)
+            verticalDrift + Math.random() * 0.25 // upward (z) with randomness
           );
   
           system.addParticle({
             position: new Vector3(point.x, point.y, point.z),
             velocity: initialVelocity,
             // Start with a bright, warm color (like a glow from the ground)
-            startColor: new Color(1, 1, 0.8),
+            startColor: new Color(1, .1, 0.3),
             // Fade toward a dustier, orange hue as the particle rises
             endColor: new Color(1, 0.6, 0.2),
             size: system.options.particleSize * (0.8 + Math.random() * 0.8),
@@ -882,7 +884,7 @@ export class MeshSurfaceSampler {
             lifetime: system.options.lifetime * (0.8 + Math.random() * 0.6),
             rotation: 0,
             angularVelocity: 0,
-            shapeType: 1, // Adjust if you want a different shape.
+            shapeType: 0, // Adjust if you want a different shape.
             data: {} // No extra data needed with integrated velocity.
           });
         }
@@ -917,6 +919,108 @@ export class MeshSurfaceSampler {
     return selectParticle;
   }
   
+
+
+  export function HexDust(
+    scene: Scene,
+    position: Vector3,
+    radius: number = 1,
+    verticalDrift: number = .3 // Base upward speed for the initial dust kick
+  ): ParticleSystem {  
+    const selectParticle = new ParticleSystem(scene, {
+      maxParticles: 15000,
+      particleSize: .55,
+      lifetime: .8, // Slightly longer lifetime to let the effect evolve
+      spawnRate: 5000,
+      spawnPosition: position,
+      spawnArea: new Vector3(),
+      duration: .25,
+      gravity: .05, // Gravity (a downward acceleration) that slows the upward burst
+      shape: 'circle', // Using hexagon shape now
+      onSpawn: (system, deltaTime) => {
+        const spawnCount = Math.min(
+          Math.floor(system.options.spawnRate * deltaTime),
+          system.options.maxParticles - system.particles.length
+        );
+  
+         // Define the hexagon vertices
+        const hexVertices: Vector2[] = [];
+        for (let i = 0; i < 6; i++) {
+           const angle = (2 * Math.PI * i) / 6 + Math.PI / 2; // Add Math.PI/2 for rotation
+           hexVertices.push(new Vector2(radius * Math.cos(angle), radius * Math.sin(angle)));
+         }
+
+      for (let i = 0; i < spawnCount; i++) {
+        // Choose a random edge (side) of the hexagon
+        const side = Math.floor(Math.random() * 6);
+        const t = Math.random(); // Random position along this side (0 to 1)
+        
+        // Get the vertices of this side
+        const v1 = hexVertices[side];
+        const v2 = hexVertices[(side + 1) % 6];
+        
+        // Interpolate between vertices to get a point along the edge
+        const offsetX = v1.x + (v2.x - v1.x) * t;
+        const offsetY = v1.y + (v2.y - v1.y) * t;
+
+        const initialVelocity = new Vector3(
+          (Math.random() - 0.5) * 0.5,  // random horizontal (x)
+          (Math.random() - 0.5) * 0.5,  // random horizontal (y)
+          verticalDrift + Math.random() * 0.25 // upward (z) with randomness
+        );
+  
+        system.addParticle({
+            // Use the sampled point from the ring geometry
+            position: new Vector3(
+              system.options.spawnPosition.x + offsetX,
+              system.options.spawnPosition.y + offsetY,
+              system.options.spawnPosition.z
+            ),
+            velocity: initialVelocity,
+            // Start with a bright, warm color (like a glow from the ground)
+            startColor: new Color(1, .1, 0.3),
+            // Fade toward a dustier, orange hue as the particle rises
+            endColor: new Color(1, 0.6, 0.2),
+            size: system.options.particleSize * (0.8 + Math.random() * 0.8),
+            age: 0,
+            lifetime: system.options.lifetime * (0.8 + Math.random() * 0.6),
+            rotation: 0,
+            angularVelocity: 0,
+            shapeType: 0, // Adjust if you want a different shape.
+            data: {} // No extra data needed with integrated velocity.
+          });
+        }
+      },
+      onUpdateParticle: (particle, deltaTime, system) => {
+        // Increase the particle's age.
+        particle.age += deltaTime;
+  
+        // Update the particle's position by integrating its velocity.
+        // This now includes both the initial dust kick and the horizontal spread.
+        particle.position.add(particle.velocity.clone().multiplyScalar(deltaTime));
+  
+        // Apply a gravity effect (reducing the upward velocity over time).
+        particle.velocity.z -= system.options.gravity * deltaTime;
+  
+        // Update the particle's size:
+        // It can expand slightly as it rises before fading out.
+        const progress = particle.age / particle.lifetime;
+        particle.size =
+          system.options.particleSize *
+          (1 + progress * 0.5) * // Slight expansion over time.
+          (1 - progress);       // Then taper off.
+  
+        // Fade the particle's color over time.
+        // Using a squared progress for a smooth, nonlinear transition.
+        const colorProgress = particle.age / particle.lifetime;
+        particle.startColor.lerp(particle.endColor, colorProgress * colorProgress);
+      }
+    });
+  
+    ParticleSystems.push(selectParticle);
+    return selectParticle;
+  }
+
 // Civilization VI inspired particle effects for isometric hex map
 export class MainParticleEffects {
     // Static methods to create different effects

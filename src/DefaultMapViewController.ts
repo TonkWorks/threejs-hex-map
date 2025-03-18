@@ -103,7 +103,7 @@ export default class Controller implements MapViewController {
         if (e.keyCode == 32) { // SPACE BAR
             console.log(`center view on QR(${this.selectedQR.q},${this.selectedQR.r})`)
             //this.controls.focus(this.selectedQR.q, this.selectedQR.r)
-            this.panCameraTo(this.selectedQR, 600 /*ms*/)
+            this.PanCameraTo(this.selectedQR, 600 /*ms*/)
         }
     }
 
@@ -178,7 +178,7 @@ export default class Controller implements MapViewController {
         this.controls.setScrollDir(0, 0)
     }
 
-    panCameraTo(qr: QR, durationMs: number) {
+    PanCameraTo(qr: QR, durationMs: number) {
         const from = this.controls.getCamera().position.clone()
         const to = this.controls.getCameraFocusPosition(qr)
         this.addAnimation(new Animation(durationMs, (a) => {
@@ -190,7 +190,7 @@ export default class Controller implements MapViewController {
         if (!this.lastDrag || this.lastDrag.length() < 0.1) {
             const mousePos = screenToWorldMiniMap(e.clientX, e.clientY, this.controls.getMiniMapCamera())
             const tile = this.controls.pickTile(mousePos)
-            this.panCameraTo(tile, 600 /*ms*/)
+            this.PanCameraTo(tile, 600 /*ms*/)
         }
 
         this.mouseDownPos = null // end drag

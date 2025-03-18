@@ -2,6 +2,7 @@ import { TileData, QR } from './interfaces';
 import { Vector2, Vector3, Camera } from 'three';
 
 interface MapViewController {
+    [x: string]: any;
     init(controls: MapViewControls, canvas: HTMLCanvasElement): void;
 }
 
