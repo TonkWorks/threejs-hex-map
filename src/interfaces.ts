@@ -44,6 +44,12 @@ export function isHill(height: Height) {
     return height >= 0.375 && height < 0.75
 }
 
+export function isForest(t: TileData) {
+    if (t.treeIndex !== undefined) {
+        return true
+    }
+}
+
 export function isMountain(height: Height) {
     return height >= 0.75
 }

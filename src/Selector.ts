@@ -184,7 +184,7 @@ export class WhiteOutline implements Selector {
             transparent: true,
             opacity: 0.75,
             emissive: 0xffffff,
-            emissiveIntensity: 10, // Adjust glow strength
+            emissiveIntensity: 100, // Adjust glow strength
           }))
       // selector.rotateX(-1*Math.PI / 4.3);
       // selector.rotateZ(Math.PI/2)

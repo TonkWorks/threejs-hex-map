@@ -218,7 +218,7 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
     mapView.onTileSelected = (tile: TileData) => {
         // uncover tiles around selection
-        setFogAround(mapView, tile,  2, false, false)
+        // setFogAround(mapView, tile,  2, false, false)
         // update unit window
     }
 

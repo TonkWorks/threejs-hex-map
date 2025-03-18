@@ -506,6 +506,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    exports.isLand = isLand;
 	    exports.isWater = isWater;
 	    exports.isHill = isHill;
+	    exports.isForest = isForest;
 	    exports.isMountain = isMountain;
 	    function isLand(height) {
 	        return height >= 0.0 && height < 0.75;
@@ -515,6 +516,11 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    }
 	    function isHill(height) {
 	        return height >= 0.375 && height < 0.75;
+	    }
+	    function isForest(t) {
+	        if (t.treeIndex !== undefined) {
+	            return true;
+	        }
 	    }
 	    function isMountain(height) {
 	        return height >= 0.75;
@@ -899,6 +905,43 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	            return Grid.NEIGHBOR_QRS.map(qr => {
 	                return this.get(q + qr.q, r + qr.r);
 	            });
+	        }
+	        // Add this method to your TileGrid class
+	        line(fromQ, fromR, toQ, toR) {
+	            const result = [];
+	            // Calculate the distance between the points
+	            const distance = this.distance(fromQ, fromR, toQ, toR);
+	            // If the points are the same, return just that tile
+	            if (distance === 0) {
+	                const tile = this.get(fromQ, fromR);
+	                return tile ? [tile] : [];
+	            }
+	            // For each step along the line
+	            for (let i = 0; i <= distance; i++) {
+	                // Calculate the interpolated position
+	                const t = distance === 0 ? 0.0 : i / distance;
+	                // Linear interpolation between the two points
+	                const q = Math.round(fromQ + (toQ - fromQ) * t);
+	                const r = Math.round(fromR + (toR - fromR) * t);
+	                // Get the cube coordinates (q, r, s where q + r + s = 0)
+	                // In cube coordinates, s = -q - r
+	                const s = -q - r;
+	                // Get the tile at this position
+	                const tile = this.get(q, r);
+	                if (tile) {
+	                    result.push(tile);
+	                }
+	            }
+	            return result;
+	        }
+	        // Helper method to calculate distance between two hex coordinates
+	        // Add this if you don't already have it
+	        distance(q1, r1, q2, r2) {
+	            // In cube coordinates, s1 = -q1 - r1 and s2 = -q2 - r2
+	            const s1 = -q1 - r1;
+	            const s2 = -q2 - r2;
+	            // The distance is the maximum of the absolute differences
+	            return Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(s1 - s2));
 	        }
 	        //
 	        exportData(excludedProperties = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]) {

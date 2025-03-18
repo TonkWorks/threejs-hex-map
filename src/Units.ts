@@ -132,7 +132,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
         geometry: { width: 4/3, height: 2/3 },
         stats: {
             health_max: 10,
-            movement_max: 3,
+            movement_max: 2,
             attack: 5,
             defence: 0,
             attack_range: 1,
@@ -328,8 +328,8 @@ export function createUnit(type: string, player: Player): Unit {
     });
 
     const unitModel = new Mesh(geometry, material);
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
+    unitModel.castShadow = true;
+    unitModel.receiveShadow = true;
     unitModel.rotateX(Math.PI / 4.5);
 
     const unitID = `${player.name}_${type}_${unitModel.uuid}`;
@@ -687,7 +687,7 @@ export function createTileOverlayModel() {
     if (!materialCache.has(key)) {
         materialCache.set(key, new MeshBasicMaterial({ 
             color: "white",
-            opacity: .5,
+            opacity: .2,
             transparent: true,
             side: FrontSide,
         }));

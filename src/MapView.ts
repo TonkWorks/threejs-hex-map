@@ -1,7 +1,7 @@
-import THREE, { Audio, AudioListener, PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, SpotLight, CylinderGeometry, AdditiveBlending, DoubleSide, Color, TextureLoader, AudioLoader, PCFSoftShadowMap, SpotLightHelper, RingBufferGeometry, CanvasTexture, SpriteMaterial, Sprite, Float32BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments, Vector2, LineDashedMaterial, ArrowHelper, Line, FrontSide } from 'three';
+import THREE, { Audio, AudioListener, PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, SpotLight, CylinderGeometry, AdditiveBlending, DoubleSide, Color, TextureLoader, AudioLoader, PCFSoftShadowMap, SpotLightHelper, RingBufferGeometry, CanvasTexture, SpriteMaterial, Sprite, Float32BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments, Vector2, LineDashedMaterial, ArrowHelper, Line, FrontSide, PMREMGenerator, MathUtils } from 'three';
 import { generateRandomMap } from "./map/map-generator"
 import MapMesh from "./map/MapMesh"
-import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater, isHill } from './interfaces';
+import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater, isHill, isForest } from './interfaces';
 import { loadFile, getRandomInt, updateMaterialColor, deepCopy, loadTextureAtlas, asset, capitalize, deepCopyIgnoring } from "./util"
 import Grid from './map/Grid';
 import DefaultTileSelector from "./map/DefaultTileSelector"
@@ -13,7 +13,7 @@ import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './map/coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './map/MapMesh';
-import { Explosion, FireWithSmoke, NuclearExplosion, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
+import { Explosion, FireWithSmoke, MainParticleEffects, NuclearExplosion, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
 import { ParticleSystem, ParticleSystems } from './ParticleSystem';
 
 import { Unit, Improvement, CreateCity, UnitMap } from './Units';
@@ -28,12 +28,15 @@ import AnimatedSelector, { LightOfGod, Selector, Selectors, WhiteOutline } from 
 
 import { BloomEffect, EffectComposer, EffectPass, RenderPass, SMAAEffect, VignetteEffect } from './third/postprocessing.esm';
 import * as Stats from './third/stats';
+import { Sky  } from './third/Sky';
+
 import { getHexPoints } from './map/hexagon';
 import { ThickLine } from './third/thickLine';
 import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
 import { BuildingMap } from './CityImprovements';
 import { CreateWorkerImprovement, WorkerImprovement } from './ImprovementsWorker';
+import { Triangle } from './three';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -242,6 +245,42 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._minimap_camera.aspect = this._minimap_aspect_width / this._minimap_aspect_height;
         this._minimap_camera.updateProjectionMatrix();
 
+
+        // sky
+        const sun = new Vector3();
+
+        const sky = new Sky();
+        sky.scale.setScalar(10000);
+        scene.add(sky);
+
+        const parameters = {
+            elevation: 2,
+            azimuth: 180,
+        };
+        const pmremGenerator = new PMREMGenerator(renderer);
+
+        const skyUniforms = (sky.material as any).uniforms;
+        skyUniforms['turbidity'].value = 10;
+        skyUniforms['rayleigh'].value = 2;
+        skyUniforms['mieCoefficient'].value = 0.005;
+        skyUniforms['mieDirectionalG'].value = 0.8;
+
+        function updateSun() {
+            const phi = MathUtils.degToRad(90 - parameters.elevation);
+            const theta = MathUtils.degToRad(parameters.azimuth);
+
+            sun.setFromSphericalCoords(1, phi, theta);
+
+            scene.add(sky);
+
+            scene.environment = pmremGenerator.fromScene(scene).texture;
+        }
+
+        updateSun();
+
+        console.log(sky);
+        console.log("hi");
+
         // hover selector
         this._hoverSelector.position.setZ(0.0001)
         this._scene.add(this._hoverSelector)
@@ -252,7 +291,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._scene.add(this._tileSelector)
         this._tileSelector.visible = true
         this._scene.add(this._pathIndicators);
-        // audtio
+
+        // audio
         this._listener = new AudioListener();
         this._camera.add(this._listener as any as Object3D);
 
@@ -265,10 +305,13 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         this.stats = Stats.default();
         this.stats.dom.style.top= '35px';
+        this.stats.dom.style.left= '';
+        this.stats.dom.style.right= '0px';
+
         this.stats.showPanel(0);
 
         
-        // document.body.appendChild(this.stats.dom);
+        document.body.appendChild(this.stats.dom);
 
         // Setup EffectComposer
         this.composer = new EffectComposer(renderer);
@@ -284,7 +327,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         const bloomPass = new EffectPass(this._camera, bloomEffect);
         this.composer.addPass(bloomPass);
 
-        const vg = new VignetteEffect({ offset: 0.1, darkness: 0.7 });
+        const vg = new VignetteEffect({ offset: 0.2, darkness: 0.6 });
         this.composer.addPass(new EffectPass(this._camera, vg));
 
         // // Add SMAA anti-aliasing
@@ -656,34 +699,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._units_models.add(allBorders);
     }
     
-    addUnitMovementBorder(unit: Unit) {
-        // array ot get tiles unit can move to.
-        if (unit.movement === 0) {
-            return;
-        }
-        this._movement_overlay.clear();
-
-        const tiles = this._tileGrid.neighbors(unit.tileInfo.q, unit.tileInfo.r, unit.movement);
-    
-        for (const tt of tiles) {
-            if (isMountain(tt.height)) {
-                continue
-            }
-            if (unit.land == false && !(isWater(tt.height) || tt.rivers)) {
-                continue
-            }
-            if (unit.water == false && isWater(tt.height)) {
-                let player = this.getPlayer(unit.owner);
-                if (!("fishing" in player.research.researched)) {
-                    continue
-                }
-            }
-            let m = createTileOverlayModel();
-            m.position.set(qrToWorld(tt.q, tt.r).x, qrToWorld(tt.q, tt.r).y, 0.02);
-            this._movement_overlay.add(m);
-        }
-    }
-
     private mergeBorderLines(lines: Vector3[][]): Vector3[][] {
         const mergedPaths: Vector3[][] = [];
         const processed = new Set<number>();
@@ -870,6 +885,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             if (isMountain(tile.height)) {
                 tile.yields = { }
+            }
+            if (tile.rivers) {
+                tile.yields["food"] += 2;
             }
             if (isHill(tile.height)) {
                 tile.yields['gold'] += 1;
@@ -1174,6 +1192,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // const ps = SelectionParticles(this._scene, worldPos);
         // console.log(ps);
+        MainParticleEffects.createObjectCreation(worldPos, this._scene);
         // const ps = SelectionParticlesFromGeometry(this._scene, this._tileSelector as Mesh, 0.15);
         if (this._selectedUnit !== undefined && this.selectedTile.unit !== undefined && this.selectedTile.unit.owner === this.gameState.currentPlayer) {
             this.moveUnit(this.selectedTile, tile, true)
@@ -1196,42 +1215,69 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
         
-        // First pass: determine which tiles should have no fog.
+        // First pass: collect visibility sources (player's tiles, units, hills)
+        const visibilitySources: {tile: TileData, range: number}[] = [];
+        
         tileGrid.toArray().forEach((tile) => {
-            // Skip tiles with clouds.
-            if (tile.clouds === true) return;
-        
-            // Helper to add a tile and ensure it's not processed if it has clouds.
-            const markTile = (t: TileData) => {
-            if (!t.clouds) {
-                noFogKeys.add(`${t.q},${t.r}`);
-            }
-            };
-        
-            // If the tile is owned by the current player, mark it and its neighbors (range 1) as no-fog.
+            // Skip tiles with clouds
+            // if (tile.clouds === true) return;
+            
+            // If the tile is owned by the current player, add as visibility source with range 1
             if (tile.owner && tile.owner === this.gameState.currentPlayer) {
-            markTile(tile);
-            tileGrid.neighbors(tile.q, tile.r, 1).forEach(markTile);
+                visibilitySources.push({tile, range: 1});
             }
-        
-            // If a unit on the tile belongs to the current player, mark it and its neighbors (range 2) as no-fog.
+            
+            // If a unit on the tile belongs to the current player, add as visibility source with range 1
             if (tile.unit && tile.unit.owner === this.gameState.currentPlayer) {
-            markTile(tile);
-            tileGrid.neighbors(tile.q, tile.r, 2).forEach(markTile);
+                let range = 1;
+                if (isHill(tile.height)) {
+                    range = 2;
+                }
+                visibilitySources.push({tile, range: range});
             }
         });
         
-        // Second pass: update fog state based on the precomputed no-fog set.
+        // Function to check if line of sight is blocked by mountains
+        const isLineOfSightBlocked = (fromQ: number, fromR: number, toQ: number, toR: number) => {
+            // Get tiles along the line between source and target
+            const line = tileGrid.line(fromQ, fromR, toQ, toR);
+            
+            // Skip the first tile (the source tile)
+            for (let i = 1; i < line.length - 1; i++) {
+                const intermediateTile = line[i];
+                if (isMountain(intermediateTile.height)) {
+                    return true; // Line of sight is blocked by a mountain
+                }
+            }
+            
+            return false; // No mountains blocking the line of sight
+        };
+        
+        // Process each visibility source
+        visibilitySources.forEach(({tile: sourceTile, range}) => {
+            // Mark the source tile itself as visible
+            noFogKeys.add(`${sourceTile.q},${sourceTile.r}`);
+            
+            // Get neighbors within range
+            const neighbors = tileGrid.neighbors(sourceTile.q, sourceTile.r, range);
+            
+            // Check each neighbor for line of sight
+            neighbors.forEach(neighborTile => {
+                // If line of sight is not blocked by mountains, mark as visible
+                if (!isLineOfSightBlocked(sourceTile.q, sourceTile.r, neighborTile.q, neighborTile.r)) {
+                    noFogKeys.add(`${neighborTile.q},${neighborTile.r}`);
+                }
+            });
+        });
+        
+        // Second pass: update fog state based on the precomputed no-fog set
         const changed: TileData[] = [];
         tileGrid.toArray().forEach((tile) => {
-            // Skip tiles with clouds.
-            if (tile.clouds === true) return;
-        
-            // Fog should be off if the tile is marked, on otherwise.
             const shouldHaveFog = !noFogKeys.has(`${tile.q},${tile.r}`);
             if (tile.fog !== shouldHaveFog) {
-            tile.fog = shouldHaveFog;
-            changed.push(tile);
+                tile.fog = shouldHaveFog;
+                tile.clouds = false;
+                changed.push(tile);
             }
         });
         this.updateTiles(changed);
@@ -1336,20 +1382,31 @@ export default class MapView implements MapViewControls, TileDataSource {
                 yields += `<tr><th>${capitalize(key)}</th><td>${value}</td></tr>`
             }
         }
+
+        let features: string[] = [];
+        let features_info = '';
+        if (tile.rivers) {
+            features = ["Freshwater", "Navigable River"]
+        }
+        if (isHill(tile.height)) {
+            features.push("Hills")
+        }
+        if (isForest(tile)) {
+            features.push("Forests")
+        }
+        if (features.length > 0) {
+            features_info = `<tr><th>Features</th><td>${features.join(", ")}</td></tr>`
+        }
         return `
             <div>
-                Terrain
+                <b>${capitalize(tile.terrain)}</b>
                 <div style="display: flex; align-items: left;">
                     <table style="margin-right: 10px; text-align: left;">
-                        <tr>
-                            <th>Type</th>
-                            <td>${capitalize(tile.terrain)}</td>
-                        </tr>
+                        ${features_info}
                         ${improvement_info}
                         ${yields}
                         </br>
                         ${tile.owner ? `<tr><th>Owner</th><td>${tile.owner}</td></tr>` : ''}
-                        ${height}
                     </table>
                 </div>
             </div>`;
@@ -1528,12 +1585,15 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.selectTile(nextMovementTile)
         }
 
+        if (nextMovementTile.unit.owner === this.gameState.currentPlayer) {
+            this.setFogAround(nextMovementTile, 1, false);
+        }
+
         animateToPosition(nextMovementTile.unit.model, worldPos.x, worldPos.y, .2, easeOutQuad, () => {
             if (nextMovementTile.unit) {
                 nextMovementTile.unit.moving = false;
                 if (playerInitiated) {
                     this.updateGlobalFog();
-
                 };
                 this.moveUnit(nextMovementTile, targetTile);
             }
@@ -2005,110 +2065,288 @@ export default class MapView implements MapViewControls, TileDataSource {
             { q: current.q + 1, r: current.r - 1 }, // (+1, -1)
             { q: current.q - 1, r: current.r + 1 }, // (-1, +1)
         ];
-
-        // Find the neighbor closest to the target
+    
+        // Find the neighbor closest to the target, accounting for terrain costs
         let bestNeighbor = current;
-        let shortestDistance = Infinity;
-
+        let bestScore = -Infinity;  // Using a score-based approach instead
+    
         for (const neighbor of neighbors) {
-            let tt = this._tileGrid.get(neighbor.q, neighbor.r)
-            if (tt === undefined) {
-                continue
+            const tt = this._tileGrid.get(neighbor.q, neighbor.r);
+            if (!tt) continue;
+            
+            // Skip if terrain is impassable
+            if (isMountain(tt.height)) continue;
+            
+            // Skip if there's already a unit from the same owner
+            if (tt.unit !== undefined && unit && tt.unit.owner === unit.owner) continue;
+            
+            // Skip if no unit is provided
+            if (!unit) continue;
+            
+            // Unit type movement restrictions
+            if (unit.land === false && !(isWater(tt.height) || tt.rivers)) continue;
+            
+            // Technology requirement for water tiles
+            if (unit.water === false && isWater(tt.height)) {
+                const player = this.getPlayer(unit.owner);
+                if (!("fishing" in player.research.researched)) continue;
             }
-            if (isMountain(tt.height)) {
-                continue
-            }
-            if (tt.unit !== undefined && unit !== undefined && tt.unit.owner === unit.owner) {
-                // cant occupy what we already have a unit on
-                continue
-            }
-            if (!unit) {
-                continue
-            }
-            if (unit.land == false && !(isWater(tt.height) || tt.rivers)) {
-                continue
-            }
-            if (unit.water == false && isWater(tt.height)) {
-                let player = this.getPlayer(unit.owner);
-                if (!("fishing" in player.research.researched)) {
-                    continue
-                }
-            }
-
+    
+            // Calculate base distance to target
             const distance = getHexDistance(tt, target);
-
-            if (distance < shortestDistance) {
-                shortestDistance = distance;
+            
+            // Calculate terrain cost including land-sea transitions
+            const terrainCost = this.getTerrainMovementCost(tt, current);
+            
+            // Calculate a score that prioritizes getting closer to the target
+            // while also considering the terrain cost
+            // Higher score is better: we want to minimize distance but also prefer lower movement costs
+            const score = 1000 - (distance * 10) - (terrainCost * 5);
+    
+            if (score > bestScore) {
+                bestScore = score;
                 bestNeighbor = tt;
             }
         }
-
+    
         return bestNeighbor;
     }
-
+    
+    /**
+     * Calculates a path from start to target, respecting movement costs and limits.
+     */
     private calculatePath(start: TileData, target: TileData, maxSteps: number): TileData[] {
-        let path: TileData[] = [];
+        const path: TileData[] = [];
         let current = start;
-        for (let i = 0; i < maxSteps; i++) {
-            let next = this.getNextMovementTile(start.unit, current, target);
+        let remainingMovement = maxSteps;
+        
+        while (remainingMovement > 0) {
+            const next = this.getNextMovementTile(start.unit, current, target);
             if (!next || next === current) break; // No progress or invalid tile
+            
+            // Calculate movement cost for the next tile
+            const movementCost = this.getTerrainMovementCost(next, current);
+            
+            // Check if we have enough movement points left
+            if (remainingMovement < movementCost) break;
+            
+            // Deduct movement cost and add tile to path
+            remainingMovement -= movementCost;
             path.push(next);
             current = next;
+            
             if (current === target) break; // Reached target
         }
+        
         return path;
     }
-
+    
+    /**
+     * Returns the movement cost for a specific terrain type.
+     * Now accounts for land-sea transitions which cost 2 movement points.
+     */
+    private getTerrainMovementCost(tile: TileData, fromTile?: TileData): number {
+        let cost = 1; // Default cost
+        
+        // Hill terrain costs 2 movement points
+        if (isHill(tile.height)) {
+            cost = 2;
+        }
+        
+        // If fromTile is provided, check for land-sea transitions
+        if (fromTile) {
+            const fromIsWater = isWater(fromTile.height);
+            const toIsWater = isWater(tile.height);
+            
+            // If crossing between land and water (or vice versa), cost is 2
+            if (fromIsWater !== toIsWater) {
+                // Rivers are considered water for movement purposes
+                const fromHasRiver = fromTile.rivers;
+                const toHasRiver = tile.rivers;
+                
+                // If both tiles have rivers, it's not a land-sea transition
+                if (!(fromHasRiver && toHasRiver)) {
+                    cost = Math.max(cost, 2); // Take the higher cost (for hills)
+                }
+            }
+        }
+        
+        return cost;
+    }
+    
+    /**
+     * Shows the movement path on the map.
+     */
     private showPath(path: TileData[]) {
-        // Clear previous path indicators.
+        // Clear previous path indicators
         this._pathIndicators.clear();
         this._pathIndicators.children.forEach(child => this._pathIndicators.remove(child));
     
-        // Build an array of world positions from the path tiles.
+        // Build an array of world positions from the path tiles
         const positions: Vector3[] = [];
         path.forEach(tile => {
             const worldPos = qrToWorld(tile.q, tile.r);
-            // Use a consistent Z (here 0.02) so the path appears above the terrain.
+            // Use a consistent Z (here 0.02) so the path appears above the terrain
             positions.push(new Vector3(worldPos.x, worldPos.y, 0.02));
         });
     
-        // Create and display a thick line if we have at least two points.
+        // Create and display a thick line if we have at least two points
         if (positions.length > 1) {
             const thickLine = new ThickLine(positions, {
                 linewidth: 7,
-                color: 0x006600, // Green color.
+                color: 0x006600, // Green color
                 resolution: new Vector2(window.innerWidth, window.innerHeight)
             });
             this._pathIndicators.add(thickLine);
         }
     
-        // // Optionally, add a step count indicator as text on the final tile.
-        // if (path.length > 0) {
-        //     const firstTile = path[0];
-        //     const unit = firstTile.unit;
-        //     const lastTile = path[path.length - 1];
-        //     const worldPos = qrToWorld(lastTile.q, lastTile.r);
+        // Calculate total movement cost of the path
+        if (path.length > 0) {
+            const firstTile = path[0];
+            const unit = firstTile.unit;
+            
+            if (unit) {
+                // Calculate total movement points required for this path
+                let totalMovementCost = 0;
+                let previousTile = null;
+                
+                for (const tile of path) {
+                    totalMovementCost += previousTile ? this.getTerrainMovementCost(tile, previousTile) : 0;
+                    previousTile = tile;
+                }
+                
+                // Uncomment this section if you want to show the movement cost indicator
+                /*
+                // Get the last tile to place the movement indicator
+                const lastTile = path[path.length - 1];
+                const worldPos = qrToWorld(lastTile.q, lastTile.r);
+                
+                // Create a canvas to draw the text
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
     
-        //     // Create a canvas to draw the text.
-        //     const canvas = document.createElement('canvas');
-        //     const context = canvas.getContext('2d');
-
-        //     canvas.width = 200;
-        //     canvas.height = 100;
-        //     context.font = '64px bold Trojan';
-        //     context.fillStyle = 'white';
-        //     context.textAlign = 'center';
-        //     // Adjust vertical placement as needed.
-        //     context.fillText(`${path.length - 1} / ${unit.movement}`, canvas.width / 2, canvas.height / 2 + 20);
+                canvas.width = 200;
+                canvas.height = 100;
+                context.font = '64px bold Trojan';
+                context.fillStyle = 'white';
+                context.textAlign = 'center';
+                // Adjust vertical placement as needed
+                context.fillText(`${totalMovementCost} / ${unit.movement}`, canvas.width / 2, canvas.height / 2 + 20);
+                
+                // Create a texture from the canvas and use it in a sprite
+                const texture = new CanvasTexture(canvas);
+                const spriteMaterial = new SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new Sprite(spriteMaterial);
+                sprite.position.set(worldPos.x, worldPos.y, 0.3); // Render above the dashed line
+                sprite.scale.set(0.5, 0.5, 1);
+                this._pathIndicators.add(sprite);
+                */
+            }
+        }
+    }
     
-        //     // Create a texture from the canvas and use it in a sprite.
-        //     const texture = new CanvasTexture(canvas);
-        //     const spriteMaterial = new SpriteMaterial({ map: texture, transparent: true });
-        //     const sprite = new Sprite(spriteMaterial);
-        //     sprite.position.set(worldPos.x, worldPos.y, 0.3); // Render above the dashed line.
-        //     sprite.scale.set(0.5, 0.5, 1);
-        //     this._pathIndicators.add(sprite);
-        // }
+    /**
+     * Adds a movement border around a unit to show where it can move.
+     */
+    addUnitMovementBorder(unit: Unit) {
+        // Don't show movement border if unit has no movement points left
+        if (!unit || unit.movement <= 0) {
+            return;
+        }
+        
+        this._movement_overlay.clear();
+    
+        // Create a TileData tracker for movement possibility
+        const reachableTiles: Map<string, { tile: {q: number, r: number}, cost: number }> = new Map();
+        
+        // BFS to find all reachable tiles
+        const queue: { tile: {q: number, r: number}, remainingMovement: number, fromTile?: {q: number, r: number} }[] = [];
+        const startTile = unit.tileInfo;
+        const startKey = `${startTile.q},${startTile.r}`;
+        
+        // Initialize with the start tile
+        reachableTiles.set(startKey, { tile: startTile, cost: 0 });
+        queue.push({ tile: startTile, remainingMovement: unit.movement });
+        
+        while (queue.length > 0) {
+            const { tile: currentTile, remainingMovement, fromTile } = queue.shift()!;
+            const currentKey = `${currentTile.q},${currentTile.r}`;
+            const currentCostInfo = reachableTiles.get(currentKey)!;
+            
+            // Skip if we don't have any movement points left
+            if (remainingMovement <= 0) continue;
+            
+            // Get neighbors of the current tile
+            const neighbors = [
+                { q: currentTile.q + 1, r: currentTile.r },     // (+1, 0)
+                { q: currentTile.q - 1, r: currentTile.r },     // (-1, 0)
+                { q: currentTile.q, r: currentTile.r + 1 },     // ( 0, +1)
+                { q: currentTile.q, r: currentTile.r - 1 },     // ( 0, -1)
+                { q: currentTile.q + 1, r: currentTile.r - 1 }, // (+1, -1)
+                { q: currentTile.q - 1, r: currentTile.r + 1 }, // (-1, +1)
+            ];
+            
+            for (const neighbor of neighbors) {
+                const tt = this._tileGrid.get(neighbor.q, neighbor.r);
+                if (!tt) continue;
+                
+                const neighborKey = `${tt.q},${tt.r}`;
+                
+                // Skip mountains
+                if (isMountain(tt.height)) continue;
+                
+                // Skip tiles with friendly units
+                if (tt.unit && tt.unit.owner === unit.owner) continue;
+                
+                // Skip land tiles for water units
+                if (unit.land === false && !(isWater(tt.height) || tt.rivers)) continue;
+                
+                // Skip water tiles for land units without fishing technology
+                if (unit.water === false && isWater(tt.height)) {
+                    const player = this.getPlayer(unit.owner);
+                    if (!("fishing" in player.research.researched)) continue;
+                }
+                
+                // Get the current source tile for the land-sea transition check
+                const fromTileData = fromTile ? this._tileGrid.get(fromTile.q, fromTile.r) : undefined;
+                
+                // Calculate movement cost to enter this tile, including land-sea transitions
+                const currenttt = this._tileGrid.get(currentTile.q, currentTile.r);
+                const terrainCost = this.getTerrainMovementCost(tt, currenttt);
+                
+                // Skip if we don't have enough movement points
+                if (remainingMovement < terrainCost) continue;
+                
+                // If we've already found a better path to this tile, skip
+                if (reachableTiles.has(neighborKey)) {
+                    const existingCost = reachableTiles.get(neighborKey)!.cost;
+                    if (existingCost <= currentCostInfo.cost + terrainCost) continue;
+                }
+                
+                // Add this tile to our reachable tiles
+                reachableTiles.set(neighborKey, { 
+                    tile: tt, 
+                    cost: currentCostInfo.cost + terrainCost 
+                });
+                
+                // Add this tile for further exploration
+                queue.push({ 
+                    tile: tt, 
+                    remainingMovement: remainingMovement - terrainCost,
+                    fromTile: currentTile
+                });
+            }
+        }
+        
+        // Visualize all reachable tiles except the starting tile
+        for (const [key, { tile }] of reachableTiles.entries()) {
+            if (key !== startKey) {
+                const m = createTileOverlayModel();
+                const worldPos = qrToWorld(tile.q, tile.r);
+                m.position.set(worldPos.x, worldPos.y, 0.02);
+                this._movement_overlay.add(m);
+            }
+        }
     }
 
       getYieldIconPath(yieldType: string): string {
@@ -2751,25 +2989,25 @@ export default class MapView implements MapViewControls, TileDataSource {
         let population = cityYields.population; 
         population = Math.floor(population);
         happiness -= population;
-        info += `<tr><td>-${population}</td><td>from population</td></tr>`;
+        info += `<tr><td>Population/Cities</td><td>-${population}</td></tr>`;
         info += `<tr><td></td></tr>`;
         
         let improvements = cityYields.happiness;
         happiness += improvements;
-        info += `<tr><td>+${improvements}</td><td>from buildings/improvements</td></tr>`;
+        info += `<tr><td>Buildings/Improvements</td><td>+${improvements}</td></tr>`;
 
         let resources = this.getResourcesForPlayer(player);
         for (const [resource_name, amount] of Object.entries(resources)) {
             let amount = 4;
             happiness += amount;
-            info += `<tr><td>+${amount}</td><td>from resource: ${resource_name}</td></tr>`;
+            info += `<tr><td>Luxury Resource: ${capitalize(resource_name)}</td><td>+${amount}</td></tr>`;
         }
 
         // bonuses;
 
         let difficulty = 3;
         happiness += difficulty;
-        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+        info += `<tr><td>Difficulty</td><td>+${difficulty}</td></tr>`;
 
         info += `</table>`;
 
@@ -2784,18 +3022,18 @@ export default class MapView implements MapViewControls, TileDataSource {
         // units
         let unitMainance = Object.keys(player.units).length;
         gpt -= unitMainance;
-        info += `<tr><td>-${unitMainance}</td><td>from units maintaince</td></tr>`;
+        info += `<tr><td>Unit maintaince</td><td>-${unitMainance}</td></tr>`;
 
         // cities
         let building_maintance = cityYields.building_maintance;
         gpt -= building_maintance;
-        info += `<tr><td>-${building_maintance}</td><td>from buildings maintaince</td></tr>`;
+        info += `<tr><td>Buildings maintaince</td><td>-${building_maintance}</td></tr>`;
 
 
         // cities and population
         let yieldsGold = cityYields.gold;
         gpt += cityYields.gold;
-        info += `<tr><td>+${yieldsGold}</td><td>from buildings/improvements</td></tr>`;
+        info += `<tr><td>Buildings/improvements</td><td>+${yieldsGold}</td></tr>`;
 
         info += `<tr><td></td></tr>`;
         
@@ -2804,7 +3042,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let difficulty = 3;
         gpt += difficulty;
-        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+        info += `<tr><td>difficulty</td><td>+${difficulty}</td></tr>`;
 
         info += `</table>`;
         gpt = Math.round(gpt);
@@ -2818,13 +3056,13 @@ export default class MapView implements MapViewControls, TileDataSource {
         // cities and population
         let yieldsResearch = cityYields.research;
         research += yieldsResearch;
-        info += `<tr><td>+${yieldsResearch}</td><td>from buildings/improvements</td></tr>`;
+        info += `<tr><td>Buildings/improvements</td><td>+${yieldsResearch}</td></tr>`;
 
         // bonuses;
 
         let difficulty = 1;
         research += difficulty;
-        info += `<tr><td>+${difficulty}</td><td>from difficulty</td></tr>`;
+        info += `<tr><td>Difficulty</td><td>+${difficulty}</td></tr>`;
 
         info += `</table>`;
         return [research, info];
@@ -3503,9 +3741,10 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (name === "settler_place_city") {
             let tile = this.selectedTile;
             // start city
+            let player = this.getPlayer(this.gameState.currentPlayer);
             let defaultName = getNextCityName(player);
-            this.getTextInput(`<h3>City Name</h3>`, defaultName, (name) => {
-                let player = this.getPlayer(this.gameState.currentPlayer);
+            // this.getTextInput(`<h3>City Name</h3>`, defaultName, (name) => {
+                let name = defaultName;
                 let city = CreateCity(player, name);
                 this.addImprovementToMap(city, tile);
                 this.updatePopulationAndProductionRates(player, city);
@@ -3523,7 +3762,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.updateGlobalFog();
                 this.showEndTurnInActionPanel();
                 this.updateUnitInfoForTile(tile);
-            });
+            // });
             
         }
         if (name === "worker_improvement") {
