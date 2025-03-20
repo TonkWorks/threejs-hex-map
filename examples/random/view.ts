@@ -1,11 +1,12 @@
 import MapView from '../../src/MapView';
 import { loadFile, loadJSON, loadTexture } from '../../src/util';
 import { TextureAtlas, isMountain, isWater, TileData } from '../../src/interfaces';
-import {generateRandomMap} from "../../src/map/map-generator"
+import {generateRandomMap, MapType} from "../../src/map/map-generator"
 import { varying } from './util';
 import { TextureLoader, Color } from 'three';
 import { MapMeshOptions } from '../../src/map/MapMesh';
 import DefaultMapViewController from "../../src/DefaultMapViewController";
+import { Grid } from '../../src';
 
 function asset(relativePath: string): string {
     return "../../assets/" + relativePath
@@ -15,7 +16,7 @@ async function loadTextureAtlas() {
     return loadJSON<TextureAtlas>(asset("land-atlas.json"))
 }
 
-async function generateMap(mapSize: number) {
+async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_ISLAND): Promise<Grid<TileData>> {
     function coldZone(q: number, r: number, height: number): string {
         if (Math.abs(r) > mapSize * (0.44 + Math.random() * 0.03)) return "snow"
         else return "tundra"
@@ -38,12 +39,27 @@ async function generateMap(mapSize: number) {
         else return 0
     }
 
-    return generateRandomMap(mapSize, (q, r, height): TileData => {
+    const grid = await generateRandomMap(
+        mapSize, (q, r, height): TileData => {
         const terrain = terrainAt(q, r, height)
         const trees = isMountain(height) || isWater(height) || terrain == "desert" ? undefined :
             (varying(true, false, false) ? treeAt(q, r, terrain) : undefined)
         return {q, r, height, terrain, treeIndex: trees, rivers: null, locked: false, fog: true, clouds: true }
-    })
+    }, mapType)
+
+    grid.forEachQR((q, r, tile) => {
+        if (tile.terrain === "ocean" && tile.height >= 0.0) {
+            // Re-calculate terrain based on the new height
+            tile.terrain = terrainAt(q, r, tile.height);
+            
+            // Update tree indexes if needed
+            if (tile.terrain !== "desert" && tile.terrain !== "mountain") {
+                tile.treeIndex = varying(true, false, false) ? treeAt(q, r, tile.terrain) : undefined;
+            }
+        }
+    });
+
+    return grid;
 }
 
 export async function initView(mapSize: number, initialZoom: number): Promise<MapView> {
@@ -119,7 +135,12 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
         }
     }
     if (makeNew) {
-        const [map, atlas] = await Promise.all([generateMap(mapSize), loadTextureAtlas()])
+        let new_game_settingsStr = localStorage.getItem("new_game_settings");
+        let new_game_settings: { map?: MapType } = {};
+        if (new_game_settingsStr) {
+            new_game_settings = JSON.parse(new_game_settingsStr);
+        }
+        const [map, atlas] = await Promise.all([generateMap(mapSize, new_game_settings.map), loadTextureAtlas()])
         options.terrainAtlas = atlas
         mapView.load(map, options)
     }

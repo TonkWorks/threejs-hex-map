@@ -6,7 +6,7 @@ import { loadFile, getRandomInt, updateMaterialColor, deepCopy, loadTextureAtlas
 import Grid from './map/Grid';
 import DefaultTileSelector from "./map/DefaultTileSelector"
 import { AttackArrow, DefaultTileHoverSelector, hoverSelectorMaterial } from "./map/DefaultTileHoverSelector"
-import { createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, createTileOverlayModel, createUnit, CreateYieldModel, getNextCityName, HeathBarDivHtml, LoadSavedUnit, Resource, ResourceMap, updateLabel, updateUnitHealthBar } from "./Units"
+import { createCityOverlayModel, CreateResourceModel, createTerritoryOverlayModel, createTileOverlayModel, createUnit, CreateYieldModel, getNextCityName, HeathBarDivHtml, LoadSavedUnit, Resource, ResourceMap, RisingText, updateLabel, updateUnitHealthBar } from "./Units"
 import DefaultMapViewController from "./DefaultMapViewController"
 import MapViewController from './MapViewController';
 import { MapViewControls } from './MapViewController';
@@ -92,6 +92,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     _movement_overlay: Group = new Group();
     _ui_map_expansion: Group = new Group()
     _ui_map_temp_models: Group = new Group()
+    _ui_selectors: Group = new Group()
     in_city_menu: boolean = false;
     keep_menu: boolean = false;
 
@@ -280,9 +281,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         updateSun();
 
-        console.log(sky);
-        console.log("hi");
-
         // hover selector
         this._hoverSelector.position.setZ(0.0001)
         this._scene.add(this._hoverSelector)
@@ -302,6 +300,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._scene.add(this._units_models)
         this._scene.add(this._movement_overlay)
         this._scene.add(this._ui_map_temp_models)
+        this._scene.add(this._ui_selectors)
         this._scene.add(this._ui_map_expansion)
 
 
@@ -1213,6 +1212,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         const from = qrToWorld(this.selectedTile.q, this.selectedTile.r);
 
 
+        // RisingText(this._scene, worldPos, "+1");
+        
         // new Explosion(from, worldPos, this._scene);
 
         // new Rocket(from, worldPos, this._scene, false);
@@ -1276,14 +1277,14 @@ export default class MapView implements MapViewControls, TileDataSource {
             
             // If the tile is owned by the current player, add as visibility source with range 1
             if (tile.owner && tile.owner === this.gameState.currentPlayer) {
-                visibilitySources.push({tile, range: 1});
+                visibilitySources.push({tile, range: 2});
             }
             
             // If a unit on the tile belongs to the current player, add as visibility source with range 1
             if (tile.unit && tile.unit.owner === this.gameState.currentPlayer) {
-                let range = 1;
+                let range = 2;
                 if (isHill(tile.height)) {
-                    range = 2;
+                    range = 3;
                 }
                 visibilitySources.push({tile, range: range});
             }
@@ -1546,7 +1547,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             currentTile.unit,
             currentTile,
             targetTile,
-        )
+        );
 
         currentTile.unit.moving = true;
 
@@ -1713,9 +1714,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         animateToPosition(currentTile.unit.model, twoThirdsX, twoThirdsY, battleDuration, easeOutQuad, () => {
 
             // const outcome = getRandomInt(1, 2)
-            targetTile.unit.health -= Math.max(currentTile.unit.attack - targetTile.unit.defence, 0);
-            if (targetTile.unit.health >= 0  && currentTile.unit.attack_range === 1 && targetTile.unit.attack_range === 1) {
-                currentTile.unit.health -=  Math.max(targetTile.unit.attack - currentTile.unit.defence, 0);
+            let dmg = Math.max(currentTile.unit.attack - targetTile.unit.defence, 0);
+            targetTile.unit.health -= dmg;
+            RisingText(this._scene, worldPosTarget, `-${dmg}`, "red");
+
+            if (currentTile.unit.attack_range === 1 && targetTile.unit.attack_range === 1) {
+                dmg = Math.max(targetTile.unit.attack - targetTile.unit.defence, 0);
+                currentTile.unit.health -= dmg;
+                RisingText(this._scene, worldPosCur, `-${dmg}`, "red");
                 new Rocket(worldPosTarget, worldPosCur, this._scene);
             }
             updateUnitHealthBar(currentTile.unit);
@@ -1807,6 +1813,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             city.population += 1;
             let tt = this.getTile(city.tileInfo.q, city.tileInfo.r);
             this.updateCityLabel(tt);
+
+            const worldPos = qrToWorld(tt.q, tt.r);
+            RisingText(this._scene, worldPos, "+1");
             notification_text = `1 population added to ${city.name}`;
         }
         if (event === "gold") {
@@ -1845,6 +1854,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                     mm.panCameraTo(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
                 }
             });
+        }
+        if (tile.unit.selector) {
+            tile.unit.selector.mesh.parent.remove(tile.unit.selector.mesh);
+            tile.unit.selector.dispose();
         }
         tile.unit.model.clear();
         tile.unit.model.parent.remove(tile.unit.model);
@@ -1887,11 +1900,13 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // have attacker move foward
         animateToPosition(currentTile.unit.model, twoThirdsX, twoThirdsY, battleDuration, easeOutQuad, () => {
-
-            const outcome = getRandomInt(1, 2)
             // fall back to original positions
             animateToPosition(currentTile.unit.model, worldPosCur.x, worldPosCur.y, battleDuration, easeOutQuad, () => { });
             animateToPosition(targetTile.improvement.model, worldPosTarget.x, worldPosTarget.y, battleDuration, easeOutQuad, () => {
+
+                let dmg = Math.max(currentTile.unit.attack - targetTile.improvement.defence, 0);
+                targetTile.improvement.health -= dmg;
+                RisingText(this._scene, worldPosTarget, `-${dmg}`, "red");
 
                 if (isRanged) {
                     currentTile.locked = false;
@@ -1902,7 +1917,12 @@ export default class MapView implements MapViewControls, TileDataSource {
                     return;
                 }
 
-                if (outcome === 1) {
+                dmg = Math.max(targetTile.improvement.defence - currentTile.unit.defence, 5);
+                currentTile.unit.health -= dmg;
+                updateUnitHealthBar(currentTile.unit);
+                RisingText(this._scene, worldPosCur, `-${dmg}`, "red");
+
+                if (targetTile.improvement.health <= 0 && currentTile.unit.health > 0) {
                     console.log("won city battle!");
                     let p = this.getPlayer(targetTile.improvement.owner);
                     let p2 = this.getPlayer(currentTile.unit.owner);
@@ -1928,6 +1948,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                 currentTile.locked = false;
                 targetTile.locked = false;
                 currentTile.unit.movement -= 1;
+                if (currentTile.unit.health <= 0) {
+                    this.killUnit(currentTile);
+                }
             });
         });
     }
@@ -2210,7 +2233,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         // Find the neighbor closest to the target, accounting for terrain costs
         let bestNeighbor = current;
         let bestScore = -Infinity;  // Using a score-based approach instead
-    
+        let player = this.getPlayer(unit.owner);
+
         for (const neighbor of neighbors) {
             const tt = this._tileGrid.get(neighbor.q, neighbor.r);
             if (!tt) continue;
@@ -2233,6 +2257,17 @@ export default class MapView implements MapViewControls, TileDataSource {
                 if (!("fishing" in player.research.researched)) continue;
             }
     
+            if (tt.owner && tt.owner !== "" && tt.owner !== unit.owner) {
+                // allow to click on enemy unit/improvement to breing up declare war dialog
+                if (tt.unit || tt.improvement) {}
+                else {
+                    let canMove = this.checkForClearanceToMove(player, this.gameState.players[tt.owner]);
+                    if (!canMove) {
+                        continue;
+                    }
+                }
+            }
+
             // Calculate base distance to target
             const distance = getHexDistance(tt, target);
             
@@ -2789,6 +2824,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 allToasts[0].parentNode.removeChild(allToasts[0]);
             }
             this.updateGlobalFog();
+            this._ui_selectors.clear();
         }
 
 
@@ -2852,6 +2888,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                     tile.city = improvement.id;
 
                     if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+                        const worldPos = qrToWorld(cityTile.q, cityTile.r);
+                        RisingText(this._scene, worldPos, "+1");
                         this.toast({
                             icon: "../../assets/map/icons/star.png",
                             text: `${improvement.name} has grown.`,
@@ -2885,7 +2923,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     this.updateCityLabel(t);
                 }
             }
-            if (improvement.production_queue.length > 0 && improvement.work_done >= improvement.work_total) {
+            if (improvement.production_queue.length > 0  && improvement.work_done > 0 && improvement.work_done >= improvement.work_total) {
                 improvement.work_done -= improvement.work_total;
                 let thing_to_build = improvement.production_queue[0];
                 let thing_name = "";
@@ -2946,6 +2984,31 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         player.gold += goldPerTurn;
 
+
+        // heal units/cities for player;
+        for (const [key, unit] of Object.entries(player.units)) {
+            if (unit.health < unit.health_max) {
+                let t = this.getTile(unit.tileInfo.q, unit.tileInfo.r);
+                if (t.owner !== unit.owner) {
+                   continue
+                }
+                let amt = .2*unit.health_max;
+                let oldHealth = unit.health;
+                unit.health = Math.min(unit.health + amt, unit.health_max);
+                amt = unit.health - oldHealth;
+                RisingText(this._scene, qrToWorld(t.q, t.r), `+${amt}`);
+            }
+        }
+        for (const [key, city] of Object.entries(player.improvements)) {
+            if (city.health < city.health_max) {
+                let amt = .2*city.health_max;
+                let oldHealth = city.health;
+                city.health = Math.min(city.health + amt, city.health_max);
+                amt = city.health - oldHealth;
+                let t = this.getTile(city.tileInfo.q, city.tileInfo.r);
+                RisingText(this._scene, qrToWorld(t.q, t.r), `+${amt}`);
+            }
+        }
         // calculate research for player 
         player.research.progress += rpt;
         if (player.research.current !== "") {
@@ -3012,6 +3075,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             if (unit.orders === "fortify") {
                 continue;
             }
+            if (unit.orders === "sleep") {
+                continue;
+            }
             if (unit.movement > 0) {
                 this.selectTile(this.getTile(unit.tileInfo.q, unit.tileInfo.r));
                 this._selectedUnit = unit;
@@ -3065,7 +3131,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         const player = this._gameState.players[this._gameState.playersTurn];
         const nation = Nations[this._gameState.playersTurn];
         showBanner(
-            `${nation.name} - ${TurnToYear(this._gameState.turn)} Turn: ${this._gameState.turn}`,
+            `${nation.name}</br>${TurnToYear(this._gameState.turn)}`,
         );
     }
     addUnitSelectors() {
@@ -3079,7 +3145,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 ps.mesh.rotateZ(Math.PI/2)
                 ps.mesh.position.set(worldPos.x, worldPos.y, worldPos.z + 0.02);
                 unit.selector = ps;
-                this._units_models.add(ps.mesh);
+                this._ui_selectors.add(ps.mesh);
             }
         }
         this._selectedUnit = undefined;
@@ -3730,7 +3796,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         // gold
-        option_info += `<tr><td><button class="city-menu" data-name="queue_gold" data-target="gold"><img id="menu-unit-img" src="">Produce Gold</button></td>`
+        option_info += `<tr><td><button class="city-menu" data-name="queue" data-target="gold"><img id="menu-unit-img" src="">Produce Gold</button></td>`
 
         let info = `
             <button class="close-button" onclick="CloseMenu();">&times;</button>
@@ -3899,8 +3965,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     checkForClearanceToAttack(player1: Player, player2: Player): boolean {
-        console.log(player2)
-        if (player2.isBarbarian) {
+        if (player1.isBarbarian || player2.isBarbarian) {
             return true;
         }
         const nation = Nations[player2.nation];
@@ -3924,6 +3989,20 @@ export default class MapView implements MapViewControls, TileDataSource {
             </div>
         `;
         this.showMenu(info);
+        return false;
+    }
+
+    checkForClearanceToMove(player1: Player, player2: Player): boolean {
+        if (player1.isBarbarian || player2.isBarbarian) {
+            return true;
+        }
+        const nation = Nations[player2.nation];
+        if (player1.diplomatic_actions[player2.name].hasOwnProperty("war")) {
+            return true;
+        }
+        if (player1.name !== this._gameState.currentPlayer) {
+            return false;
+        }
         return false;
     }
 
@@ -4011,6 +4090,15 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.updateUnitInfoForTile(tile);
             this.focusOnNextAction();
         }
+        if (name === "unit_sleep") {
+            let type = target;
+            let tile = this.selectedTile;
+            if (tile.unit) {
+                tile.unit.orders = "sleep";
+            }
+            this.updateUnitInfoForTile(tile);
+            this.focusOnNextAction();
+        }
         if (name === "buy_building") {
             let building = target;
             tile.improvement.cityBuildings[building] = true;
@@ -4043,11 +4131,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (name === "queue") {
             tile.improvement.work_done = 0;
             tile.improvement.production_queue = [target];
-            tile.improvement.work_total = UnitMap[target].cost/10;
+            if (target in UnitMap) {
+                tile.improvement.work_total = UnitMap[target].cost/10;
+            }
             tile.improvement.work_building = false;
             this.playSound(asset("sounds/ui/notification.mp3"));
             this.updateCityLabel(tile);
-            this.showCityMenu(tile);
+            this.CloseMenu();
+            this.focusOnNextAction();
         }
         if (name === "queue_building") {
             tile.improvement.work_done = 0;
@@ -4056,15 +4147,8 @@ export default class MapView implements MapViewControls, TileDataSource {
             tile.improvement.work_building = true;
             this.playSound(asset("sounds/ui/notification.mp3"));
             this.updateCityLabel(tile);
-            this.showCityMenu(tile);
-        }
-        if (name === "queue_gold") {
-            tile.improvement.work_done = 0;
-            tile.improvement.production_queue = [target];
-            tile.improvement.work_total = 1000000;
-            this.playSound(asset("sounds/ui/notification.mp3"));
-            this.updateCityLabel(tile);
-            this.showCityMenu(tile);
+            this.CloseMenu();
+            this.focusOnNextAction();
         }
         this.updateResourcePanel();
         this.updateGameStatePanel();
@@ -4271,7 +4355,7 @@ function animateFall(
 
 function showBanner(text: string) {
     let a = document.getElementById('achievement');
-    a.innerText = text;
+    a.innerHTML = text;
     a.classList.add('show');
     setTimeout(() => { document.getElementById('achievement').classList.add('remove'); }, 2000);
     setTimeout(() => { document.getElementById('achievement').classList.remove('remove', 'show'); }, 3000);

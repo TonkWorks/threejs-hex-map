@@ -354,7 +354,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     },
 };
 
-export function createUnit(type: string, player: Player): Unit {
+export function createUnit(type: string, player: Player, unitID: string = ""): Unit {
     const config = UnitMap[type];
     const textureLoader = new TextureLoader();
     const texture = textureLoader.load(config.texture);
@@ -376,7 +376,9 @@ export function createUnit(type: string, player: Player): Unit {
     unitModel.receiveShadow = true;
     unitModel.rotateX(Math.PI / 4.5);
 
-    const unitID = `${player.name}_${type}_${unitModel.uuid}`;
+    if (unitID === "") {
+        unitID = `${player.name}_${type}_${unitModel.uuid}`;
+    }
     const name = type === 'boat' || type === 'destroyer' || type === 'gunship' || type === 'nuke' 
         ? config.name 
         : `${config.name} ${toRoman(1)}`;
@@ -555,7 +557,7 @@ export function updateUnitHealthBar(unit: Unit) {
 
 
 export function LoadSavedUnit(unit: Unit, player: Player): Unit {
-    let newUnit = createUnit(unit.type, player);
+    let newUnit = createUnit(unit.type, player, unit.id);
     unit.model = newUnit.model;
     return unit;
 }
@@ -672,10 +674,10 @@ export function CreateCity(player: Player, name: string = "", id: string = ""): 
         id: unitID,
         type: placeType,
         image: "../../assets/city.webp",
-        health: 100,
+        health: 15,
+        health_max: 15,
         name: cityName,
         population: population,
-        health_max: 100,
 
         work_done: 0,
         work_total: 0,
@@ -893,6 +895,84 @@ export function CreateYieldModel(image: string): Mesh {
     return unitModel;
 }
 
+
+export function RisingText(scene: Scene,  position: Vector3, text: string, color = "yellow", size = 1, duration = 1, riseDistance = 1) {
+    // Create a canvas texture for the text
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    const fontSize = 36;
+    canvas.width = 256;
+    canvas.height = 128;
+    
+    // Set text style
+    context.font = `bold ${fontSize}px Arial`;
+    context.fillStyle = color;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(text, canvas.width / 2, canvas.height / 2);
+    
+    // Create a texture from the canvas
+    const texture = new CanvasTexture(canvas);
+    texture.minFilter = LinearFilter;
+    
+    // Create a sprite material using the texture
+    const material = new SpriteMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 1.0,
+      alphaTest: 0.5,
+    });
+
+    position = new Vector3().copy(position);
+    position.y -= 0.2;
+    position.x += 0.45;
+    position.z += 1;
+    // Create a sprite and position it
+    const sprite = new Sprite(material);
+    sprite.position.copy(position);
+    sprite.scale.set(size * 2, size, 1);
+    sprite.rotateX(Math.PI / 4.5);
+
+    scene.add(sprite);
+    
+    // Track animation
+    const startTime = Date.now();
+    const endTime = startTime + duration * 1000;
+    
+    // Animation function
+    function animate() {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / (duration * 1000), 1.0);
+      
+      // Move upward
+      sprite.position.y = position.y + (riseDistance * progress);
+      
+      // Fade out in the second half of the animation
+      if (progress > 0.5) {
+        sprite.material.opacity = 2 * (1 - progress);
+      }
+      
+      // Continue animation or remove when done
+      if (now < endTime) {
+        requestAnimationFrame(animate);
+      } else {
+        scene.remove(sprite);
+        sprite.material.dispose();
+        sprite.material.map.dispose();
+      }
+    }
+    
+    // Start animation
+    requestAnimationFrame(animate);
+    
+    // Return function to cancel animation early if needed
+    return function cancelAnimation() {
+      scene.remove(sprite);
+      sprite.material.dispose();
+      sprite.material.map.dispose();
+    };
+}
 
 // utilities
 
