@@ -1364,6 +1364,12 @@ export default class MapView implements MapViewControls, TileDataSource {
         tooltip.style.left = x + 30 + "px"; // Offset to avoid cursor overlap
         tooltip.style.top = y + "px";
         let data = []
+        
+        let battleInfo = this.generateBattleInfo(tile);
+        if (battleInfo !== "") {
+            data.push(battleInfo);
+        }
+
         if (tile.improvement) {
             data.push(this.generateImprovementInfo(tile.improvement));
         }
@@ -1465,6 +1471,27 @@ export default class MapView implements MapViewControls, TileDataSource {
             </div>`;
     }
 
+    private generateBattleInfo(tile: TileData): string {
+        if (tile.unit === undefined && tile.improvement === undefined) {
+            return "";
+        }
+        if (!this._selectedUnit || this._selectedUnit === undefined) {
+            return "";
+        }
+        if (tile.improvement && tile.improvement.owner === this._selectedUnit.owner) {
+            return "";
+        }
+        if (tile.unit && tile.unit.owner === this._selectedUnit.owner) {
+            return "";
+        }
+
+        let atckerTile = this.getTile(this._selectedUnit.tileInfo.q, this._selectedUnit.tileInfo.r);
+        let [dmg, defenderDmg, description] = this.battleAssessment(atckerTile, tile);
+        let battleInfo = `<div>
+            ${description}
+        </div>`;
+        return battleInfo;
+    }
     private generateUnitInfo(unit: Unit): string {
         return `
             <div>
@@ -1562,6 +1589,15 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
 
+        // check for battling a city
+        if (nextMovementTile.improvement !== undefined &&
+            currentTile.unit.owner !== nextMovementTile.improvement.owner
+        ) {
+            console.log("urban combat");
+            this.battleCity(currentTile, nextMovementTile)
+            return;
+        }
+
         // check for battling a unit
         if (nextMovementTile.unit !== undefined &&
             currentTile.unit !== undefined &&
@@ -1573,13 +1609,17 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
 
-        // check for battling a city
-        if (nextMovementTile.improvement !== undefined &&
-            currentTile.unit.owner !== nextMovementTile.improvement.owner
-        ) {
-            console.log("urban combat");
-            this.battleCity(currentTile, nextMovementTile)
-            return;
+        // check for ranged city battle.
+        if (currentTile.unit.attack_range > 1 &&
+            targetTile.improvement !== undefined &&
+            targetTile.improvement.owner !== currentTile.unit.owner) {
+
+            const distance = getHexDistance(currentTile, targetTile);
+            if (distance <= currentTile.unit.attack_range) {
+                console.log("artillary battle city");
+                this.battleCity(currentTile, targetTile)
+                return;
+            }
         }
 
         // check for ranged battle.
@@ -1591,19 +1631,6 @@ export default class MapView implements MapViewControls, TileDataSource {
             if (distance <= currentTile.unit.attack_range) {
                 console.log("artillary battle");
                 this.battle(currentTile, targetTile)
-                return;
-            }
-        }
-
-        // check for ranged city battle.
-        if (currentTile.unit.attack_range > 1 &&
-            targetTile.improvement !== undefined &&
-            targetTile.improvement.owner !== currentTile.unit.owner) {
-
-            const distance = getHexDistance(currentTile, targetTile);
-            if (distance <= currentTile.unit.attack_range) {
-                console.log("artillary battle city");
-                this.battleCity(currentTile, targetTile)
                 return;
             }
         }
@@ -1674,6 +1701,108 @@ export default class MapView implements MapViewControls, TileDataSource {
         });
     }
 
+    battleAssessment(currentTile: TileData, targetTile: TileData): [number, number, string] {
+        let attack_bonus_descriptions = []
+        let target_bonus_descriptions = []
+
+        let currentAttackValue = currentTile.unit.attack;
+        let targetAttackValue = 0;
+        let targetDefenceValue = 0;
+        let targetHealth = 0;
+        let targetHealthStrength;
+        if (targetTile.improvement) {
+            targetAttackValue = 5;
+            targetDefenceValue = targetTile.improvement.defence;
+            targetHealth = targetTile.improvement.health;
+            targetHealthStrength = targetHealth/targetTile.improvement.health_max;
+        }
+        if (targetTile.unit) {
+            targetAttackValue = targetTile.unit.attack;
+            targetDefenceValue =   targetTile.unit.defence;
+            targetHealth = targetTile.unit.health;
+            targetHealthStrength = targetHealth/targetTile.unit.health_max;
+        }
+
+        if (currentTile.unit.attack_range !== 1) {
+            targetAttackValue = 0;
+        }
+
+
+        // Map Terrain Bonuses
+        if (isHill(currentTile.height) && !isHill(targetTile.height)) {
+            currentAttackValue *= 1.25;
+            attack_bonus_descriptions.push("+25% attack - high ground (Hills)");
+        }
+        if (!isHill(currentTile.height) && isHill(targetTile.height)) {
+            currentAttackValue *= .75;
+            attack_bonus_descriptions.push("-25% attack - low ground to high ground (Hills)");
+        }
+        if (targetTile.rivers) {
+            currentAttackValue *= .75;
+            attack_bonus_descriptions.push("-25% attack - cross river");
+        }
+        if (isForest(targetTile)) {
+            targetDefenceValue *= 1.25;
+            target_bonus_descriptions.push("+25% defence - cover from forest");
+        }
+
+        // experience and bonuses
+        let currentHealthStrength = currentTile.unit.health/currentTile.unit.health_max;
+        if (currentHealthStrength < .30) {
+            targetAttackValue *= .5;
+            attack_bonus_descriptions.push("-50% attack - massivly injured unit");
+        } else if (currentHealthStrength < 1) {
+            targetAttackValue *= .95;
+            attack_bonus_descriptions.push("-5% attack - injured unit");
+        }
+        if (targetHealthStrength < .30) {
+            targetAttackValue *= .5;
+            target_bonus_descriptions.push("-50% attack - massivly injured unit");
+        } else if (currentHealthStrength < 1) {
+            targetAttackValue *= .95;
+            target_bonus_descriptions.push("-5% attack - injured unit");
+        }
+
+        let attackValue = Math.round(Math.max(currentAttackValue - targetDefenceValue, 0));
+        let defenderAttackValue = Math.round(Math.max(targetAttackValue - currentTile.unit.defence, 0));
+
+        let description = ``;
+
+        targetHealth = targetHealth - attackValue;
+        targetHealth = Math.max(targetHealth, 0);
+        let color = "gold;"
+        if (currentTile.unit.health - defenderAttackValue <= 0) {
+            description += `Massive Loss`;
+            color = "red";
+        }
+        else if (targetHealth <= 0) {
+            description += `Major Victory`;
+        }
+        else if (attackValue > defenderAttackValue) {
+            description += `Minor Victory`;
+        } else if (attackValue == defenderAttackValue) {
+            description += `Stalemate`;
+        } else {
+            description += `Costly Battle`;
+            color = "red";
+        }
+        description = `<div style="text-align: center; color:${color}" class="battle_assessment">Battle: ${description}</div>`;
+        description += `<table>`;
+        description += `<tr><th></th><td>Attacker</td><td>Defender</td></tr>`;
+        let currHealth = currentTile.unit.health - defenderAttackValue;
+        currHealth = Math.max(currHealth, 0);
+
+        description += `<tr><th>Health After Battle</th><td>${currHealth}</td><td>${targetHealth}</td></tr>`;
+        description += `<tr><th>Attack</th><td>${currentTile.unit.attack}</td><td>${targetAttackValue}</td></tr>`;
+        description += `<tr><th>Defence</th><td>${currentTile.unit.defence}</td><td>${targetDefenceValue}</td></tr>`;
+        description += `<tr><th>Bonuses</th><td>${attack_bonus_descriptions.join("</br>")}</td><td>${target_bonus_descriptions.join("</br>")}</td></tr>`;
+        description += `</table>`;
+
+        // TODO bonuses
+
+        return [attackValue, defenderAttackValue, description];
+    }
+
     battle(currentTile: TileData, targetTile: TileData) {
         const player = this.getPlayer(currentTile.unit.owner);
         const targetPlayer = this.getPlayer(targetTile.unit.owner);
@@ -1714,12 +1843,12 @@ export default class MapView implements MapViewControls, TileDataSource {
         animateToPosition(currentTile.unit.model, twoThirdsX, twoThirdsY, battleDuration, easeOutQuad, () => {
 
             // const outcome = getRandomInt(1, 2)
-            let dmg = Math.max(currentTile.unit.attack - targetTile.unit.defence, 0);
-            targetTile.unit.health -= dmg;
+            let [dmg, defenderAtkDmg, description] = this.battleAssessment(currentTile, targetTile);
             RisingText(this._scene, worldPosTarget, `-${dmg}`, "red");
-
-            if (currentTile.unit.attack_range === 1 && targetTile.unit.attack_range === 1) {
-                dmg = Math.max(targetTile.unit.attack - targetTile.unit.defence, 0);
+            targetTile.unit.health -= dmg;
+            new Rocket(worldPosTarget, worldPosCur, this._scene);
+            if (defenderAtkDmg > 0) {
+                dmg = defenderAtkDmg;
                 currentTile.unit.health -= dmg;
                 RisingText(this._scene, worldPosCur, `-${dmg}`, "red");
                 new Rocket(worldPosTarget, worldPosCur, this._scene);
@@ -1749,6 +1878,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     targetTile.locked = false;
 
                     if (currentTile.unit.attack_range === 1) {
+                        currentTile.unit.movement = 1;
                         this.moveUnit(currentTile, targetTile);
                     }
                 })
@@ -1757,8 +1887,12 @@ export default class MapView implements MapViewControls, TileDataSource {
                 animateToPosition(targetTile.unit.model, worldPosTarget.x, worldPosTarget.y, battleDuration, easeOutQuad, () => { });
                 currentTile.locked = false;
                 targetTile.locked = false;
-                currentTile.unit.movement -= 1;
-
+                currentTile.unit.movement = 0;
+                if (currentTile.unit.selector) {
+                    currentTile.unit.selector.mesh.parent.remove(currentTile.unit.selector.mesh);
+                    currentTile.unit.selector.dispose();
+                    currentTile.unit.selector = undefined;
+                }
                 if (currentTile.unit.health <= 0) {
                     this.killUnit(currentTile);
                     if (targetTile.unit) {
@@ -1904,8 +2038,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             animateToPosition(currentTile.unit.model, worldPosCur.x, worldPosCur.y, battleDuration, easeOutQuad, () => { });
             animateToPosition(targetTile.improvement.model, worldPosTarget.x, worldPosTarget.y, battleDuration, easeOutQuad, () => {
 
-                let dmg = Math.max(currentTile.unit.attack - targetTile.improvement.defence, 0);
+                let [dmg, defenderAtkDmg, description] = this.battleAssessment(currentTile, targetTile);
                 targetTile.improvement.health -= dmg;
+                this.updateCityLabel(targetTile);
                 RisingText(this._scene, worldPosTarget, `-${dmg}`, "red");
 
                 if (isRanged) {
@@ -1913,11 +2048,16 @@ export default class MapView implements MapViewControls, TileDataSource {
                     targetTile.locked = false;
                     currentTile.unit.moving = false;
 
-                    currentTile.unit.movement -= 1;
+                    currentTile.unit.movement = 0;
+                    if (currentTile.unit.selector) {
+                        currentTile.unit.selector.mesh.parent.remove(currentTile.unit.selector.mesh);
+                        currentTile.unit.selector.dispose();
+                        currentTile.unit.selector = undefined;
+                    }
                     return;
                 }
 
-                dmg = Math.max(targetTile.improvement.defence - currentTile.unit.defence, 5);
+                dmg = defenderAtkDmg;
                 currentTile.unit.health -= dmg;
                 updateUnitHealthBar(currentTile.unit);
                 RisingText(this._scene, worldPosCur, `-${dmg}`, "red");
@@ -1931,6 +2071,11 @@ export default class MapView implements MapViewControls, TileDataSource {
 
                     this.playSound(asset("sounds/units/cinematic_boom.mp3"), worldPosCur);
 
+                    // remove any enemy units on tile.
+                    if (targetTile.unit) {
+                        this.killUnit(targetTile);
+                    }
+
                     // update all tiles that belonged to that city to new owner.
                     currentTile.unit.kills += 1;
                     currentTile.locked = false;
@@ -1939,7 +2084,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
                     // check for cuttoff tiles
                     this.checkForCutOffTiles(currentTile);
-
+                    currentTile.unit.movement = 1;
                     this.moveUnit(currentTile, targetTile);
                     this.checkVictoryConditions();
                     return;
@@ -1947,7 +2092,12 @@ export default class MapView implements MapViewControls, TileDataSource {
                 console.log("lost city battle!");
                 currentTile.locked = false;
                 targetTile.locked = false;
-                currentTile.unit.movement -= 1;
+                currentTile.unit.movement = 0;
+                if (currentTile.unit.selector) {
+                    currentTile.unit.selector.mesh.parent.remove(currentTile.unit.selector.mesh);
+                    currentTile.unit.selector.dispose();
+                    currentTile.unit.selector = undefined;
+                }
                 if (currentTile.unit.health <= 0) {
                     this.killUnit(currentTile);
                 }
@@ -2997,6 +3147,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 unit.health = Math.min(unit.health + amt, unit.health_max);
                 amt = unit.health - oldHealth;
                 RisingText(this._scene, qrToWorld(t.q, t.r), `+${amt}`);
+                updateUnitHealthBar(unit);
             }
         }
         for (const [key, city] of Object.entries(player.improvements)) {
@@ -3006,6 +3157,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 city.health = Math.min(city.health + amt, city.health_max);
                 amt = city.health - oldHealth;
                 let t = this.getTile(city.tileInfo.q, city.tileInfo.r);
+                this.updateCityLabel(t);
                 RisingText(this._scene, qrToWorld(t.q, t.r), `+${amt}`);
             }
         }
@@ -3102,8 +3254,16 @@ export default class MapView implements MapViewControls, TileDataSource {
         let player = this._gameState.players[improvement.owner];
         let nation = Nations[player.nation];
         const newPopulation = Math.floor(improvement.population);
+
+
+        let healthBar = ``
+        if (improvement.health < improvement.health_max) {
+            healthBar = HeathBarDivHtml(improvement.id, improvement.health/improvement.health_max);
+        }
         const img = `<img src="${nation.flag_image}" style="padding-right:10px;" width="30px" height="25px"/>`
-        let label = `<span class="city-label" data-target="${improvement.id}">${img} ${newPopulation} ${improvement.name}</span>`;
+        let label = `<span class="city-label" data-target="${improvement.id}">${healthBar}${img} ${newPopulation} ${improvement.name}</span>`;
+
+
         if (t.owner !== this._gameState.currentPlayer) {
             updateLabel(improvement.id, label);
             return;
@@ -3113,6 +3273,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let progress = this.getCityProgress(t);
 
         label = `<span class="city-label" data-target="${improvement.id}">`
+        label += healthBar;
         label += ` ${img} `;
         let popBar = HeathBarDivHtml(improvement.id, progress.pop_percent);
         label += popBar + `<span class="city-label-lower" style="padding-right:5px;"><sub>${progress.pop_turns}</sub> </span>`
@@ -3601,7 +3762,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             const player = this._gameState.players[this._gameState.currentPlayer];
             for (const [key, unit] of Object.entries(player.units)) {
                 unit.movement = 0;
-                if (unit.selector) {
+                if (unit.selector && unit.selector.mesh.parent) {
                     unit.selector.mesh.parent.remove(unit.selector.mesh);
                     unit.selector.dispose();
                     unit.selector = undefined;
@@ -4259,7 +4420,6 @@ export default class MapView implements MapViewControls, TileDataSource {
             sound.play();
         });
     }
-
 
     CloseMenu() {
         document.getElementById('menu').innerHTML = '';

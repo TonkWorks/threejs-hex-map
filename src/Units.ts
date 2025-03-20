@@ -895,7 +895,6 @@ export function CreateYieldModel(image: string): Mesh {
     return unitModel;
 }
 
-
 export function RisingText(scene: Scene,  position: Vector3, text: string, color = "yellow", size = 1, duration = 1, riseDistance = 1) {
     // Create a canvas texture for the text
     const canvas = document.createElement('canvas');
