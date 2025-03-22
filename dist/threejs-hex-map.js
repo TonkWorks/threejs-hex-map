@@ -2676,6 +2676,9 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        PanCameraTo(qr, durationMs) {
 	            const from = this.controls.getCamera().position.clone();
 	            const to = this.controls.getCameraFocusPosition(qr);
+	            if (this.animations.length > 0) {
+	                return;
+	            }
 	            this.addAnimation(new Animation(durationMs, (a) => {
 	                this.controls.getCamera().position.copy(from.clone().lerp(to, a));
 	            }));

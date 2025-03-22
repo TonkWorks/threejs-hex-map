@@ -368,7 +368,7 @@ export function createUnit(type: string, player: Player, unitID: string = ""): U
         map: texture,
         transparent: true,
         side: FrontSide,
-        alphaTest: 0.5,
+        alphaTest: 0.1,
     });
 
     const unitModel = new Mesh(geometry, material);

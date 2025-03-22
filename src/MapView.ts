@@ -41,6 +41,13 @@ import { RawShaderMaterial, Triangle } from './three';
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
 
+export function icon(resource: string) {
+    return `<img id="menu-unit-cost" src="../../assets/ui/resources/${resource}.png">`
+}
+export function resourceIcon(resource: string) {
+    return `<img id="menu-unit-cost" src="../../assets/map/resources/${resource}.png">`
+}
+
 // declare const postProcessing: any;
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
@@ -1092,11 +1099,13 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     focus(q: number, r: number) {
+        console.log("focus")
         this._camera.position.copy(this.getCameraFocusPosition({ q, r }))
 
     }
 
     panCameraTo(q: number, r:number) {
+        console.log("pan")
         this._controller.PanCameraTo({q: q, r: r}, 600);
 
     }
@@ -1435,12 +1444,13 @@ export default class MapView implements MapViewControls, TileDataSource {
             improvement_info += "<tr><th>Improvement</th><td>" + capitalize(tile.worker_improvement.type) + "</td></tr>";
         }
 
-        let yields = '';
+        let yields = '<tr>';
         for (const [key, value] of Object.entries(allYields)) {
             if (value > 0) {
-                yields += `<tr><th>${capitalize(key)}</th><td>${value}</td></tr>`
+                yields += `<td>${icon(key)}</br>${value}</td>`
             }
         }
+        yields += `</tr>`;
 
         let features: string[] = [];
         let features_info = '';
@@ -1456,16 +1466,23 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (features.length > 0) {
             features_info = `<tr><th>Features</th><td>${features.join(", ")}</td></tr>`
         }
+
+        let cityInfo = "";
+        if (tile.city) {
+            let name = this.gameState.players[tile.owner].improvements[tile.city].name;
+            cityInfo = `<tr><th>City</th><td>${name}</td></tr>`
+        }
         return `
             <div>
                 <b>${capitalize(tile.terrain)}</b>
                 <div style="display: flex; align-items: left;">
                     <table style="margin-right: 10px; text-align: left;">
+                        ${yields}
                         ${features_info}
                         ${improvement_info}
-                        ${yields}
-                        </br>
+                        </hr>
                         ${tile.owner ? `<tr><th>Owner</th><td>${tile.owner}</td></tr>` : ''}
+                        ${cityInfo}
                     </table>
                 </div>
             </div>`;
@@ -1486,6 +1503,10 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         let atckerTile = this.getTile(this._selectedUnit.tileInfo.q, this._selectedUnit.tileInfo.r);
+        
+        if (tile.unit && tile.unit.type === "goodie_hut") {
+            return ``;
+        }
         let [dmg, defenderDmg, description] = this.battleAssessment(atckerTile, tile);
         let battleInfo = `<div>
             ${description}
@@ -1493,6 +1514,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         return battleInfo;
     }
     private generateUnitInfo(unit: Unit): string {
+        if (unit.type === "goodie_hut") {
+            return ``;
+        }
         return `
             <div>
                 ${unit.name}
@@ -1527,20 +1551,13 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     private generateResourceInfo(resource: Resource): string {
-        let gold_icon = `<img src="../../assets/ui/resources/gold.png" style="height: 25px; padding-right: 10px;"/>`
-
         return `
             <div>
                 Resource
                 <div style="display: flex; align-items: left;">
                     <table style="margin-right: 10px; text-align: left;">
                         <tr>
-                            <th>Type</th>
-                            <td>${capitalize(resource.name)}</td>
-                        </tr>
-                        <tr>
-                            <th></th>
-                            <td>+${resource.gold} </td><td>${gold_icon}</td>
+                            <td>${capitalize(resource.name)}</br>${resourceIcon(resource.name)}</td>
                         </tr>
                     </table>
                 </div>
@@ -1549,12 +1566,16 @@ export default class MapView implements MapViewControls, TileDataSource {
 
 
     moveUnit(currentTile: TileData, targetTile: TileData, playerInitiated: boolean = false) {
-        if (currentTile === targetTile) {
-            if (currentTile.unit !== undefined && currentTile.unit.movement > 0) {
-                this.selectTile(currentTile);
-                this._selectedUnit = currentTile.unit;
-            } else {
-                this.focusOnNextAction();
+        if (currentTile === targetTile ) {
+            if (currentTile.unit !== undefined) {
+                if (currentTile.unit.owner === this._gameState.currentPlayer) {
+                    if (currentTile.unit.movement > 0) {
+                        this.selectTile(currentTile);
+                        this._selectedUnit = currentTile.unit;
+                    } else {
+                        this.focusOnNextAction();
+                    }
+                }
             }
             return
         }
@@ -2687,6 +2708,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             return '../../assets/ui/resources/gold.png';
         }
       }
+      
 
 
       getTotalYieldsForTile(tile: TileData): { [key: string]: number } {
@@ -3087,7 +3109,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     let unit = createUnit(thing_to_build, player)
                     thing_name = unit.name;
                     let unit_terrain = "land";
-                    if (thing_to_build === "warship" || thing_to_build === "destroyer") {
+                    if (thing_to_build === "boat" || thing_to_build === "destroyer") {
                         unit_terrain = "water";
                     }
                     if (thing_to_build === "gunship") {
@@ -3218,6 +3240,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     focusOnNextAction() {
+        console.log("focus on")
         if (this.keep_menu) {
             return;
         }
@@ -3871,7 +3894,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             options.push(["infantry", "Infantry", 400, "rifleman.png"]);
         }
         if ("warships" in player.research.researched) {
-            options.push(["warship", "Warship", 500, "warship.png"]);
+            options.push(["boat", "Warship", 500, "warship.png"]);
         }
         if ("tank" in player.research.researched) {
             options.push(["tank", "Tank", 500, "tank.png"]);
@@ -3880,7 +3903,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             options.push(["destroyer", "Destroyer", 500, "destroyer.png"]);
         }
         if ("gunship" in player.research.researched) {
-            options.push(["gunshp", "Gunship", 500, "gunship.png"]);
+            options.push(["gunship", "Gunship", 500, "gunship.png"]);
         }
         if ("nukes" in player.research.researched) {
             options.push(["nuke", "Nuke", 1000, "nuke.png"]);
@@ -3953,7 +3976,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             let turns = Math.ceil(building.cost / avialable_prod)/10;
             option_info += `<tr><td><button class="city-menu" data-name="queue_building" data-target="${key}"><img id="menu-unit-img" src="${building.menu_image}">${building.name} (${turns} turns)</button></td>`
-            option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"</button></td></tr>`
+            option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td></tr>`
         }
 
         // gold
@@ -4271,7 +4294,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let unit_terrain = "land";
         if (name === "buy") {
             unit_type = target;
-            if (unit_type === "warship" || unit_type === "destroyer") {
+            if (unit_type === "boat" || unit_type === "destroyer") {
                 unit_terrain = "water";
             }
             if (unit_type === "gunship") {
