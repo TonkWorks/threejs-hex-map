@@ -309,49 +309,6 @@ export const UnitMap: { [key: string]: UnitConfig } = {
             offset: 0.5,
         }
     },
-
-    "goodie_hut": {
-        name: "Goodie Hut",
-        cost: 0,
-        moveSounds: [],
-        attackSounds: [],
-        texture: "../../assets/map/units/goodie_hut.png",
-        icon: "",
-        image: "../../assets/map/units/goodie_hut.png",
-        geometry: { width: 1, height: 1 },
-        textureFilter: 'nearest',
-        stats: {
-            health_max: 1,
-            movement_max: 0,
-            attack: 0,
-            defence: 0,
-            attack_range: 0,
-            land: true,
-            water: false,
-            offset: 0.2,
-        }
-    },
-    "barbarian_encapment": {
-        name: "Goodie Hut",
-        cost: 0,
-        moveSounds: [asset("sounds/units/missile.mp3")],
-        attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
-        texture: "../../assets/map/units/gunship.png",
-        icon: "../../assets/map/icons/gunship.png",
-        image: "../../assets/map/units/gunship.png",
-        geometry: { width: 1.5, height: 1.5 },
-        textureFilter: 'nearest',
-        stats: {
-            health_max: 1,
-            movement_max: 5,
-            attack: 100,
-            defence: 0,
-            attack_range: 20,
-            land: true,
-            water: false,
-            offset: 0.5,
-        }
-    },
 };
 
 export function createUnit(type: string, player: Player, unitID: string = ""): Unit {

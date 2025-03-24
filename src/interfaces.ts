@@ -21,6 +21,7 @@ export interface TileData {
     locked: boolean | false;
     owner?: string | null;
     unit?: Unit | null;
+    civilian_unit?: Unit | null;
     city?: string | null;
     yields?: { [key: string]: number } | null;
     improvement?: Improvement | null;

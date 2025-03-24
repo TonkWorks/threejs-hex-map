@@ -130,8 +130,7 @@ export function InitGameState(): GameState {
     barbarianPlayer.isBarbarian = true;
     barbarianPlayer.isDefeated = true;
     playersList.push(barbarianPlayer);
-
-
+    
     const players: { [key: string]: Player } = {};
     for (const player of  playersList) {
         players[player.name] = player;

@@ -12,6 +12,9 @@ function sleep(ms: number) {
 export async function takeTurn(mapView: MapView, player: Player) {
     if (player.isBarbarian === true) {
         // todo unit movements/attacks
+        placeBarbarianEncampents(mapView);
+        mapView.endTurn();
+        return
     }
 
     if (player.isDefeated === true) {
@@ -202,6 +205,58 @@ export async function attack(mapView: MapView, player: Player, targets: TileData
     }
   }
   
+// Barbarian AI
+function placeBarbarianEncampents(mapView: MapView) {
+    // For now just place near the player cities
+    // Get players cities
+    const playerCities = mapView._gameState.players[mapView._gameState.currentPlayer].improvements;
+    const cityKeys = Object.keys(playerCities);
+    if (cityKeys.length === 0) {
+        return;
+    }
+    const randomIndex = Math.floor(Math.random() * cityKeys.length);
+    const randomCityKey = cityKeys[randomIndex];
+    const city = playerCities[randomCityKey];
+
+
+    // Attempt to place encampment near city
+    const tile = mapView.getTile(city.tileInfo.q, city.tileInfo.r);
+    const max_radius = 7;
+
+    const tiles = mapView.getTileGrid().neighbors(tile.q, tile.r, max_radius);
+    const eligibleTiles:TileData[] = [];
+    for (const t of tiles) {
+        if (t.fog === false) {
+            continue;
+        }
+        if (t.terrain === "water" || t.terrain === "mountain") {
+            continue;
+        }
+        if (t.owner !== undefined && t.owner !== "") {
+            continue;
+        }
+        if (t.worker_improvement) {
+            continue;
+        }
+        // no encampents within 7 tiles of each other.
+        if (mapView.getTileGrid().neighbors(t.q, t.r, 6).filter(x => x.worker_improvement?.type === "encampent").length > 0) {
+            continue;
+        }
+        eligibleTiles.push(t);
+    }
+    if (eligibleTiles.length === 0) {
+        return;
+    }
+    const randomTileIndex = Math.floor(Math.random() * eligibleTiles.length);
+    const randomTile = eligibleTiles[randomTileIndex];
+    randomTile.worker_improvement = CreateWorkerImprovement("encampent");
+    mapView.addWorkerImprovementToMap(randomTile.worker_improvement, randomTile);
+    let barbPlayer = mapView._gameState.players["barbarians"];
+
+    let t = mapView.getTile(randomTile.q, randomTile.r);
+    mapView.addUnitToMap(createUnit("rifleman", barbPlayer), t);
+
+};
 
 // General AI
 function getRecommendedEconomic(improvement: any, player: Player) {

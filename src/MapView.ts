@@ -424,32 +424,48 @@ export default class MapView implements MapViewControls, TileDataSource {
     updateAllVisilibility() {
         let tiles = this.getTileGrid().toArray();
         let revealed_goodie_hut = null;
+        let revealed_barb = null;
 
         for (const tile of tiles) {
             if (tile.clouds) {
                 continue;
             };
             if (tile.fog == true) {
-                if (tile.unit !== undefined) {
-                    tile.unit.model.visible = false;
-                    if (tile.unit.type === "goodie_hut") {
-                        tile.unit.model.visible = true;
+                if (tile.worker_improvement !== undefined) {
+                    tile.worker_improvement.model.visible = false;
+                    if (tile.worker_improvement.type === "goodie_hut") {
+                        tile.worker_improvement.model.visible = true;
                     }
+                    if (tile.worker_improvement.type === "goodie_hut") {
+                        tile.worker_improvement.model.visible = true;
+                    }
+                }
+
+                if (tile.unit && tile.unit.model.visible) {
+                    tile.unit.model.visible = false;
                 }
             }
             if (tile.fog == false) {
-                if (tile.unit !== undefined) {
-                    if (tile.unit.type === "goodie_hut" && tile.unit.model.visible === false) {
+                if (tile.worker_improvement !== undefined) {
+                    if (tile.worker_improvement.type === "goodie_hut" && tile.worker_improvement.model.visible === false) {
                         revealed_goodie_hut = tile;
                     }
-                    tile.unit.model.visible = true;
+                    tile.worker_improvement.model.visible = true;
                     
-                }
+                } 
                 if (tile.improvement !== undefined) {
                     tile.improvement.model.visible = true;
                 }
                 if (tile.worker_improvement !== undefined) {
                     tile.worker_improvement.model.visible = true;
+                }
+                if (tile.unit) {
+                    if (tile.unit.model.visible === false) {
+                        if (tile.unit.owner === 'barbarians') {
+                            revealed_barb = tile;
+                        }
+                    }
+                    tile.unit.model.visible = true;
                 }
             }
 
@@ -465,16 +481,22 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         this._renderMinimap = true;
 
-        if (revealed_goodie_hut) {
-            let sound = "";
-            for (let tile of tiles) {
-                if (tile.unit && tile.unit.type === "goodie_hut") {
-                    sound = asset("sounds/units/rank_up.mp3");
+
+        let sound = "";
+        if (revealed_barb) {
+            sound = asset("sounds/units/rank_up.mp3");
+            const mm = this;
+            this.toast({
+                icon: "../../assets/map/icons/star.png",
+                text: "Barbarians Nearby",
+                onClick: function () {
+                    mm.selectTile(revealed_barb);
+                    this._controller.PanCameraTo({q: mm.selectedTile.q, r: mm.selectedTile.r - 3}, 600);
                 }
-            }
-            if (sound !== "") {
-                this.playSound(sound);
-            }
+            });
+        }
+        if (revealed_goodie_hut) {
+            sound = asset("sounds/units/barb-hit.mp3");
             const mm = this;
             this.toast({
                 icon: "../../assets/map/icons/star.png",
@@ -484,6 +506,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                     this._controller.PanCameraTo({q: mm.selectedTile.q, r: mm.selectedTile.r - 3}, 600);
                 }
             });
+        }
+        if (sound !== "") {
+            this.playSound(sound);
         }
     }
     addUnitToMap(unit: Unit, tile: TileData, fromSaved: boolean = false) {
@@ -958,8 +983,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             let tile = this.getRandomTile(false);
             if (tile && tile.unit === undefined && !isMountain(tile.height) && !isWater(tile.height)) {
                 // get random from resource map
-
-                this.addUnitToMap(createUnit("goodie_hut", this._gameState.players['barbarians']), tile);
+                this.addWorkerImprovementToMap(CreateWorkerImprovement("goodie_hut"), tile);
             }
         }
 
@@ -1374,6 +1398,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         tooltip.style.top = y + "px";
         let data = []
         
+        data.push(`<b>${capitalize(tile.terrain)}</b>`);
         let battleInfo = this.generateBattleInfo(tile);
         if (battleInfo !== "") {
             data.push(battleInfo);
@@ -1474,7 +1499,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         return `
             <div>
-                <b>${capitalize(tile.terrain)}</b>
                 <div style="display: flex; align-items: left;">
                     <table style="margin-right: 10px; text-align: left;">
                         ${yields}
@@ -1504,9 +1528,6 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let atckerTile = this.getTile(this._selectedUnit.tileInfo.q, this._selectedUnit.tileInfo.r);
         
-        if (tile.unit && tile.unit.type === "goodie_hut") {
-            return ``;
-        }
         let [dmg, defenderDmg, description] = this.battleAssessment(atckerTile, tile);
         let battleInfo = `<div>
             ${description}
@@ -1600,13 +1621,24 @@ export default class MapView implements MapViewControls, TileDataSource {
         currentTile.unit.moving = true;
 
         // check for goodie hut
-        if (nextMovementTile.unit !== undefined &&
+        if (nextMovementTile.unit === undefined &&
             currentTile.unit !== undefined &&
-            currentTile.unit.owner !== nextMovementTile.unit.owner &&
-            nextMovementTile.unit.type === "goodie_hut"
+            nextMovementTile.worker_improvement !== undefined &&
+            nextMovementTile.worker_improvement.type === "goodie_hut"
         ) {
             console.log("goodie hut");
             this.goodieHut(currentTile, nextMovementTile)
+            return;
+        }
+
+        // check for encampent
+        if (nextMovementTile.unit === undefined &&
+            currentTile.unit !== undefined &&
+            nextMovementTile.worker_improvement !== undefined &&
+            nextMovementTile.worker_improvement.type === "encampent"
+        ) {
+            console.log("encampent");
+            this.encampent(currentTile, nextMovementTile)
             return;
         }
 
@@ -1929,11 +1961,9 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     goodieHut(currentTile: TileData, targetTile: TileData) {
 
-        targetTile.unit.model.clear();
-        targetTile.unit.model.parent.remove(targetTile.unit.model);
-        let barb = this.getPlayer(targetTile.unit.owner);
-        delete barb.units[targetTile.unit.id];
-        targetTile.unit = undefined;
+        targetTile.worker_improvement.model.clear();
+        targetTile.worker_improvement.model.parent.remove(targetTile.worker_improvement.model);
+        targetTile.worker_improvement = undefined;
 
 
         // All the good stuff
@@ -1976,6 +2006,41 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (event === "gold") {
             player.gold += 100;
         }
+
+        if (this.gameState.currentPlayer === currentTile.unit.owner) {
+            // create sound and notification
+            const worldPosCur = qrToWorld(targetTile.q, targetTile.r);
+            const mm = this;
+            this.playSound(sound, worldPosCur);
+            this.toast({
+                icon: notification_icon,
+                text: notification_text,
+                onClick: function () {
+                    mm.selectTile(targetTile);
+                    mm.panCameraTo(mm.selectedTile.q + 1, mm.selectedTile.r - 3)
+                }
+            });
+            this.updateResourcePanel();
+            this.updateGameStatePanel();
+        }
+        this.moveUnit(currentTile, targetTile);
+    }
+
+    encampent(currentTile: TileData, targetTile: TileData) {
+        targetTile.worker_improvement.model.clear();
+        targetTile.worker_improvement.model.parent.remove(targetTile.worker_improvement.model);
+        targetTile.worker_improvement = undefined;
+
+
+        // All the good stuff
+        let player = this.getPlayer(currentTile.unit.owner);
+        let events = [
+            "gold",
+        ]
+        let sound = asset("sounds/ui/buy.mp3");
+        let notification_text = `Gained 50 gold clearing encampent.`;
+        let notification_icon = `../../assets/map/icons/star.png`;
+        player.gold += 50;
 
         if (this.gameState.currentPlayer === currentTile.unit.owner) {
             // create sound and notification
@@ -2734,23 +2799,107 @@ export default class MapView implements MapViewControls, TileDataSource {
           const worldPos = qrToWorld(tile.q, tile.r);
           const allYields = this.getTotalYieldsForTile(tile);
           const activeYields = Object.entries(allYields).filter(([, amount]) => amount > 0);
-          activeYields.forEach(([yieldType, amount], rowIndex) => {
-            const count = Math.min(amount, 5);
-            const iconSpacing = 0.1;
-            const totalWidth = (count - 1) * iconSpacing;
-            const initialOffsetX = -totalWidth / 2;
-            const rowSpacing = 0.4;
-            const offsetY = -rowIndex * rowSpacing;
-            for (let i = 0; i < count; i++) {
-              const imagePath = this.getYieldIconPath(yieldType);
-              const yieldMesh = CreateYieldModel(imagePath);
-              const offsetX = initialOffsetX + i * iconSpacing;
-              yieldMesh.position.set(worldPos.x + offsetX, worldPos.y + .4 + offsetY, worldPos.z + 0.3);
+          
+          // Calculate the layout for all yield types
+          const layouts: { yieldType: string; imagePath: string; amount: number; width: number; isSingle: boolean; }[] = [];
+          const iconSpacing = 0.1;
+          const typeSpacing = 0.3; // Extra spacing between different yield types
+          
+          // First pass: determine width needed for each yield type
+          activeYields.forEach(([yieldType, amount]) => {
+            const imagePath = this.getYieldIconPath(yieldType);
+            
+            if (amount > 4) {
+              // Single icon with number
+              layouts.push({
+                yieldType,
+                imagePath,
+                amount,
+                width: 0, // Single icon width
+                isSingle: true
+              });
+            } else {
+              // Multiple icons
+              const width = (amount - 1) * iconSpacing;
+              layouts.push({
+                yieldType,
+                imagePath,
+                amount,
+                width,
+                isSingle: false
+              });
+            }
+          });
+          
+          // Calculate total width including spacing between types
+          let totalWidth = 0;
+          layouts.forEach((layout, index) => {
+            totalWidth += layout.width;
+            // Add type spacing between different yield types
+            if (index < layouts.length - 1) {
+              totalWidth += typeSpacing;
+            }
+          });
+          
+          // Position all yield types in the middle of the tile
+          let currentX = -totalWidth / 2;
+          
+          layouts.forEach(layout => {
+            if (layout.isSingle) {
+              // Show single icon with number overlay
+              const yieldMesh = CreateYieldModel(layout.imagePath);
+              yieldMesh.position.set(worldPos.x + currentX, worldPos.y - .2, worldPos.z + 0.3);
               this._ui_map_temp_models.add(yieldMesh);
+              
+              // Add number overlay
+              this.addNumberOverlay(layout.amount, worldPos.x + currentX + .1, worldPos.y - .3, worldPos.z + 0.3);
+              
+              currentX += typeSpacing; // Move to next type position
+            } else {
+              // Show multiple icons
+              const count = layout.amount;
+              const initialOffsetX = currentX - layout.width / 2;
+              
+              for (let i = 0; i < count; i++) {
+                const yieldMesh = CreateYieldModel(layout.imagePath);
+                const offsetX = initialOffsetX + i * iconSpacing;
+                yieldMesh.position.set(worldPos.x + offsetX, worldPos.y - .2, worldPos.z + 0.3);
+                this._ui_map_temp_models.add(yieldMesh);
+              }
+              
+              currentX += layout.width + typeSpacing;
             }
           });
         });
-    }
+      }
+
+      addNumberOverlay(amount: number, x: number, y: number, z: number) {
+        const textMesh = this.createTextMesh(amount.toString());
+        textMesh.position.set(x , y, z + .1);
+        this._ui_map_temp_models.add(textMesh);
+      }
+
+     createTextMesh(text: string) {
+        // Create a canvas element to draw text
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 64;
+        canvas.height = 64;
+        
+        // Draw text on canvas
+        context.fillStyle = 'white';
+        context.font = 'Bold 40px Arial';
+        context.textAlign = 'center';
+        context.fillText(text, 32, 48);
+        
+        // Use the canvas as a texture
+        const texture = new CanvasTexture(canvas);
+        const material = new SpriteMaterial({ map: texture });
+        const sprite = new Sprite(material);
+        sprite.scale.set(.35, .35, .35);
+        sprite.rotateX(Math.PI / 4.5);
+        return sprite;
+      }
 
     displayWorkedTiles(tile: TileData) {
         let max_count = Math.max(1, Math.floor(tile.improvement.population));
@@ -3119,6 +3268,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                         unit,
                         this.getClosestUnoccupiedTile(t, unit_terrain)
                     );
+                    unit.movement = 0;
                 }
                 if (isBuilding === true) {
                     thing_name = BuildingMap[thing_to_build].name;
@@ -3224,6 +3374,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                     mm.pickResearch();
                 }
             });
+            this.playSound(asset("sounds/research/complete.mp3"));
             let info = DisplayResearchFinished(tech);
             this.CloseMenu();
             this.keep_menu = true;
@@ -3267,6 +3418,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.selectTile(t);
                 this.panCameraTo(t.q, t.r);
                 this.showCityMenu(t);
+                this.in_city_menu = true;
                 return;
             }
         }
@@ -4303,6 +4455,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             if (unit_type !== "") {
                 const mm = UnitMap[unit_type];
                 let unit = createUnit(unit_type, player)
+                unit.movement = 0;
                 player.gold -= mm.cost;
                 this.addUnitToMap(
                     unit,
@@ -4552,4 +4705,8 @@ export function CloseMenu() {
     document.getElementById('menu').innerHTML = '';
     document.getElementById('menu-modal').style.visibility = 'hidden';
     document.getElementById('menu').style.visibility = 'hidden';
+}
+
+function placeBarbarianEncampents() {
+    throw new Error('Function not implemented.');
 }

@@ -208,7 +208,7 @@ export default class Grid<T extends QR> {
 
 
     //
-    exportData(excludedProperties: string[] = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "locked"]): { width: number, height: number, items: T[] } {
+    exportData(excludedProperties: string[] = ["improvement", "improvementOverlay", "territoryOverlay", "unit", "civilian_unit", "locked"]): { width: number, height: number, items: T[] } {
         const items = this.toArray()
         .filter((item): item is T => item !== undefined)
         .map(item => {

@@ -7,6 +7,7 @@ export interface WorkerImprovement {
     type: string; // Unit type (e.g., "city", "farm", "mine")
     yields: { [key: string]: number }; // Yields provided by the improvement
     index: number; // Variation of the unit model
+    barbarian?: boolean;
     model?: Mesh; // Reference to the 3D model in the scene
     tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
 }
@@ -28,6 +29,21 @@ export const WorkerImprovementMap: {[key: string]: any } = {
         yields: {
             production: 2,
         },
+    },
+    // barbarian
+    "encampent": {
+        type: "encampent",
+        barbarian: true,
+        description: "",
+        images: ["../../assets/map/improvements/mine.png"],
+        yields: {},
+    },
+    "goodie_hut": {
+        type: "goodie_hut",
+        barbarian: true,
+        description: "",
+        images: ["../../assets/map/units/goodie_hut.png"],
+        yields: {},
     },
 }
 
