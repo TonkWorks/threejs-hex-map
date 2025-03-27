@@ -243,6 +243,7 @@
             border: 2px solid #d4af37;
             border-radius: 5px;
             padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
         }
         #menu .close-button {
             position: absolute;
@@ -350,6 +351,65 @@
             text-align: left;
             font-size: .5em;
         }
+
+
+        
+        .panel-title {
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            font-size: 1.2em;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            margin: 0px;
+            color: silver;
+            text-shadow: none;
+            background: linear-gradient(to right, 
+                rgba(212, 175, 55, 0) 0%, 
+                rgba(192, 192, 192, 1) 25%, 
+                rgba(192, 192, 192, 1) 75%, 
+                rgba(212, 175, 55, 0) 100%
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .ancient-hr {
+            border: none;
+            height: 10px;
+            background: transparent;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .ancient-hr::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 2px;
+            background: linear-gradient(to right, 
+                rgba(212, 175, 55, 0) 0%, 
+                rgba(212, 175, 55, 1) 25%, 
+                rgba(212, 175, 55, 1) 75%, 
+                rgba(212, 175, 55, 0) 100%
+            );
+        }
+
+        .ancient-hr::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-medium);
+            padding: 0 10px;
+            color: rgba(212, 175, 55, 1);
+            font-size: 1.5em;
+        }
+
         .city-menu {
             display: flex;
             justify-content: left!important;

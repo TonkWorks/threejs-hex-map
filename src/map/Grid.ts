@@ -222,6 +222,8 @@ export default class Grid<T extends QR> {
               // Create a shallow copy of resource so modifications do not affect the original.
               (copy as any)[key] = { ...(item as any)[key] };
               delete (copy as any)[key].model;
+              delete (copy as any)[key].mapModel;
+              delete (copy as any)[key].map;
               delete (copy as any)[key].image;
             } else if (key === "worker_improvement") {
                 // Create a shallow copy of resource so modifications do not affect the original.

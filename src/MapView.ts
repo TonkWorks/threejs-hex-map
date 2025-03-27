@@ -477,6 +477,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             if (tile.resource !== undefined && tile.resource.model !== undefined) {
                 tile.resource.model.visible = true;
+                if (tile.resource.mapModel) {
+                    tile.resource.mapModel.visible = true;
+                }
             }
         }
         this._renderMinimap = true;
@@ -850,6 +853,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         resource.model.visible = false;
         resource.model.position.set(worldPos.x, worldPos.y - .8, 0.3);
         this._units_models.add(resource.model);
+
+        if (resource.mapModel) {
+            resource.mapModel.visible = false;
+            resource.mapModel.position.set(worldPos.x, worldPos.y + .2, 0.2);
+            this._units_models.add(resource.mapModel);
+
+        }
+
         tile.resource = resource;
     }
 
@@ -1398,7 +1409,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         tooltip.style.top = y + "px";
         let data = []
         
-        data.push(`<b>${capitalize(tile.terrain)}</b>`);
+        data.push(`<div class="panel-title">${capitalize(tile.terrain)}</div>`);
         let battleInfo = this.generateBattleInfo(tile);
         if (battleInfo !== "") {
             data.push(battleInfo);
@@ -1415,7 +1426,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         data.push(this.generateTileInfo(tile));
 
-        tooltip.innerHTML = data.join("</br>");
+        tooltip.innerHTML = data.join(`<hr class="ancient-hr">`);
         tooltip.style.visibility = "visible";
     }
 
@@ -4136,18 +4147,21 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         let info = `
             <button class="close-button" onclick="CloseMenu();">&times;</button>
-            <div style="text-align: center;">
-                ${tile.improvement.name}</br>
+            <div class="panel-title">
+                ${tile.improvement.name}
             </div>
+            <hr class="ancient-hr">
             <p class="small">
                 ${yield_info}
             </p>
+            <hr class="ancient-hr">
             <p class="small">
                 ${building_info}
             </p>
             <p class="small">
                 ${production_info}
             </p>
+            <hr class="ancient-hr">
             <div class="options">
                 <table>
                     ${option_info}

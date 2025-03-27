@@ -760,49 +760,59 @@ export function updateLabel(domID: string, content: string) {
 export interface Resource {
     name: string;
     image: string; // Image URL
+    map?: string;
     gold: number;
     model?: Mesh;
+    mapModel?: Mesh;
 }
 
 export const ResourceMap: { [key: string]: Resource } = {
-    "box": {   
-        name:  "box",
+    "marble": {   
+        name:  "marble",
         image: "../../assets/map/resources/box.png",
+        map: "../../assets/map/resources/map/marble.png",
         gold: 5,
     },
     "coal": {   
         name: "coal",
         image: "../../assets/map/resources/coal.png",
+        map: "../../assets/map/resources/map/coal.png",
         gold: 5,
     },
     "corn": {   
         name: "corn",
         image: "../../assets/map/resources/corn.png",
+        map: "../../assets/map/resources/map/corn.png",
         gold: 5,
     },
     "gold": {   
         name: "gold",
         image: "../../assets/map/resources/gold.png",
+        map: "../../assets/map/resources/map/gold.png",
         gold: 5,
     },
-    "meat": {   
-        name: "meat",
-        image: "../../assets/map/resources/meat.png",
+    "cows": {   
+        name: "cows",
+        image: "../../assets/map/resources/cows.png",
+        map: "../../assets/map/resources/map/cows.png",
         gold: 5,
     },
     "sheep": {   
         name: "sheep",
         image: "../../assets/map/resources/sheep.png",
+        map: "../../assets/map/resources/map/sheep.png",
         gold: 5,
     },
     "wheat": {   
         name: "wheat",
         image: "../../assets/map/resources/wheat.png",
+        map: "../../assets/map/resources/map/wheat.png",
         gold: 5,
     },
     "wood": {   
         name: "wood",
         image: "../../assets/map/resources/wood.png",
+        map: "../../assets/map/resources/map/wood.png",
         gold: 5,
     }
 }
@@ -811,7 +821,7 @@ export function CreateResourceModel(resource: Resource): Resource {
     const textureLoader = new TextureLoader()
     const texture = textureLoader.load(`${resource.image}`)
     texture.magFilter = NearestFilter;
-    const unitModel = new Mesh(
+    const iconModel = new Mesh(
         new BoxBufferGeometry(.4, .4, .001),
         new MeshBasicMaterial({ 
             // color: player.color,
@@ -821,15 +831,62 @@ export function CreateResourceModel(resource: Resource): Resource {
             alphaTest: .5,
         })
     );
-    unitModel.castShadow = false;
-    unitModel.receiveShadow = false;
-    unitModel.rotateX(Math.PI / 6);
+    iconModel.castShadow = false;
+    iconModel.receiveShadow = false;
+    iconModel.rotateX(Math.PI / 6);
+
+
+    // map
+    let mapModel = null;
+    if (resource.map) {
+        const mapTexture = textureLoader.load(`${resource.map}`)
+        mapTexture.magFilter = NearestFilter;
+        mapModel = new Mesh(
+            new PlaneBufferGeometry(1, 1),
+            new MeshBasicMaterial({ 
+                map: mapTexture,
+                transparent: true,
+                side: FrontSide,
+                alphaTest: .5,
+            })
+        );
+        mapModel.rotateX(Math.PI / 6);
+        mapModel.castShadow = true;
+        mapModel.receiveShadow = false;
+    }
+
     return {
         name: resource.name,
         image: resource.image,
+        map: resource.map,
         gold: resource.gold,
-        model: unitModel,
+        model: iconModel,
+        mapModel: mapModel,
     }
+}
+
+export function CreateResourceMapModel(resource: Resource): Mesh {
+    const textureLoader = new TextureLoader()
+    // map
+    if (!resource.map) {
+        return null;
+    }
+
+    const mapTexture = textureLoader.load(`${resource.map}`)
+    mapTexture.magFilter = NearestFilter;
+    const mapModel = new Mesh(
+        new PlaneBufferGeometry(2, 2),
+        new MeshBasicMaterial({ 
+            // color: player.color,
+            map: mapTexture,
+            transparent: true,
+            side: FrontSide,
+            alphaTest: .5,
+        })
+    );
+    mapModel.castShadow = false;
+    mapModel.receiveShadow = false;
+    return mapModel
 }
 
 
