@@ -272,7 +272,7 @@ function generateRivers(grid: Grid<TileData>): Grid<TileData> {
         const river = [spawn]
 
         let tile = spawn
-        if (tile == undefined || !tile) {
+        if (tile === undefined || !tile) {
             return []
         }
         while (!isWater(tile.height) &&  river.length < 20) {

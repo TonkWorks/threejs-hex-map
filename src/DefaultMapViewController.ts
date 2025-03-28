@@ -41,6 +41,7 @@ export default class Controller implements MapViewController {
     private controls: MapViewControls
     private pickingCamera: Camera
     private mouseDownPos: Vector3
+    private mouseDownNumber: number = 0
     private dragStartCameraPos: Vector3
     private lastDrag: Vector3 = null
     private debugText: HTMLElement = null
@@ -107,11 +108,6 @@ export default class Controller implements MapViewController {
         }
     }
 
-    onMouseDown = (e: MouseEvent) => {
-        this.pickingCamera = this.controls.getCamera().clone()
-        this.mouseDownPos = screenToWorld(e.clientX, e.clientY, this.pickingCamera)
-        this.dragStartCameraPos = this.controls.getCamera().position.clone()
-    }
 
     onMouseEnter = (e: MouseEvent) => {
         if (e.buttons === 1) {
@@ -119,14 +115,38 @@ export default class Controller implements MapViewController {
         }
     }
 
+    onMouseDown = (e: MouseEvent) => {
+        // Only start dragging with left mouse button
+        if (e.button === 0) {
+            this.pickingCamera = this.controls.getCamera().clone()
+            this.mouseDownPos = screenToWorld(e.clientX, e.clientY, this.pickingCamera)
+            this.dragStartCameraPos = this.controls.getCamera().position.clone()
+        } else if (e.button === 2) {
+            this.pickingCamera = this.controls.getCamera().clone()
+            this.mouseDownPos = screenToWorld(e.clientX, e.clientY, this.pickingCamera)
+            const tile = this.controls.pickTile( this.mouseDownPos)
+            if (tile) {
+                this.controls.showUnitPath(tile)
+            }
+        }
+    }
+    
     onMouseMove = (e: MouseEvent) => {
-        // scrolling via mouse drag
-        if (this.mouseDownPos) {
+        // scrolling via mouse drag - only with left button (button code 0)
+        if (this.mouseDownPos && e.buttons === 1) {
             const mousePos = screenToWorld(e.clientX, e.clientY, this.pickingCamera)
             const dv = this.lastDrag = mousePos.sub(this.mouseDownPos).multiplyScalar(-1)
-
+    
             const newCameraPos = dv.clone().add(this.dragStartCameraPos)
             this.controls.getCamera().position.copy(newCameraPos)
+        }
+        if (this.mouseDownPos && e.buttons === 2) {
+            // Right mouse button - show unit path
+            const mousePos = screenToWorld(e.clientX, e.clientY, this.controls.getCamera())
+            const tile = this.controls.pickTile(mousePos)
+            if (tile) {
+                this.controls.showUnitPath(tile)
+            }
         }
 
         // scrolling via screen edge only in fullscreen mode
@@ -135,14 +155,14 @@ export default class Controller implements MapViewController {
             const mousePos2D = new Vector2(e.clientX, e.clientY)
             const screenCenter2D = new Vector2(window.innerWidth / 2, window.innerHeight / 2)
             const diff = mousePos2D.clone().sub(screenCenter2D)
-
+    
             if (Math.abs(diff.x) > screenCenter2D.x - scrollZoneSize || Math.abs(diff.y) > screenCenter2D.y - scrollZoneSize) {
                 this.controls.setScrollDir(diff.x, -diff.y)
             } else {
                 this.controls.setScrollDir(0, 0)
             }
         }
-
+    
         //
         const mousePos = screenToWorld(e.clientX, e.clientY, this.controls.getCamera())
         const tile = this.controls.pickTile(mousePos)
@@ -150,6 +170,7 @@ export default class Controller implements MapViewController {
     }
 
     onMouseUp = (e: MouseEvent) => {
+        this.controls.mouseUp();
         if (!this.lastDrag || this.lastDrag.length() < 0.1) {
             const mousePos = screenToWorld(e.clientX, e.clientY, this.controls.getCamera())
             const tile = this.controls.pickTile(mousePos)
@@ -173,7 +194,7 @@ export default class Controller implements MapViewController {
     }
 
     onMouseOut = (e: MouseEvent) => {
-        this.mouseDownPos = null // end drag
+        // this.mouseDownPos = null // end drag
         this.controls.hoverTile(undefined, e.clientX, e.clientY)
         this.controls.setScrollDir(0, 0)
     }

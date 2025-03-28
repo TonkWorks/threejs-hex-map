@@ -7,6 +7,7 @@ interface MapViewController {
 }
 
 export interface MapViewControls {
+    mouseUp(): void;
     /**
      * Return the tile located at the given world position
      */
@@ -16,6 +17,11 @@ export interface MapViewControls {
      * Move the tile selector to the given tile's position
     */
     hoverTile(tile: TileData, x: number, y: number): void;
+    
+    /**
+     * Right mouse drag
+    */
+    showUnitPath(tile: TileData): void;
 
     /**
      * Move the tile selector to the given tile's position

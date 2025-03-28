@@ -136,9 +136,12 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
     }
     if (makeNew) {
         let new_game_settingsStr = localStorage.getItem("new_game_settings");
-        let new_game_settings: { map?: MapType } = {};
+        let new_game_settings: { map?: MapType, mapSize?: number } = {};
         if (new_game_settingsStr) {
             new_game_settings = JSON.parse(new_game_settingsStr);
+        }
+        if (new_game_settings.mapSize) {
+            mapSize = new_game_settings.mapSize;
         }
         const [map, atlas] = await Promise.all([generateMap(mapSize, new_game_settings.map), loadTextureAtlas()])
         options.terrainAtlas = atlas
@@ -159,25 +162,26 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
 
 
         document.body.addEventListener('click', (event) => {
+            let action = false;
             const target = event.target as HTMLElement;
             if (target && target.classList.contains('player-negotiation')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.playerNegotiation(dataAttribute);
             }
             if (target && target.classList.contains('player-diplomatic-menu')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 const dataTarget = target.getAttribute('data-target');
                 mapView.playerDiplmaticAction(dataAttribute, dataTarget);
             }
             if (target && target.classList.contains('main-menu')) {
                 console.log('main-menu clicked');
-                event.stopPropagation();
+                action = true;
                 mapView.mainMenu();
             }
             if (target && target.classList.contains('main-menu-option')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.mainMenuOption(dataAttribute);
             }
@@ -185,37 +189,42 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 mapView.CloseMenu();
             }
             if (target && target.classList.contains('city-menu')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 const dataTarget = target.getAttribute('data-target');
                 mapView.cityMenuAction(dataAttribute, dataTarget);
             }
             if (target && target.classList.contains('city-label')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-target');
                 mapView.cityLabelClick(dataAttribute);
             }
             if (target && target.classList.contains('action-menu')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.actionPanelClicked(dataAttribute);
             }
             if (target && target.classList.contains('general-menu')) {
-                event.stopPropagation();
+                action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 mapView.generalMenuClicked(dataAttribute);
             }
             if (target && target.classList.contains('menu-trade')) {
-                event.stopPropagation();
+                action = true;
                 mapView.tradeMenuClicked(target);
             }
             if (target && target.classList.contains('research')) {
-                event.stopPropagation();
+                action = true;
                 mapView.pickResearch();
             }
             if (target && target.classList.contains('taxes')) {
-                event.stopPropagation();
+                action = true;
                 mapView.updateTaxes();
+            }
+
+            if (action) {
+                event.stopPropagation();
+                mapView.playSound(asset("sounds/ui/click.mp3"));
             }
         });
 

@@ -7,7 +7,7 @@ import {
     Mesh,
     RingBufferGeometry
 } from 'three';
-import { ParticleSystem, ParticleSystems } from './ParticleSystem';
+import { ParticleSystem, ParticleSystemOptions, ParticleSystems } from './ParticleSystem';
 
 export class Explosion {
     private particleSystem: ParticleSystem;
@@ -1100,14 +1100,14 @@ export class MainParticleEffects {
     public static createObjectCreation(position: Vector3, scene: Scene): ParticleSystem {
         // Object creation effect - rising particles with converging rays
         const creationSystem = new ParticleSystem(scene, {
-            maxParticles: 120,
+            maxParticles: 12000,
             particleSize: 6,
-            lifetime: 0.3,  // Half second duration
-            spawnRate: 400,
+            lifetime: 10,  // Half second duration
+            spawnRate: 4000,
             spawnPosition: position.clone(),
-            gravity: -0.2,
+            gravity: -0.1,
             shape: 'circle',
-            duration: 0.3,
+            duration: .08,
             onSpawn: (system, deltaTime) => {
                 const spawnCount = Math.min(
                     Math.floor(system.options.spawnRate * deltaTime),
@@ -1121,7 +1121,7 @@ export class MainParticleEffects {
                     if (particleType === 'beam') {
                         // Converging beams from outside the hex toward center
                         const angle = Math.random() * Math.PI * 2;
-                        const distanceFromCenter = 1 + Math.random() * 1;
+                        const distanceFromCenter = 1.1 + Math.random() * 1;
                         
                         system.addParticle({
                             position: new Vector3(
@@ -1156,15 +1156,15 @@ export class MainParticleEffects {
                                 position.z
                             ),
                             velocity: new Vector3(
-                                (Math.random() - 0.5) * 1.5,
+                                (Math.random() - 0.5) * 1.02,
                                 (Math.random() - 0.5) * 1.5,
                                 3 + Math.random() * 2
                             ),
                             startColor: new Color(0.9, 0.9, 1.0),  // White-blue
                             endColor: new Color(0.3, 0.3, 0.9),    // Blue
-                            size: 0.3 + Math.random() * 0.2,
+                            size: 0.1 + Math.random() * 0.2,
                             age: 0,
-                            lifetime: 0.4 + Math.random() * 0.2,
+                            lifetime: .2 + Math.random() * 3,
                             rotation: Math.random() * Math.PI * 2,
                             angularVelocity: (Math.random() - 0.5) * Math.PI,
                             shapeType: 0,  // Star shape for sparkles
@@ -1200,9 +1200,9 @@ export class MainParticleEffects {
                     const fadeOpacity = lifeRatio > 0.6 ? 1 - ((lifeRatio - 0.6) / 0.4) : 1;
                     particle.startColor.multiplyScalar(fadeOpacity);
                     
-                    // Grow slightly then shrink
-                    const sizeMultiplier = lifeRatio < 0.3 ? 1.03 : 0.97;
-                    particle.size *= sizeMultiplier;
+                    // // Grow slightly then shrink
+                    // const sizeMultiplier = lifeRatio < 0.3 ? 1.03 : 0.97;
+                    // particle.size *= sizeMultiplier;
                 }
                 
                 // Common updates
@@ -1212,7 +1212,7 @@ export class MainParticleEffects {
         });
 
         // Cleanup after effect duration
-        setTimeout(() => creationSystem.dispose(), 800);
+        setTimeout(() => creationSystem.dispose(), 4000);
         ParticleSystems.push(creationSystem);
         
         return creationSystem;
@@ -1228,4 +1228,85 @@ export class MainParticleEffects {
             this.createObjectCreation(position, scene);
         }, 200);
     }
+}
+
+export function OceanGlimmer(
+  scene: Scene,
+  position: Vector3,
+  radius: number = 5,
+  waveHeight: number = 0.2,
+  waveSpeed: number = 0.5
+): ParticleSystem {
+  const oceanParticle = new ParticleSystem(scene, {
+    maxParticles: 10000,
+    particleSize: 0.3,
+    lifetime: 2, // Particles fade out over time
+    spawnRate: 2000,
+    spawnPosition: position,
+    spawnArea: new Vector3(radius * 2, radius * 2, 0), // Spread particles over a circular area
+    gravity: 0, // No gravity for glimmer effect
+    shape: 'circle',
+    onSpawn: (system, deltaTime) => {
+      const spawnCount = Math.min(
+        Math.floor(system.options.spawnRate * deltaTime),
+        system.options.maxParticles - system.particles.length
+      );
+
+      for (let i = 0; i < spawnCount; i++) {
+        // Random position within a circular area
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * radius;
+        const offsetX = Math.cos(angle) * distance;
+        const offsetY = Math.sin(angle) * distance;
+
+        // Create a subtle upward drift for the particles
+        const initialVelocity = new Vector3(
+          0,
+          0,
+          Math.random() * 0.1 // Slight upward movement
+        );
+
+        system.addParticle({
+          position: new Vector3(
+            system.options.spawnPosition.x + offsetX,
+            system.options.spawnPosition.y + offsetY,
+            system.options.spawnPosition.z
+          ),
+          velocity: initialVelocity,
+          startColor: new Color(0.2, 0.5, 1), // Ocean blue
+          endColor: new Color(0.8, 0.9, 1), // Light blue shimmer
+          size: system.options.particleSize * (0.8 + Math.random() * 0.4),
+          age: 0,
+          lifetime: system.options.lifetime * (0.8 + Math.random() * 0.4),
+          rotation: 0,
+          angularVelocity: 0,
+          shapeType: 0, // Circular particles
+          data: {
+            waveOffset: Math.random() * Math.PI * 2 // Random phase for wave motion
+          }
+        });
+      }
+    },
+    onUpdateParticle: (particle, deltaTime, system) => {
+      particle.age += deltaTime;
+
+      // Apply wave-like motion to the z-axis
+      const wavePhase = particle.data.waveOffset + system.systemAge * waveSpeed;
+      particle.position.z =
+        system.options.spawnPosition.z + Math.sin(wavePhase) * waveHeight;
+
+      // Fade the particle's color over time
+      const progress = particle.age / particle.lifetime;
+      particle.startColor.lerp(particle.endColor, progress);
+
+      // Update size to create a pulsing effect
+      particle.size =
+        system.options.particleSize *
+        (1 + Math.sin(wavePhase) * 0.2) * // Pulsing with wave motion
+        (1 - progress); // Taper off as the particle fades
+    }
+  });
+
+  ParticleSystems.push(oceanParticle);
+  return oceanParticle;
 }

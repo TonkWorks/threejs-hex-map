@@ -13,7 +13,7 @@ import { MapViewControls } from './MapViewController';
 import { qrToWorld, axialToCube, roundToHex, cubeToAxial, mouseToWorld } from './map/coords';
 import ChunkedLazyMapMesh from "./ChunkedLazyMapMesh";
 import { MapMeshOptions } from './map/MapMesh';
-import { Explosion, FireWithSmoke, HexDust, MainParticleEffects, NuclearExplosion, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
+import { Explosion, FireWithSmoke, HexDust, MainParticleEffects, NuclearExplosion, OceanGlimmer, Rocket, SelectionParticles, SelectionParticlesFromGeometry } from './ParticleSystemEffects';
 import { ParticleSystem, ParticleSystems } from './ParticleSystem';
 
 import { Unit, Improvement, CreateCity, UnitMap } from './Units';
@@ -37,6 +37,7 @@ import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './Play
 import { BuildingMap } from './CityImprovements';
 import { CreateWorkerImprovement, WorkerImprovement } from './ImprovementsWorker';
 import { RawShaderMaterial, Triangle } from './three';
+import { BonusMap } from './Bonsues';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -115,6 +116,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     _lastMinimapUpdate: number = 0;
 
     _renderMinimap: boolean = true;
+    lastUnitPath_cache: TileData = null;
 
     get controller() {
         return this._controller
@@ -494,7 +496,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: "Barbarians Nearby",
                 onClick: function () {
                     mm.selectTile(revealed_barb);
-                    this._controller.PanCameraTo({q: mm.selectedTile.q, r: mm.selectedTile.r - 3}, 600);
+                    mm.panCameraTo(mm.selectedTile.q, mm.selectedTile.r - 3);
                 }
             });
         }
@@ -506,7 +508,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: "Goodie Hut Discovered",
                 onClick: function () {
                     mm.selectTile(revealed_goodie_hut);
-                    this._controller.PanCameraTo({q: mm.selectedTile.q, r: mm.selectedTile.r - 3}, 600);
+                    mm.panCameraTo(mm.selectedTile.q, mm.selectedTile.r - 3);
                 }
             });
         }
@@ -627,7 +629,11 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     addWorkerImprovementToMap(workerImprovement: WorkerImprovement, tile: TileData, fromSaved: boolean = false) {
         const worldPos = qrToWorld(tile.q, tile.r);
-        workerImprovement.model.position.set(worldPos.x, worldPos.y, .3);
+        let z = 0.3;
+        if (workerImprovement.flatten) {
+            z = 0.01;
+        }
+        workerImprovement.model.position.set(worldPos.x, worldPos.y, z);
         workerImprovement.tileInfo = { q: tile.q, r: tile.r };
         tile.worker_improvement = workerImprovement
         this._units_models.add(workerImprovement.model);
@@ -914,7 +920,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         let new_game_settingsStr = localStorage.getItem("new_game_settings");
-        let new_game_settings: { resources?: number } = {};
+        let new_game_settings: { resources?: number, mapSize?: number } = {};
         if (new_game_settingsStr) {
             new_game_settings = JSON.parse(new_game_settingsStr);
             console.log(new_game_settings);
@@ -925,6 +931,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let amount = 200;
         if (new_game_settings.resources) {
             amount = new_game_settings.resources;
+            amount = (amount/40)*new_game_settings.mapSize; // Take density of standard map
         }
         for (let i = 0; i < amount; i++) {
             let tile = this.getRandomTile(false);
@@ -1054,12 +1061,12 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._onAnimate(dtS)
 
         // if (this._mapMesh && (this._mapMesh as MapMesh).waterMaterial) {
-        //     (this._mapMesh as MapMesh).waterMaterial.uniforms.sineTime.value = timestamp / 900;
+        //     (this._mapMesh as MapMesh).waterMaterial.uniforms.sineTime.value = timestamp;
         //     (this._mapMesh as MapMesh).waterMaterial.needsUpdate = true;
         // }
         if (this._mapMesh && (this._mapMesh as MapMesh).land) {
             let l = (this._mapMesh as MapMesh).landMaterial;
-            l.uniforms.sineTime.value = dtS;
+            l.uniforms.sineTime.value = timestamp / 1000;
             l.needsUpdate = true;
         }
         for (const ps of ParticleSystems) {
@@ -1155,16 +1162,44 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this._hoveredTile === tile) return;
         this._hoveredTile = tile;
 
+        if (!tile) return;
+
+        const worldPos = qrToWorld(tile.q, tile.r);
+        this._hoverSelector.position.set(worldPos.x, worldPos.y, 0.01);
+        // const startWorldPos = qrToWorld(this.selectedTile.q, this.selectedTile.r)
+        // const arrow = new AttackArrow(
+        //     startWorldPos,
+        //     3.5,
+        //     worldPos,
+        // )
+        // this._arrow = arrow.createCurveMesh()
+        // this._scene.add(this._arrow)
+    }
+
+    mouseUp() {
+        this.hideUnitPath();
+    }
+
+    hideUnitPath() {
+        this.lastUnitPath_cache = null;
         // Clear previous arrows and path indicators
         if (this._arrow) {
             this._scene.remove(this._arrow);
             this._arrow = null;
         }
+
         this._pathIndicators.clear();
         this._pathIndicators.children.forEach(child => this._pathIndicators.remove(child));
+    }
 
+    showUnitPath(tile: TileData): void {
+        // if (this.lastUnitPath_cache === tile) {
+        //     return;
+        // }
+        this.hideUnitPath();
         if (!tile) return;
 
+        this.lastUnitPath_cache = tile;
         const worldPos = qrToWorld(tile.q, tile.r);
         let enemyTargeted = false;
 
@@ -1196,16 +1231,6 @@ export default class MapView implements MapViewControls, TileDataSource {
                 }
             }
         }
-
-        this._hoverSelector.position.set(worldPos.x, worldPos.y, 0.01);
-        // const startWorldPos = qrToWorld(this.selectedTile.q, this.selectedTile.r)
-        // const arrow = new AttackArrow(
-        //     startWorldPos,
-        //     3.5,
-        //     worldPos,
-        // )
-        // this._arrow = arrow.createCurveMesh()
-        // this._scene.add(this._arrow)
     }
 
     selectTile(tile: TileData) {
@@ -1291,6 +1316,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         // const ps = SelectionParticles(this._scene, worldPos);
         // console.log(ps);
         // MainParticleEffects.createObjectCreation(worldPos, this._scene);
+        // OceanGlimmer(this._scene, worldPos);
         if (this._selectedUnit !== undefined && this.selectedTile.unit !== undefined && this.selectedTile.unit.owner === this.gameState.currentPlayer) {
             this.moveUnit(this.selectedTile, tile, true)
         }
@@ -4144,13 +4170,14 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // gold
         option_info += `<tr><td><button class="city-menu" data-name="queue" data-target="gold"><img id="menu-unit-img" src="">Produce Gold</button></td>`
-
         let info = `
-            <button class="close-button" onclick="CloseMenu();">&times;</button>
             <div class="panel-title">
                 ${tile.improvement.name}
             </div>
+            <button class="close-button" onclick="CloseMenu();">&times;</button>
+
             <hr class="ancient-hr">
+            ${BonusMap["sacrificial_captives"].description}
             <p class="small">
                 ${yield_info}
             </p>
@@ -4719,8 +4746,4 @@ export function CloseMenu() {
     document.getElementById('menu').innerHTML = '';
     document.getElementById('menu-modal').style.visibility = 'hidden';
     document.getElementById('menu').style.visibility = 'hidden';
-}
-
-function placeBarbarianEncampents() {
-    throw new Error('Function not implemented.');
 }

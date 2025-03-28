@@ -229,7 +229,7 @@ function placeBarbarianEncampents(mapView: MapView) {
         if (t.fog === false) {
             continue;
         }
-        if (t.terrain === "water" || t.terrain === "mountain") {
+        if (t.terrain === "ocean" || t.terrain === "mountain") {
             continue;
         }
         if (t.owner !== undefined && t.owner !== "") {

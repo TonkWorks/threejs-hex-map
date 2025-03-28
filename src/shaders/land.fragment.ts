@@ -75,6 +75,43 @@ vec4 terrainTransition(vec4 inputColor, float terrain, float sector) {
     return mix(inputColor, color, a);
 }
 
+/**
+ * Blends river textures between neighboring hexagons
+ * @param baseRiverColor The current river color
+ * @param neighborCell The neighbor's river texture cell coordinates
+ * @param sector Which neighbor (0-5, matching the terrain sectors)
+ * @return The blended river color
+ */
+vec4 blendRivers(vec4 baseRiverColor, vec2 neighborCell, float sector) {
+    // Skip if no river in the neighbor
+    if (neighborCell.x < 0.0 || neighborCell.y < 0.0) return baseRiverColor;
+    
+    // Sample the neighbor's river texture
+    vec2 neighborRiverUv = vec2(neighborCell.x / 8.0 + vUV.x / 8.0, 
+                              1.0 - (neighborCell.y / 8.0 + vUV.y / 8.0));
+    
+    // Apply similar flow effect as main river
+    float distortionStrength = 0.0002;
+    vec2 flowOffset = vec2(
+        sin(vUV.y * 10.0 + sineTime * 1.5) * distortionStrength,
+        sin(vUV.x * 8.0 + sineTime * 1.0) * distortionStrength
+    );
+    vec4 neighborRiverColor = texture2D(riverAtlas, neighborRiverUv + flowOffset);
+    
+    // Create a blend mask at the edge corresponding to this sector
+    vec2 blendMaskUV = vec2(sector/6.0 + vUV.x / 6.0, 1.0 - vUV.y / 6.0);
+    vec4 blendMask = texture2D(transitionTexture, blendMaskUV);
+    
+    // Only blend at the edges (using the same transition mask that terrain uses)
+    float blendFactor = blendMask.r * neighborRiverColor.a;
+    
+    // Combine base river with neighbor river at boundary
+    return vec4(
+        mix(baseRiverColor.rgb, neighborRiverColor.rgb, blendFactor),
+        max(baseRiverColor.a, blendFactor)
+    );
+}
+
 void main() {
     // LAND
     vec4 texColor = texture2D(texture, vTexCoord);
@@ -119,11 +156,20 @@ void main() {
     
     // River
     vec2 riverUv = vec2(vRiverTextureCell.x / 8.0 + vUV.x / 8.0, 1.0 - (vRiverTextureCell.y / 8.0 + vUV.y / 8.0));
-    vec4 riverColor = texture2D(riverAtlas, riverUv);
+    
+    // Create flowing water effect with subtle texture distortion
+    float distortionStrength = 0.0002;
+    vec2 flowOffset = vec2(
+        sin(vUV.y * 10.0 + sineTime * 1.5) * distortionStrength,
+        sin(vUV.x * 8.0 + sineTime * 1.0) * distortionStrength
+    );
+    vec4 riverColor = texture2D(riverAtlas, riverUv + flowOffset);
 
     if (riverColor.w > 0.0) {
+        // Add brightness variation to simulate flowing water
+        float flowBrightness = sin(vUV.x * 8.0 + vUV.y * 12.0 + sineTime * 2.0) * 0.05 + 0.05;
         vec3 river = lightAmbient * riverColor.xyz + lambertian * riverColor.xyz * lightDiffuse;
-        //gl_FragColor = mix(gl_FragColor, vec4(river, 1.0), riverColor.w);
+        river += flowBrightness; // Add highlights that move over time
         gl_FragColor = mix(gl_FragColor, vec4(river, 1.0), riverColor.w);
     }
 

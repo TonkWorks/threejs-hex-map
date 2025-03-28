@@ -1272,6 +1272,43 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    return mix(inputColor, color, a);
 	}
 
+	/**
+	 * Blends river textures between neighboring hexagons
+	 * @param baseRiverColor The current river color
+	 * @param neighborCell The neighbor's river texture cell coordinates
+	 * @param sector Which neighbor (0-5, matching the terrain sectors)
+	 * @return The blended river color
+	 */
+	vec4 blendRivers(vec4 baseRiverColor, vec2 neighborCell, float sector) {
+	    // Skip if no river in the neighbor
+	    if (neighborCell.x < 0.0 || neighborCell.y < 0.0) return baseRiverColor;
+	    
+	    // Sample the neighbor's river texture
+	    vec2 neighborRiverUv = vec2(neighborCell.x / 8.0 + vUV.x / 8.0, 
+	                              1.0 - (neighborCell.y / 8.0 + vUV.y / 8.0));
+	    
+	    // Apply similar flow effect as main river
+	    float distortionStrength = 0.0002;
+	    vec2 flowOffset = vec2(
+	        sin(vUV.y * 10.0 + sineTime * 1.5) * distortionStrength,
+	        sin(vUV.x * 8.0 + sineTime * 1.0) * distortionStrength
+	    );
+	    vec4 neighborRiverColor = texture2D(riverAtlas, neighborRiverUv + flowOffset);
+	    
+	    // Create a blend mask at the edge corresponding to this sector
+	    vec2 blendMaskUV = vec2(sector/6.0 + vUV.x / 6.0, 1.0 - vUV.y / 6.0);
+	    vec4 blendMask = texture2D(transitionTexture, blendMaskUV);
+	    
+	    // Only blend at the edges (using the same transition mask that terrain uses)
+	    float blendFactor = blendMask.r * neighborRiverColor.a;
+	    
+	    // Combine base river with neighbor river at boundary
+	    return vec4(
+	        mix(baseRiverColor.rgb, neighborRiverColor.rgb, blendFactor),
+	        max(baseRiverColor.a, blendFactor)
+	    );
+	}
+
 	void main() {
 	    // LAND
 	    vec4 texColor = texture2D(texture, vTexCoord);
@@ -1316,11 +1353,20 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    
 	    // River
 	    vec2 riverUv = vec2(vRiverTextureCell.x / 8.0 + vUV.x / 8.0, 1.0 - (vRiverTextureCell.y / 8.0 + vUV.y / 8.0));
-	    vec4 riverColor = texture2D(riverAtlas, riverUv);
+	    
+	    // Create flowing water effect with subtle texture distortion
+	    float distortionStrength = 0.0002;
+	    vec2 flowOffset = vec2(
+	        sin(vUV.y * 10.0 + sineTime * 1.5) * distortionStrength,
+	        sin(vUV.x * 8.0 + sineTime * 1.0) * distortionStrength
+	    );
+	    vec4 riverColor = texture2D(riverAtlas, riverUv + flowOffset);
 
 	    if (riverColor.w > 0.0) {
+	        // Add brightness variation to simulate flowing water
+	        float flowBrightness = sin(vUV.x * 8.0 + vUV.y * 12.0 + sineTime * 2.0) * 0.05 + 0.05;
 	        vec3 river = lightAmbient * riverColor.xyz + lambertian * riverColor.xyz * lightDiffuse;
-	        //gl_FragColor = mix(gl_FragColor, vec4(river, 1.0), riverColor.w);
+	        river += flowBrightness; // Add highlights that move over time
 	        gl_FragColor = mix(gl_FragColor, vec4(river, 1.0), riverColor.w);
 	    }
 
@@ -2090,7 +2136,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        function growRiver(spawn) {
 	            const river = [spawn];
 	            let tile = spawn;
-	            if (tile == undefined || !tile) {
+	            if (tile === undefined || !tile) {
 	                return [];
 	            }
 	            while (!(0, interfaces_1.isWater)(tile.height) && river.length < 20) {
@@ -2552,6 +2598,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    Animation.easeLinear = (t) => t;
 	    class Controller {
 	        constructor() {
+	            this.mouseDownNumber = 0;
 	            this.lastDrag = null;
 	            this.debugText = null;
 	            this.selectedQR = { q: 0, r: 0 };
@@ -2578,23 +2625,42 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                    this.PanCameraTo(this.selectedQR, 600 /*ms*/);
 	                }
 	            };
-	            this.onMouseDown = (e) => {
-	                this.pickingCamera = this.controls.getCamera().clone();
-	                this.mouseDownPos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.pickingCamera);
-	                this.dragStartCameraPos = this.controls.getCamera().position.clone();
-	            };
 	            this.onMouseEnter = (e) => {
 	                if (e.buttons === 1) {
 	                    this.onMouseDown(e);
 	                }
 	            };
+	            this.onMouseDown = (e) => {
+	                // Only start dragging with left mouse button
+	                if (e.button === 0) {
+	                    this.pickingCamera = this.controls.getCamera().clone();
+	                    this.mouseDownPos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.pickingCamera);
+	                    this.dragStartCameraPos = this.controls.getCamera().position.clone();
+	                }
+	                else if (e.button === 2) {
+	                    this.pickingCamera = this.controls.getCamera().clone();
+	                    this.mouseDownPos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.pickingCamera);
+	                    const tile = this.controls.pickTile(this.mouseDownPos);
+	                    if (tile) {
+	                        this.controls.showUnitPath(tile);
+	                    }
+	                }
+	            };
 	            this.onMouseMove = (e) => {
-	                // scrolling via mouse drag
-	                if (this.mouseDownPos) {
+	                // scrolling via mouse drag - only with left button (button code 0)
+	                if (this.mouseDownPos && e.buttons === 1) {
 	                    const mousePos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.pickingCamera);
 	                    const dv = this.lastDrag = mousePos.sub(this.mouseDownPos).multiplyScalar(-1);
 	                    const newCameraPos = dv.clone().add(this.dragStartCameraPos);
 	                    this.controls.getCamera().position.copy(newCameraPos);
+	                }
+	                if (this.mouseDownPos && e.buttons === 2) {
+	                    // Right mouse button - show unit path
+	                    const mousePos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.controls.getCamera());
+	                    const tile = this.controls.pickTile(mousePos);
+	                    if (tile) {
+	                        this.controls.showUnitPath(tile);
+	                    }
 	                }
 	                // scrolling via screen edge only in fullscreen mode
 	                if (window.innerHeight == screen.height && !this.mouseDownPos) {
@@ -2615,6 +2681,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                this.controls.hoverTile(tile, e.clientX, e.clientY);
 	            };
 	            this.onMouseUp = (e) => {
+	                this.controls.mouseUp();
 	                if (!this.lastDrag || this.lastDrag.length() < 0.1) {
 	                    const mousePos = (0, coords_1.screenToWorld)(e.clientX, e.clientY, this.controls.getCamera());
 	                    const tile = this.controls.pickTile(mousePos);
@@ -2634,7 +2701,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                this.lastDrag = null;
 	            };
 	            this.onMouseOut = (e) => {
-	                this.mouseDownPos = null; // end drag
+	                // this.mouseDownPos = null // end drag
 	                this.controls.hoverTile(undefined, e.clientX, e.clientY);
 	                this.controls.setScrollDir(0, 0);
 	            };
