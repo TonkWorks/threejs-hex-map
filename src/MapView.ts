@@ -49,7 +49,12 @@ export function resourceIcon(resource: string) {
     return `<img id="menu-unit-cost" src="../../assets/map/resources/${resource}.png">`
 }
 
-// declare const postProcessing: any;
+declare global {
+    interface Window {
+        mapView: MapView;
+    }
+}
+
 export default class MapView implements MapViewControls, TileDataSource {
     private static DEFAULT_ZOOM = 25
 
@@ -117,6 +122,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     _renderMinimap: boolean = true;
     lastUnitPath_cache: TileData = null;
+
+    menuQueue: any = [];
 
     get controller() {
         return this._controller
@@ -344,6 +351,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         // start rendering loop
         this.animate(0)
         this._controller.init(this, canvas)
+
+        window.mapView = this;
     }
 
     load(tiles: Grid<TileData>, options: MapMeshOptions) {
@@ -427,6 +436,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let tiles = this.getTileGrid().toArray();
         let revealed_goodie_hut = null;
         let revealed_barb = null;
+        let revealed_players = new Set<string>(); // Create a set to store all revealed players
 
         for (const tile of tiles) {
             if (tile.clouds) {
@@ -457,6 +467,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                 } 
                 if (tile.improvement !== undefined) {
                     tile.improvement.model.visible = true;
+                    // Add owner to the revealed players set
+                    if (tile.improvement.owner && tile.improvement.owner !== this._gameState.currentPlayer) {
+                        revealed_players.add(tile.improvement.owner);
+                    }
                 }
                 if (tile.worker_improvement !== undefined) {
                     tile.worker_improvement.model.visible = true;
@@ -468,6 +482,11 @@ export default class MapView implements MapViewControls, TileDataSource {
                         }
                     }
                     tile.unit.model.visible = true;
+                    
+                    // Add unit owner to the revealed players set
+                    if (tile.unit.owner && tile.unit.owner !== this._gameState.currentPlayer) {
+                        revealed_players.add(tile.unit.owner);
+                    }
                 }
             }
 
@@ -512,6 +531,38 @@ export default class MapView implements MapViewControls, TileDataSource {
                 }
             });
         }
+
+        // Process each revealed player
+        const currentPlayer = this._gameState.players[this._gameState.currentPlayer];
+        revealed_players.forEach(playerName => {
+            
+            if (playerName && playerName !== this._gameState.currentPlayer) {
+                // Check if we've already met this player
+                if (!currentPlayer.diplomatic_actions[playerName] || 
+                    currentPlayer.diplomatic_actions[playerName]["met"] === undefined) {
+                    // Initialize diplomatic actions for this player if needed
+                    if (!currentPlayer.diplomatic_actions[playerName]) {
+                        currentPlayer.diplomatic_actions[playerName] = {};
+                    }
+                    
+                    // Mark as met
+                    currentPlayer.diplomatic_actions[playerName]["met"] = true;
+                    
+                    if (playerName === 'barbarians') {
+                        return;
+                    }
+                    console.log("Player revealed:", playerName);
+                    this.toast({
+                        icon: "../../assets/map/icons/star.png",
+                        text: `You met ${playerName}`,
+                        onClick: function () {}
+                    });
+                    
+                    this.menuQueue.push(() => this.playerNegotiation(playerName, "met"));
+                }
+            }
+        });
+
         if (sound !== "") {
             this.playSound(sound);
         }
@@ -3411,14 +3462,16 @@ export default class MapView implements MapViewControls, TileDataSource {
                     mm.pickResearch();
                 }
             });
-            this.playSound(asset("sounds/research/complete.mp3"));
-            let info = DisplayResearchFinished(tech);
-            this.CloseMenu();
             this.keep_menu = true;
-            this.showMenu(info, "center");
-            if (tech.quote_audio) {
-                this.playSound(asset(tech.quote_audio));
-            }
+            this.menuQueue.push(() => {
+                this.playSound(asset("sounds/research/complete.mp3"));
+                let info = DisplayResearchFinished(tech);
+                this.showMenu(info, "center");
+                if (tech.quote_audio) {
+                    this.playSound(asset(tech.quote_audio));
+                }
+            });
+            this.CloseMenu();
         } else {
             let tech = AIChooseResearch();
             if (tech !== undefined) {
@@ -3986,7 +4039,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
 
-    playerNegotiation(playerName: string) {
+    playerNegotiation(playerName: string, stateChange: string = "") {
         const player1 = this._gameState.players[this._gameState.currentPlayer];
         const player2 = this._gameState.players[playerName];
 
@@ -4000,17 +4053,37 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <img src="${player2nation.flag_image}">
                 ${player2nation.leader}
             </div>
-
-            <div id="leader-text">
-                <p>"What do you want to discuss?"</p>
-            </div>
-            <div class="options">
         `;
 
-        if (player1.diplomatic_actions[player2.name].hasOwnProperty("war")) {
-            // at war
+        let leaderText = "What do you want to discuss?"
+        let menuOptions = "peace";
+        if (stateChange === "met") {
+            let textOptions = player2nation["quotes"]["greeting"];
+            leaderText = textOptions[Math.floor(Math.random() * textOptions.length)];
+        }
+        if (stateChange === "war") {
+            let textOptions = player2nation["quotes"]["angry"];
+            leaderText = textOptions[Math.floor(Math.random() * textOptions.length)];
+            menuOptions = "continue";
+        }
+        if (stateChange === "defeat") {
+            let textOptions = player2nation["quotes"]["farewell"];
+            leaderText = textOptions[Math.floor(Math.random() * textOptions.length)];
+            menuOptions = "continue";
+        }
+
+        info += `
+        <div id="leader-text">
+            <p>${leaderText}</p>
+        </div>
+        <div class="options">
+        `;
+
+        if (menuOptions === "war") {
             info += `<button class="player-diplomatic-menu" data-name="trade_for_peace" data-target="${player2.name}">Ask for Peace</button>`
-        } else {
+        } else if (menuOptions === "continue") { 
+            info += `<button class="player-diplomatic-menu" data-name="continue" data-target="${player2.name}">Continue</button>`
+        } else if (menuOptions === "peace") {
             // at peace
             info += `<button class="player-diplomatic-menu" data-name="trade" data-target="${player2.name}">Trade</button>`
             info += `<button class="player-diplomatic-menu" data-name="form_aliance" data-target="${player2.name}">Form Alliance</button>`
@@ -4168,6 +4241,8 @@ export default class MapView implements MapViewControls, TileDataSource {
             option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td></tr>`
         }
 
+        // ${BonusMap["sacrificial_captives"].description}
+
         // gold
         option_info += `<tr><td><button class="city-menu" data-name="queue" data-target="gold"><img id="menu-unit-img" src="">Produce Gold</button></td>`
         let info = `
@@ -4177,7 +4252,6 @@ export default class MapView implements MapViewControls, TileDataSource {
             <button class="close-button" onclick="CloseMenu();">&times;</button>
 
             <hr class="ancient-hr">
-            ${BonusMap["sacrificial_captives"].description}
             <p class="small">
                 ${yield_info}
             </p>
@@ -4545,8 +4619,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                 text: `War between ${player.name} and ${targetPlayer.name} declared!`,
                 onClick: function () { }
             });
+            this.playSound(asset("sounds/ui/violin-impulse.mp3"));
+            this.menuQueue.push(() => this.playerNegotiation(targetPlayer.name, "war"));
             this.CloseMenu();
-            console.log(this._gameState)
             return;
         }
         if (name === "trade" || name === "trade_for_peace") {
@@ -4568,6 +4643,10 @@ export default class MapView implements MapViewControls, TileDataSource {
             ResetNegotiations(this, player, targetPlayer);
             info += TradeMenuHtml();
             this.showMenu(info);
+            return;
+        }
+        if (name === "continue") {
+            this.CloseMenu();
             return;
         }
     }
@@ -4643,6 +4722,14 @@ export default class MapView implements MapViewControls, TileDataSource {
         document.getElementById('menu-modal').style.visibility = 'hidden';
         document.getElementById('menu').style.visibility = 'hidden';
         this.in_city_menu = false;
+
+        console.log(this.menuQueue);
+        if (this.menuQueue.length > 0) {
+            let m = this.menuQueue.shift();
+            if (m) {
+                m();
+            }
+        }
     }
 }
 
@@ -4743,7 +4830,5 @@ function easeOutQuad(t: number): number {
 }
 
 export function CloseMenu() {
-    document.getElementById('menu').innerHTML = '';
-    document.getElementById('menu-modal').style.visibility = 'hidden';
-    document.getElementById('menu').style.visibility = 'hidden';
+    window.mapView.CloseMenu();
 }

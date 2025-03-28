@@ -25,6 +25,13 @@
       color: #d4af37;
     }
 
+    #menu-unit-cost {
+            width: 16px;
+            padding-right: 0px;
+            padding-left: 0px;
+            pointer-events: none;
+        }
+
     .menu-container {
       background: rgba(0, 0, 0, 0.7);
       border: 2px solid #d4af37;
@@ -116,6 +123,53 @@
       margin: 1rem 0;
       width: 100%;
     }
+
+    .civ-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    
+    .civ-card {
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px solid #d4af37;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .civ-card:hover, .civ-card.selected {
+      background: rgba(212, 175, 55, 0.2);
+      transform: scale(1.03);
+    }
+    
+    .civ-card h3 {
+      color: #d4af37;
+      margin-top: 0;
+    }
+    
+    .civ-card p {
+      font-size: 0.9em;
+      margin: 0.5rem 0;
+    }
+    
+    .civ-leader {
+      font-style: italic;
+      color: #d4af37;
+    }
+    
+    .civ-bonuses {
+      margin-top: 0.5rem;
+    }
+    
+    .bonus-item {
+      display: block;
+      margin: 0.3rem 0;
+      font-size: 0.85em;
+    }
   </style>
 </head>
 <body>
@@ -125,13 +179,22 @@
   <h1 class="title">RISING POWERS</h1>
   
   <div class="menu-container">
-    <button class="menu-button" onclick="showModal('new-game')">New Game</button>
+    <button class="menu-button" onclick="showModal('civ-selection')">New Game</button>
     <button class="menu-button" onclick="showModal('load-game')">Load Game</button>
     <button class="menu-button" onclick="showModal('settings')">Settings</button>
     <button class="menu-button" onclick="window.close()">Exit</button>
-
   </div>
 
+  <!-- Civilization Selection Modal -->
+  <div id="civ-selection" class="modal">
+    <span class="close-btn" onclick="closeModal('civ-selection')">✕</span>
+    <h2>Choose Your Civilization</h2>
+    <div id="civ-selection-list" class="civ-grid">
+      <!-- Civilization options will be populated here -->
+    </div>
+    <!-- Removed the Continue button -->
+  </div>
+  
   <!-- New Game Modal -->
   <div id="new-game" class="modal">
     <span class="close-btn" onclick="closeModal('new-game')">✕</span>
@@ -220,9 +283,9 @@
 
     // Colors for the dropdowns (using JS list)
     const colors = [
+      { value: 'blue', label: 'Blue' },  // Put blue first so it's default
       { value: 'red', label: 'Red' },
       { value: 'gold', label: 'Gold' },
-      { value: 'blue', label: 'Blue' },
       { value: 'green', label: 'Green' },
       { value: 'yellow', label: 'Yellow' }
     ];
@@ -275,6 +338,8 @@
       document.getElementById(modalId).style.display = 'block';
       if (modalId === 'load-game') {
         loadSavedGames();
+      } else if (modalId === 'civ-selection') {
+        populateCivSelectionScreen();
       }
     }
 
@@ -306,9 +371,14 @@
         tooltip.style.top = `${event.pageY}px`;
         text = `Leader: ${Nations[civKey].leader}\n${Nations[civKey].description}\n\nBonuses:`;
         for (let i = 0; i < Nations[civKey].bonuses.length; i++) {
-          text += `\n${Nations[civKey].bonuses[i]}`;
+          bonus = Nations[civKey].bonuses[i];
+          if (BonusMap[bonus]) {
+            text += `\n- ${BonusMap[bonus].name}: ${BonusMap[bonus].description}`;
+          } else {
+            text += `\n- ${bonus}`;
+          }
         }
-        tooltip.textContent = text;
+        tooltip.innerHTML = text;
       }
     }
 
@@ -317,10 +387,9 @@
     }
 
     // Create an AI slot using nations data.
-    // Added an initial "None" option so that the slot can be left empty.
+    // Removed color selection for AI players
     function createAISlot() {
       const randomCiv = civilizations[Math.floor(Math.random() * civilizations.length)];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
       return `
         <div class="dropdown-group">
           <select class="civ-dropdown ai-civ"
@@ -331,13 +400,6 @@
               <option value="${c}" title="Leader: ${Nations[c].leader}\n${Nations[c].description}"
                 ${c === randomCiv ? 'selected' : ''}>
                 ${c}
-              </option>
-            `).join('')}
-          </select>
-          <select class="civ-dropdown ai-color">
-            ${colors.map(col => `
-              <option value="${col.value}" ${col.value === randomColor.value ? 'selected' : ''}>
-                ${col.label}
               </option>
             `).join('')}
           </select>
@@ -354,23 +416,30 @@
     }
 
     // Start game function. Only include AI players with a selected civilization.
+    // Auto-assign unique colors to AI players
     function startNewGame() {
       const humanSelection = {
         civ: document.getElementById('human-civ').value,
         color: document.getElementById('human-color').value
       };
 
+      // Get all available colors except the one chosen by human
+      const availableColors = colors.filter(c => c.value !== humanSelection.color).map(c => c.value);
+      
       const aiPlayers = [];
       const aiCivs = document.querySelectorAll('.ai-civ');
-      const aiColors = document.querySelectorAll('.ai-color');
       
       for (let i = 0; i < aiCivs.length; i++) {
         const aiCivValue = aiCivs[i].value;
         // Only include AI player if a civilization is selected (i.e. value is not empty)
         if (aiCivValue !== "") {
+          // Assign a unique color from available colors
+          // If we run out of colors, this will be undefined, which we'll handle in the back-end
+          const aiColor = availableColors.length > 0 ? availableColors.shift() : undefined;
+          
           aiPlayers.push({
             civ: aiCivValue,
-            color: aiColors[i].value,
+            color: aiColor,
             difficulty: document.getElementById('ai-difficulty').value
           });
         }
@@ -456,6 +525,60 @@
       }, { once: true });
     });
 
+    // Populate the civilization selection screen
+    function populateCivSelectionScreen() {
+      const container = document.getElementById('civ-selection-list');
+      container.innerHTML = '';
+      
+      civilizations.forEach(civ => {
+        const nation = Nations[civ];
+        let bonusesHTML = '';
+        
+        // Generate HTML for bonuses
+        if (nation.bonuses && nation.bonuses.length) {
+          bonusesHTML = '<div class="civ-bonuses">';
+          nation.bonuses.forEach(bonus => {
+            let bonusText = bonus;
+            if (BonusMap && BonusMap[bonus]) {
+              bonusText = `${BonusMap[bonus].name}: ${BonusMap[bonus].description}`;
+            }
+            bonusesHTML += `<span class="bonus-item">• ${bonusText}</span>`;
+          });
+          bonusesHTML += '</div>';
+        }
+        
+        container.innerHTML += `
+          <div class="civ-card" data-civ="${civ}" onclick="selectAndProceed('${civ}')">
+            <h3>${civ} <img src="${nation.flag_image}" alt="${civ} Image" style=" height: 25px;"></h3>
+            <p class="civ-leader">Leader: ${nation.leader}</p>
+            <p>${nation.description || ''}</p>
+            ${bonusesHTML}
+          </div>
+        `;
+      });
+    }
+    
+    // Selected civilization for the player
+    let selectedCiv = '';
+    
+    // Combined function to select civilization and proceed to game setup
+    function selectAndProceed(civ) {
+      selectedCiv = civ;
+      
+      // Set the selected civilization in the game setup screen
+      const humanCivDropdown = document.getElementById('human-civ');
+      for (let i = 0; i < humanCivDropdown.options.length; i++) {
+        if (humanCivDropdown.options[i].value === selectedCiv) {
+          humanCivDropdown.selectedIndex = i;
+          break;
+        }
+      }
+      
+      // Close civilization selection and open game setup
+      closeModal('civ-selection');
+      showModal('new-game');
+    }
+
     // Initialize save games, dropdowns, and AI slots on window load
     window.onload = () => {
       populateHumanCivDropdown();
@@ -464,7 +587,10 @@
       updateAISlots();
       initializeVolumeSliders();
       loadSavedGames();
+      populateCivSelectionScreen(); // Pre-load the civilization selection screen
     };
   </script>
 </body>
 </html>
+
+
