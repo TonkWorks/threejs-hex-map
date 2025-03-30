@@ -92,6 +92,12 @@
             text-align: left;
         }
 
+        .yields {
+            justify-content: flex-center;
+            color: silver;
+        }
+
+
         #title {
             margin-top: -8px;
             z-index: 12;
@@ -346,6 +352,17 @@
         .player-info-name {
             padding-top:10px;
             display: flex;
+        }
+        .yields_table {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.5em;
+        }
+        .yields{
+            text-align: center;
+            font-size: 1em;
+            color: silver;
         }
         .city_yields {
             text-align: left;
@@ -657,7 +674,31 @@
             }
         }
 
+        .circle-progress-container {
+  display: inline-block;
+  position: relative;
+}
 
+.circle-progress-svg {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  overflow: visible;
+}
+
+.circle-progress-main {
+  transition: stroke-dashoffset 1s ease-in-out;
+}
+
+.circle-progress-increment {
+  transition: stroke-dashoffset 1s ease-in-out;
+}
+
+.circle-progress-text {
+  transform: rotate(90deg);
+  transform-origin: 50% 50%;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+}
         #progressBarContainer {
             width: 250px;
             background-color: #333;

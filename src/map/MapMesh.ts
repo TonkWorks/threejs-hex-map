@@ -192,7 +192,7 @@ export default class MapMesh extends Group implements TileDataSource {
     land: Mesh
     landMaterial: RawShaderMaterial
     private mountains: Mesh
-    private trees: Forests
+    trees: Forests
     private units: Mesh
 
     boundingSphere: Sphere

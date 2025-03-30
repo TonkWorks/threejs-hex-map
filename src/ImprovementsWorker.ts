@@ -55,6 +55,10 @@ export const WorkerImprovementMap: {[key: string]: any } = {
 export function CreateWorkerImprovement(type: string, index: number = -1): WorkerImprovement {
     const textureLoader = new TextureLoader()
     let improvement = WorkerImprovementMap[type];
+    if (!improvement) {
+        console.error(`Improvement type "${type}" not found.`);
+        return null;
+    }
     if (index === -1) {
         index = Math.floor(Math.random() * improvement.images.length);
     }

@@ -38,6 +38,7 @@ import { BuildingMap } from './CityImprovements';
 import { CreateWorkerImprovement, WorkerImprovement } from './ImprovementsWorker';
 import { RawShaderMaterial, Triangle } from './three';
 import { BonusMap } from './Bonsues';
+import { CircleProgressHTML } from './map/CircleProgressUI';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -123,6 +124,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     _renderMinimap: boolean = true;
     lastUnitPath_cache: TileData = null;
 
+    cacheToolTipTile: TileData = null;
     menuQueue: any = [];
 
     get controller() {
@@ -939,6 +941,10 @@ export default class MapView implements MapViewControls, TileDataSource {
                 }
                 const type = tile.worker_improvement.type;
                 const index = tile.worker_improvement.index;
+                if (!type) {
+                    tile.worker_improvement = undefined;
+                    continue;
+                }
                 this.addWorkerImprovementToMap(
                     CreateWorkerImprovement(type, index), tile);
             }
@@ -1480,10 +1486,16 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
 
-        tooltip.innerHTML = ""
 
         tooltip.style.left = x + 30 + "px"; // Offset to avoid cursor overlap
         tooltip.style.top = y + "px";
+
+        if (this.cacheToolTipTile && this.cacheToolTipTile === tile) {
+            return
+        }
+        this.cacheToolTipTile = tile;
+
+        tooltip.innerHTML = ""
         let data = []
         
         data.push(`<div class="panel-title">${capitalize(tile.terrain)}</div>`);
@@ -1503,7 +1515,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         data.push(this.generateTileInfo(tile));
 
-        tooltip.innerHTML = data.join(`<hr class="ancient-hr">`);
+        let h = data.join(`<hr class="ancient-hr">`);
+        tooltip.innerHTML = h;
         tooltip.style.visibility = "visible";
     }
 
@@ -1551,13 +1564,23 @@ export default class MapView implements MapViewControls, TileDataSource {
             let rounded = Math.round(tile.height * 100) / 100;
             height += `<tr><th>Height</th><td>${rounded}</td></tr>`
         }
-        let allYields = this.getTotalYieldsForTile(tile);
         let improvement_info = "";
         if (tile.worker_improvement) {
             improvement_info += "<tr><th>Improvement</th><td>" + capitalize(tile.worker_improvement.type) + "</td></tr>";
         }
 
-        let yields = '<tr>';
+
+        let allYields = this.getTotalYieldsForTile(tile);
+        // let yields = '<table class="yields_table"><tr class="yields">';
+        // for (const [key, value] of Object.entries(allYields)) {
+        //     if (value > 0) {
+        //         yields += `<td>${icon(key)}</br>${value}</td>`
+        //     }
+        // }
+        // yields += `</tr></table>`;
+
+        
+        let yields = '<tr class="yields">';
         for (const [key, value] of Object.entries(allYields)) {
             if (value > 0) {
                 yields += `<td>${icon(key)}</br>${value}</td>`
@@ -1587,9 +1610,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         return `
             <div>
-                <div style="display: flex; align-items: left;">
+                <div style="align-items: left;">
+                    <table class="yields_table yields">${yields}</table>
                     <table style="margin-right: 10px; text-align: left;">
-                        ${yields}
                         ${features_info}
                         ${improvement_info}
                         </hr>
@@ -3544,6 +3567,13 @@ export default class MapView implements MapViewControls, TileDataSource {
         label += popBar + `<span class="city-label-lower" style="padding-right:5px;"><sub>${progress.pop_turns}</sub> </span>`
         label += ` ${newPopulation} ${improvement.name}`
 
+        // let popCircle = CircleProgressHTML(99, {
+        //     primaryColor: '#4CAF50',
+        //     incrementColor: '#8BC34A',
+        //     incrementSize: 0,
+        //     centerText: '65%',
+        // })
+        // label += popCircle;
         if (improvement.production_queue.length > 0) {
             let prodBar = HeathBarDivHtml(improvement.id, progress.prod_percent);
             label += prodBar + `<span class="city-label-lower" style="padding-left:5px;"> <sub>${progress.prod_turns}</sub></span>`
@@ -3879,8 +3909,11 @@ export default class MapView implements MapViewControls, TileDataSource {
                 } else {
                     menu = `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="farm">Build Farm</button></td><td></td></tr>`
                     menu += `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="mine">Build Mine</button></td><td></td></tr>`
-
                 }                
+
+                if (tile.treeIndex !== undefined) {
+                    menu += `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="remove_forest">Remove Forest</button></td><td></td></tr>`
+                }
             }
 
             // orders
@@ -4172,17 +4205,28 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
 
         // get all the city tiles;
-        let yield_info = `<table class="city_yields">`
-        yield_info += `<tr><td>Population:</td> <td>${tile.improvement.population} (+${tile.improvement.population_rate})</td></tr>`
-        let round = Math.floor(tile.improvement.population);
-        yield_info += `<tr><td>Yields: (${round} tiles)</td> <td></td></tr>`
-        let tileYields = this.getYieldsForCity(tile);
-        for (const [key, value] of Object.entries(tileYields)) {
+
+
+        let allYields = this.getYieldsForCity(tile);
+        let yields = '<table class="yields_table"><tr class="yields">';
+        for (const [key, value] of Object.entries(allYields)) {
             if (value > 0) {
-                yield_info += `<tr><td>${capitalize(key)}:</td> <td>${value}</td></tr>`
+                yields += `<td>${icon(key)}</br>${value}</td>`
             }
         }
-        yield_info += "</table>"
+        yields += `</tr></table>`;
+
+        // let yield_info = `<table class="city_yields">`
+        // yield_info += `<tr><td>Population:</td> <td>${tile.improvement.population} (+${tile.improvement.population_rate})</td></tr>`
+        // let round = Math.floor(tile.improvement.population);
+        // yield_info += `<tr><td>Yields: (${round} tiles)</td> <td></td></tr>`
+        // let tileYields = this.getYieldsForCity(tile);
+        // for (const [key, value] of Object.entries(tileYields)) {
+        //     if (value > 0) {
+        //         yield_info += `<tr><td>${capitalize(key)}:</td> <td>${value}</td></tr>`
+        //     }
+        // }
+        // yield_info += "</table>"
 
         let building_info = `<table class="city_yields"><tr><td>Buildings:</td> <td></td></tr>`
         for (const [key, _] of Object.entries(tile.improvement.cityBuildings)) {
@@ -4192,8 +4236,8 @@ export default class MapView implements MapViewControls, TileDataSource {
         building_info += "</table>"
 
         let avialable_prod = 0;
-        if ("production" in tileYields) {
-            avialable_prod = tileYields["production"];
+        if ("production" in allYields) {
+            avialable_prod = allYields["production"];
         }
 
         let production_info = `<table class="city_yields"><tr><td>Currently Making:</td></tr>`
@@ -4252,9 +4296,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             <button class="close-button" onclick="CloseMenu();">&times;</button>
 
             <hr class="ancient-hr">
-            <p class="small">
-                ${yield_info}
-            </p>
+                ${yields}
             <hr class="ancient-hr">
             <p class="small">
                 ${building_info}
