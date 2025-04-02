@@ -192,7 +192,7 @@ export async function initView(mapSize: number, initialZoom: number): Promise<Ma
                 action = true;
                 const dataAttribute = target.getAttribute('data-name');
                 const dataTarget = target.getAttribute('data-target');
-                mapView.cityMenuAction(dataAttribute, dataTarget);
+                mapView.cityMenuAction(dataAttribute, dataTarget, target);
             }
             if (target && target.classList.contains('city-label')) {
                 action = true;

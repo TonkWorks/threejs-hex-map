@@ -33,6 +33,7 @@ export interface GameState {
     aiDifficulty: string;
     currentPlayer: string
     turn: number;
+    replay?: any;
 
 }
 
@@ -150,6 +151,7 @@ export function InitGameState(): GameState {
         playersTurn: playerNames[0],
         playerOrder: playerNames,
         turn: 0,
+        replay: [],
     };
 }
 
@@ -161,7 +163,8 @@ export function cloneGameState(original: GameState): GameState {
         playersTurn: original.playersTurn,
         aiDifficulty: original.aiDifficulty,
         currentPlayer: original.currentPlayer,
-        turn: original.turn
+        turn: original.turn,
+        replay: original.replay ? [...original.replay] : [],
     };
 
     // Iterate over each player to clone their information excluding units and improvements

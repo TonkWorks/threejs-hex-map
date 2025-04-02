@@ -65,6 +65,11 @@ export default class MapView implements MapViewControls, TileDataSource {
     private _renderer: WebGLRenderer
     private _minimap_renderer: WebGLRenderer
     private _labelRenderer: CSS3DRenderer
+
+    private _replay_renderer: WebGLRenderer
+    private _replay_camera: PerspectiveCamera
+    private _render_replay: boolean = false
+
     private _scrollDir = new Vector3(0, 0, 0)
     private _lastTimestamp = Date.now()
     private _zoom: number = 25
@@ -96,6 +101,8 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     private _minimap_aspect_width = 400;
     private _minimap_aspect_height = 275;
+    private _replay_width = 800;
+    private _replay_height = 550;
 
     private borders: any = {};
     private composer: any = null;
@@ -109,7 +116,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     _ui_selectors: Group = new Group()
     in_city_menu: boolean = false;
     keep_menu: boolean = false;
-
+    disable_victory: boolean = false;
     unitInfoPanel: HTMLElement = null;
     unitInfoCache = "";
     unitInfoIndex = "";
@@ -267,6 +274,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._minimap_camera.updateProjectionMatrix();
 
 
+        this._replay_camera = new PerspectiveCamera(30, window.innerWidth / window.innerHeight, 2, 10000)
+        this._replay_renderer = new WebGLRenderer({})
+        this._replay_camera.layers.set(11);
+        this._replay_camera.rotation.x = 0
+
         // sky
         const sun = new Vector3();
 
@@ -315,6 +327,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         this._camera.add(this._listener as any as Object3D);
 
         // units
+        this._ui_map_temp_models.layers.enable(11);
         this._scene.add(this._units_models)
         this._scene.add(this._movement_overlay)
         this._scene.add(this._ui_map_temp_models)
@@ -1146,7 +1159,10 @@ export default class MapView implements MapViewControls, TileDataSource {
             this._minimap_renderer.render(this._scene, this._minimap_camera);
             this._lastMinimapUpdate = timestamp;
         }
-
+        if (this._render_replay) {
+            this._replay_camera.position.z = this._tileGrid.width * 2.9;
+            this._replay_renderer.render(this._scene, this._replay_camera);
+        }
         this.stats.end();
         requestAnimationFrame(this.animate);
         this._lastTimestamp = timestamp
@@ -1207,7 +1223,6 @@ export default class MapView implements MapViewControls, TileDataSource {
     }
 
     panCameraTo(q: number, r:number) {
-        console.log("pan")
         this._controller.PanCameraTo({q: q, r: r}, 600);
 
     }
@@ -1293,7 +1308,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     }
 
-    selectTile(tile: TileData) {
+    selectTile(tile: TileData, cityOnly: boolean = false) {
         console.log(tile);
         const worldPos = qrToWorld(tile.q, tile.r)
         this._tileSelector.position.set(worldPos.x, worldPos.y, 0.01)
@@ -1307,7 +1322,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         this._movement_overlay.clear();
 
-        if (tile.unit !== undefined && tile.unit.owner === this.gameState.currentPlayer) {
+        if (tile.unit !== undefined && tile.unit.owner === this.gameState.currentPlayer && cityOnly === false) {
 
             if (this._selectedUnit !== tile.unit) {
                 this._selectedUnit = tile.unit;
@@ -1737,6 +1752,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         // check for goodie hut
         if (nextMovementTile.unit === undefined &&
             currentTile.unit !== undefined &&
+            currentTile.unit.owner !== 'barbarians' &&
             nextMovementTile.worker_improvement !== undefined &&
             nextMovementTile.worker_improvement.type === "goodie_hut"
         ) {
@@ -1748,6 +1764,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         // check for encampent
         if (nextMovementTile.unit === undefined &&
             currentTile.unit !== undefined &&
+            currentTile.unit.owner !== 'barbarians' &&
             nextMovementTile.worker_improvement !== undefined &&
             nextMovementTile.worker_improvement.type === "encampent"
         ) {
@@ -2003,7 +2020,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         const battleDuration = .3
         new Rocket(worldPosCur, worldPosTarget, this._scene);
 
-        this.playSound(asset("sounds/units/rifleman_attack.mp3"), worldPosCur);
+        if (targetTile.fog === false) {
+            this.playSound(asset("sounds/units/rifleman_attack.mp3"), worldPosCur);
+        }
 
         // have attacker move foward and defender move back
         animateToPosition(targetTile.unit.model, defenderBackX, defenderBackY, battleDuration, easeOutQuad, () => { });
@@ -2083,7 +2102,6 @@ export default class MapView implements MapViewControls, TileDataSource {
         // All the good stuff
 
         let player = this.getPlayer(currentTile.unit.owner);
-
         let events = [
             "gold",
             "research",
@@ -2148,6 +2166,9 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         // All the good stuff
         let player = this.getPlayer(currentTile.unit.owner);
+        if (player.isBarbarian){
+            return;
+        }
         let events = [
             "gold",
         ]
@@ -2198,7 +2219,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         delete player.units[tile.unit.id];
         this.updateResourcePanel();
         this.updateGameStatePanel();
-        this.playSound(asset("sounds/units/cinematic_boom.mp3"), worldPosCur);
+        if (tile.fog === false) {
+            this.playSound(asset("sounds/units/cinematic_boom.mp3"), worldPosCur);
+        }
         tile.unit = undefined;
     }
 
@@ -2230,8 +2253,9 @@ export default class MapView implements MapViewControls, TileDataSource {
 
         const battleDuration = .3
         new Rocket(worldPosCur, worldPosTarget, this._scene);
-        this.playSound(asset("sounds/units/rifleman_attack.mp3"), worldPosCur);
-
+        if (targetTile.fog === false) {
+            this.playSound(asset("sounds/units/rifleman_attack.mp3"), worldPosCur);
+        }
         // have attacker move foward
         animateToPosition(currentTile.unit.model, twoThirdsX, twoThirdsY, battleDuration, easeOutQuad, () => {
             // fall back to original positions
@@ -2550,7 +2574,8 @@ export default class MapView implements MapViewControls, TileDataSource {
                 (current.improvement === undefined || current.improvement.owner === owner) &&
                 (
                     (type === "land" && !isWater(current.height)) ||
-                    (type === "water" && isWater(current.height))
+                    (type === "water" && isWater(current.height)) ||
+                    (type === "")
                 )
             ) {
                 return current;
@@ -3140,7 +3165,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     getEligibleTilesForExpansion(tile: TileData): TileData[] {
         const grid = this.getTileGrid();
-        const tiles = grid.neighbors(tile.q, tile.r, 4);
+        const tiles = grid.neighbors(tile.q, tile.r, 3);
         const eligibleTiles = tiles.filter(newTile =>
           (!newTile.city || newTile.city === "") &&
           (!newTile.owner || newTile.owner === "") &&
@@ -3464,6 +3489,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         
         if (this._gameState.playersTurn === this._gameState.currentPlayer) {
+            this.savereplayState();
             this.addUnitSelectors();
             this.focusOnNextAction();
         }
@@ -3525,19 +3551,26 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this._selectedUnit = unit;
 
                 this.panCameraTo(unit.tileInfo.q, unit.tileInfo.r);
+                this.setActionPanel(`<div class="action-menu action-button" data-name="next_action">Unit needs orders</div>`);
+
                 return;
             }
         }
         for (const [key, city] of Object.entries(player.improvements)) {
             if (city.production_queue.length === 0) {
                 let t = this.getTile(city.tileInfo.q, city.tileInfo.r);
-                this.selectTile(t);
+                this._selectedUnit = undefined;
+                this.selectTile(t, false);
+                this._selectedUnit = undefined;
                 this.panCameraTo(t.q, t.r);
                 this.showCityMenu(t);
                 this.in_city_menu = true;
+                this.setActionPanel(`<div class="action-menu action-button" data-name="next_action">Choose city production</div>`);
                 return;
             }
         }
+
+        this.setActionPanel(`<div class="action-menu action-button" data-name="end_turn">End Turn</div>`);
     };
 
     updateCityLabel(t: TileData) {
@@ -4056,6 +4089,11 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this._gameState.playersTurn !== this._gameState.currentPlayer) {
             return;
         }
+        if (dataName === "next_action") {
+            this.focusOnNextAction();
+            return;
+
+        }
         if (dataName === "end_turn") {
             this.endTurn();
 
@@ -4163,36 +4201,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
 
     showCityMenu(tile: TileData) {
-        
-        let options: [string, string, number, string][] = [
-            ["scout", "Scout", 30, "../../map/icons/scout.png"],
-            ["worker", "Worker", 50, "../../map/icons/worker.png"],
-            ["settler", "Settler", 100, "../../map/icons/settler.png"],
-            ["rifleman", "Rifleman", 100, "../../map/icons/rifleman.png"],
-            ["cavalry", "Cavalry", 200, "../../map/icons/cavalry.png"],
-            ["artillary", "Artillary", 300, "../../map/icons/artillary.png"],
-        ]
-
         let player = this.getPlayer(tile.improvement.owner);
-
-        if ("infantry" in player.research.researched) {
-            options.push(["infantry", "Infantry", 400, "rifleman.png"]);
-        }
-        if ("warships" in player.research.researched) {
-            options.push(["boat", "Warship", 500, "warship.png"]);
-        }
-        if ("tank" in player.research.researched) {
-            options.push(["tank", "Tank", 500, "tank.png"]);
-        }
-        if ("destroyer" in player.research.researched) {
-            options.push(["destroyer", "Destroyer", 500, "destroyer.png"]);
-        }
-        if ("gunship" in player.research.researched) {
-            options.push(["gunship", "Gunship", 500, "gunship.png"]);
-        }
-        if ("nukes" in player.research.researched) {
-            options.push(["nuke", "Nuke", 1000, "nuke.png"]);
-        }
 
         // get all the city tiles;
         let allYields = this.getYieldsForCity(tile);
@@ -4204,31 +4213,25 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
         yields += `</tr></table>`;
 
-        // let yield_info = `<table class="city_yields">`
-        // yield_info += `<tr><td>Population:</td> <td>${tile.improvement.population} (+${tile.improvement.population_rate})</td></tr>`
-        // let round = Math.floor(tile.improvement.population);
-        // yield_info += `<tr><td>Yields: (${round} tiles)</td> <td></td></tr>`
-        // let tileYields = this.getYieldsForCity(tile);
-        // for (const [key, value] of Object.entries(tileYields)) {
-        //     if (value > 0) {
-        //         yield_info += `<tr><td>${capitalize(key)}:</td> <td>${value}</td></tr>`
-        //     }
-        // }
-        // yield_info += "</table>"
 
-        let building_info = `<table class="city_yields"><tr><td>Buildings:</td> <td></td></tr>`
+        let progress = this.getCityProgress(tile);
+        let growth_info = `<div class="building-effect">growth in ${progress.pop_turns} turns [${Math.round(progress.pop_percent * 100)}/100]</div>`;
+
+        let building_info = `<div class="building-effect">`
+        let bs: string[] = []
         for (const [key, _] of Object.entries(tile.improvement.cityBuildings)) {
             let b = BuildingMap[key];
-            building_info += `<tr><td>${b.name}</td></tr>`
+            bs.push(b.name);
         }
-        building_info += "</table>"
+
+        building_info += bs.join(" ") + `</div>`
 
         let avialable_prod = 0;
         if ("production" in allYields) {
             avialable_prod = allYields["production"];
         }
 
-        let production_info = `<table class="city_yields"><tr><td>Currently Making:</td></tr>`
+        let production_info = `<div class="building-effect">`
         if (tile.improvement.production_queue.length > 0) {
             let prod_item = tile.improvement.production_queue[0];
             if (prod_item in UnitMap) {
@@ -4249,46 +4252,53 @@ export default class MapView implements MapViewControls, TileDataSource {
                 production_info += `<tr><td>Gold</td></tr>`;
             }
         } else {
-            production_info += `<tr><td>Nothing</td></tr>`
+            production_info += `<tr><td>None</td></tr>`
         }
-        production_info += `</table>`
+        production_info += `</div>`
 
  
         let option_info = ""
         let unit_options = ``;
-        for (const [name, label, cost, image] of options) {
-            let turns = Math.ceil(cost / avialable_prod)/10;
 
+
+        for (const [key, unit] of Object.entries(UnitMap)) {
+            if (unit.tech_required && !(unit.tech_required in player.research.researched)) {
+                continue;
+            }
+            let turns = Math.ceil(unit.cost / avialable_prod)/10;
+
+            let details = ``
+
+            details += `<div class="effect-icon movement-icon" style="margin-left: 10px;">👣</div><span>${unit.stats.movement_max}</span>`
+            if (unit.stats.attack > 0) {
+                details += `<div class="effect-icon strength-icon">⚔️</div><span>${unit.stats.attack}</span>`
+            }
+            if (unit.stats.attack_range > 1) {
+                details += `<div class="effect-icon movement-icon" style="margin-left: 10px;">ranged</div>`
+            }
             let h = `
-                <div class="unit city-menu" data-name="queue" data-target="${name}">
+                <div class="unit city-menu" data-name="queue" data-target="${key}">
                     <div class="unit-icon">⚔️</div>
                     <div class="unit-details">
-                        <div class="unit-name">${name}</div>
+                        <div class="unit-name">${unit.name}</div>
                         <div class="unit-effect">
-                            <div class="effect-icon strength-icon">⚔️</div>
-                            <span>35</span>
-                            <div class="effect-icon movement-icon" style="margin-left: 10px;">👣</div>
-                            <span>2</span>
+                            ${details}
                         </div>
                     </div>
                     <div class="unit-cost">
                         <span class="cost-value">${turns}</span>
                         <div class="effect-icon production-icon">⚒️</div>
                     </div>
-                    <button class="purchase-button city-menu" data-name="buy" data-target="${name}">
+                    <button class="purchase-button city-menu" data-name="buy" data-target="${key}">
                         Buy
                         <div class="purchase-cost">
-                            ${cost}
+                            ${unit.cost}
                             <div class="effect-icon gold-icon">💰</div>
                         </div>
                     </button>
                 </div>
             `
             unit_options += h;
-            // option_info += `<tr>`
-            // option_info += `<td><button class="city-menu" data-name="queue" data-target="${name}"><img id="menu-unit-img" src="../../assets/ui/units/${image}">${label} (${turns} turns)</button></td>`
-            // option_info += `<td><button class="city-menu" data-name="buy" data-target="${name}">${cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td>`
-            // option_info += `</tr>`
         }
 
         option_info += "</br>"
@@ -4299,6 +4309,16 @@ export default class MapView implements MapViewControls, TileDataSource {
                 continue;
             }
             let turns = Math.ceil(building.cost / avialable_prod)/10;
+            let details = `${building.description}`
+
+            // details += `<div class="effect-icon movement-icon" style="margin-left: 10px;">👣</div><span>${unit.stats.movement_max}</span>`
+            // if (unit.stats.attack > 0) {
+            //     details += `<div class="effect-icon strength-icon">⚔️</div><span>${unit.stats.attack}</span>`
+            // }
+            // if (unit.stats.attack_range > 1) {
+            //     details += `<div class="effect-icon movement-icon" style="margin-left: 10px;">⚒️</div>`
+            // }
+
 
             let h = `
             <div class="building city-menu" data-name="queue_building" data-target="${key}">
@@ -4306,8 +4326,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <div class="building-details">
                     <div class="building-name">${building.name}</div>
                     <div class="building-effect">
-                        <div class="effect-icon faith-icon">✨</div>
-                        <span>+2</span>
+                        ${details}
                     </div>
                 </div>
                 <div class="building-cost">
@@ -4324,18 +4343,14 @@ export default class MapView implements MapViewControls, TileDataSource {
             </div>
             `
             building_options += h;
-            // option_info += `<tr><td><button class="city-menu" data-name="queue_building" data-target="${key}"><img id="menu-unit-img" src="${building.menu_image}">${building.name} (${turns} turns)</button></td>`
-            // option_info += `<td><button class="city-menu" data-name="buy_building" data-target="${key}">${building.cost} <img id="menu-unit-cost" src="../../assets/ui/resources/gold.png"></button></td></tr>`
         }
-
-        // ${BonusMap["sacrificial_captives"].description}
 
         // gold
         building_options += `
             <div class="building city-menu" data-name="queue" data-target="gold">
-            <div class="building-icon">🏛️</div>
+            <div class="building-icon">💰</div>
             <div class="building-details">
-                <div class="building-name">Hold</div>
+                <div class="building-name">Produce Gold</div>
             </div>
         </div>
         `
@@ -4351,12 +4366,18 @@ export default class MapView implements MapViewControls, TileDataSource {
                 <div class="resources">
                 ${yields}
                 </div>
-                <p class="small">
-                    ${building_info}
-                </p>
-                <p class="small">
-                    ${production_info}
-                </p>
+                <div class="section-title">
+                    <span>Buildings</span>
+                </div>
+                ${building_info}
+                <div class="section-title">
+                    <span>Population</span>
+                </div>
+                ${growth_info}
+                <div class="section-title">
+                    <span>Current Production</span>
+                </div>
+                ${production_info}
                 <div class="tabs">
                     <div class="tab active">PRODUCTION</div>
                 </div>
@@ -4445,6 +4466,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         ]
         let options2: [string, string][] = [
             ["main_menu", "Exit to Main Menu"],
+            ["replay", "Show Timeline (Replay)"],
             ["exit_desktop", "Exit to Desktop"],
             ["dev_mode", "Enable Dev Mode"],
         ]
@@ -4469,6 +4491,13 @@ export default class MapView implements MapViewControls, TileDataSource {
     async mainMenuOption(name: String) {
         if (name === "main_menu") {
             window.location.href = './main_menu.html'
+        }
+        if (name === "replay") {
+            this.displayReplay(0);
+        }
+        if (name === "one_more_turn") {
+            this.disable_victory = true;
+            this.CloseMenu();
         }
         if (name === "exit_desktop") {
             window.close();
@@ -4569,7 +4598,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         return false;
     }
 
-    cityMenuAction(name: string, target: string) {
+    cityMenuAction(name: string, target: string, target_em: HTMLElement) {
         console.log(name, target )
         const tile = this.selectedTile;
         const player = this.getPlayer(this._gameState.currentPlayer);
@@ -4606,6 +4635,12 @@ export default class MapView implements MapViewControls, TileDataSource {
             });
             this.CloseMenu();
         }
+        if (name === "replay") {
+            target = (target_em as HTMLInputElement).value;
+            console.log(target)
+            this.displayReplay(parseInt(target));
+            return;
+        }
 
         if (name === "settler_place_city") {
             let tile = this.selectedTile;
@@ -4623,6 +4658,7 @@ export default class MapView implements MapViewControls, TileDataSource {
                 while (tile.unit.model.children.length > 0) {
                     tile.unit.model.remove(tile.unit.model.children[0]);
                 }
+                delete player.units[tile.unit.id];
                 tile.unit.model.geometry.dispose();
                 tile.unit.model.parent.remove(tile.unit.model);
                 tile.unit = undefined;
@@ -4763,6 +4799,277 @@ export default class MapView implements MapViewControls, TileDataSource {
         }
     }
 
+    savereplayState() {
+        const tileGrid = this.getTileGrid();
+        let turn = this._gameState.turn;
+        let turndata: { [key: string]: string[] } = {};
+    
+        tileGrid.toArray().forEach((tile) => {
+            if (tile.owner !== undefined && tile.owner !== "") {
+                if (!(turndata[tile.owner])) {
+                    turndata[tile.owner] = [];
+                }
+                turndata[tile.owner].push(tile.q + "," + tile.r);
+            }
+        });
+    
+        type DiffData = {
+            added: string[];
+            removed?: string[];
+        };
+    
+        if (this._gameState.replay.length > 0) {
+            const lastTurnIndex = this._gameState.replay.length - 1;
+            const lastTurn = this._gameState.replay[lastTurnIndex];
+    
+            let lastTurnData: { [key: string]: string[] } = {};
+            
+            // Rebuild the complete state from all previous turns
+            for (let i = 0; i <= lastTurnIndex; i++) {
+                const prevTurn = this._gameState.replay[i];
+                const prevData = prevTurn[1];
+                
+                // Handle both the original format and diff format
+                if (Object.values(prevData).some(v => v && typeof v === 'object' && ('added' in v || 'removed' in v))) {
+                    // Diff format
+                    for (const [player, diff] of Object.entries(prevData)) {
+                        const typedDiff = diff as DiffData;
+                        
+                        if (!lastTurnData[player]) {
+                            lastTurnData[player] = [];
+                        }
+                        
+                        if (typedDiff.added) {
+                            for (const coord of typedDiff.added) {
+                                if (!lastTurnData[player].includes(coord)) {
+                                    lastTurnData[player].push(coord);
+                                }
+                            }
+                        }
+                        
+                        if (typedDiff.removed) {
+                            lastTurnData[player] = lastTurnData[player].filter((coord: string) =>
+                                !typedDiff.removed.includes(coord)
+                            );
+                        }
+                        
+                        if (lastTurnData[player].length === 0) {
+                            delete lastTurnData[player];
+                        }
+                    }
+                } else if (typeof prevData === 'object') {
+                    // Original format (full state)
+                    for (const [player, coords] of Object.entries(prevData)) {
+                        if (Array.isArray(coords)) {
+                            lastTurnData[player] = [...coords.map(c => String(c))];
+                        }
+                    }
+                }
+            }
+    
+            let differences: { [key: string]: DiffData } = {};
+    
+            // Calculate added tiles (in current turn but not in previous turns)
+            for (const [player, coordinates] of Object.entries(turndata)) {
+                differences[player] = { added: [] }; // Initialize without empty removed array
+    
+                if (player in lastTurnData && Array.isArray(lastTurnData[player])) {
+                    differences[player].added = coordinates.filter(coord =>
+                        !lastTurnData[player].includes(coord)
+                    );
+                } else {
+                    differences[player].added = [...coordinates];
+                }
+            }
+    
+            // Calculate removed tiles (in previous turns but not in current turn)
+            for (const [player, coordinates] of Object.entries(lastTurnData)) {
+                if (!differences[player]) {
+                    differences[player] = { added: [] };
+                }
+    
+                if (player in turndata && Array.isArray(coordinates)) {
+                    const removed = coordinates.filter(coord =>
+                        !turndata[player].includes(coord)
+                    );
+                    
+                    // Only add removed property if there are actually removed tiles
+                    if (removed.length > 0) {
+                        differences[player].removed = removed;
+                    }
+                } else if (Array.isArray(coordinates)) {
+                    if (coordinates.length > 0) {
+                        differences[player].removed = [...coordinates];
+                    }
+                }
+            }
+    
+            // Check if there are any actual changes
+            let hasChanges = false;
+            for (const [player, diff] of Object.entries(differences)) {
+                if (diff.added.length > 0 || (diff.removed && diff.removed.length > 0)) {
+                    hasChanges = true;
+                    break;
+                }
+            }
+    
+            if (!hasChanges) {
+                this._gameState.replay.push([turn, {}]);
+                return;
+            }
+    
+            // Store only players with actual changes
+            let finalDifferences: { [key: string]: DiffData } = {};
+            for (const [player, diff] of Object.entries(differences)) {
+                if (diff.added.length > 0 || (diff.removed && diff.removed.length > 0)) {
+                    // Create a clean diff object without empty arrays
+                    const cleanDiff: DiffData = { added: diff.added };
+                    if (diff.removed && diff.removed.length > 0) {
+                        cleanDiff.removed = diff.removed;
+                    }
+                    finalDifferences[player] = cleanDiff;
+                }
+            }
+    
+            this._gameState.replay.push([turn, finalDifferences]);
+        } else {
+            // First turn, store everything as added
+            let initialDifferences: { [key: string]: DiffData } = {};
+            for (const [player, coordinates] of Object.entries(turndata)) {
+                initialDifferences[player] = {
+                    added: [...coordinates]
+                    // No need to include empty removed array for first turn
+                };
+            }
+            this._gameState.replay.push([turn, initialDifferences]);
+        }
+    }
+    
+    
+    displayReplay(turn: number = 0) {
+        this._ui_map_temp_models.clear();
+    
+        const camera = this._replay_camera;
+        const renderer = this._replay_renderer;
+    
+        camera.aspect = this._replay_width / this._replay_height;
+        camera.updateProjectionMatrix();
+    
+        renderer.setSize(this._replay_width, this._replay_height);
+        renderer.domElement.style.position = 'absolute';
+        renderer.domElement.style.bottom = '20%';
+        renderer.domElement.style.left = '35%';
+        renderer.domElement.style.zIndex = '5000';
+        renderer.domElement.style.border = '2px solid #d4af37';
+        renderer.domElement.id = 'replay';
+    
+        let controls = `<h5>Replay</h5>`
+        controls += '<div class="replay-timeline-container" style="display: flex; align-items: center; gap: 10px; padding: 5px; background-color: rgba(0,0,0,0.5); border-radius: 3px; width: 100%; box-sizing: border-box;">';
+        const totalTurns = this._gameState.replay.length;
+        const maxTurnIndex = totalTurns > 0 ? totalTurns - 1 : 0;
+        let turnBCStart = TurnToYear(0);
+        let turnBCEnd = TurnToYear(maxTurnIndex);
+        let turnBCCurrent = TurnToYear(turn);
+    
+        if (totalTurns > 0) {
+            controls += `<label for="replay-slider" style="color: white; font-size: 0.9em; white-space: nowrap;">${turnBCStart}</label>`;
+            controls += `<input type="range" id="replay-slider" class="city-menu" data-name="replay" min="0" max="${maxTurnIndex}" value="${turn}" step="1" style="flex-grow: 1;">`;
+            controls += `<span id="replay-turn-display" style="color: white; font-weight: bold; min-width: 40px; text-align: right;">${turnBCEnd}</span>`;
+        } else {
+            controls += '<span style="color: white;">No replay data available.</span>';
+        }
+    
+        controls += '</div>';
+        controls += `<h5>${turnBCCurrent} (Turn: ${turn})</h5>`;
+    
+        this.showMenu(controls, "replay");
+    
+        type DiffData = {
+            added: string[];
+            removed: string[];
+        };
+    
+
+        document.body.appendChild(renderer.domElement);
+        this._render_replay = true;
+    
+        let currentState: { [key: string]: string[] } = {};
+    
+        for (let i = 0; i <= turn && i < this._gameState.replay.length; i++) {
+            const replayTurn = this._gameState.replay[i];
+            const replayData = replayTurn[1];
+    
+            if (!replayData || Object.keys(replayData).length === 0) continue;
+    
+            const isUsingDiffFormat = Object.values(replayData).some(
+                v => v && typeof v === 'object' && ('added' in v || 'removed' in v)
+            );
+    
+            if (isUsingDiffFormat) {
+                for (const [player, diff] of Object.entries(replayData)) {
+                    const typedDiff = diff as DiffData;
+    
+                    if (!currentState[player]) {
+                        currentState[player] = [];
+                    }
+    
+                    if (typedDiff.added) {
+                        for (const coord of typedDiff.added) {
+                            if (!currentState[player].includes(coord)) {
+                                currentState[player].push(coord);
+                            }
+                        }
+                    }
+    
+                    if (typedDiff.removed) {
+                        currentState[player] = currentState[player].filter((coord: string) =>
+                            !typedDiff.removed.includes(coord)
+                        );
+                    }
+    
+                    if (currentState[player].length === 0) {
+                        delete currentState[player];
+                    }
+                }
+            } else {
+                currentState = {};
+                for (const [player, coords] of Object.entries(replayData)) {
+                    if (Array.isArray(coords) && coords.length > 0) {
+                        currentState[player] = coords.map(c => String(c));
+                    }
+                }
+            }
+        }
+    
+        if (Object.keys(currentState).length > 0) {
+            for (const [key, value] of Object.entries(currentState)) {
+                let player: Player = this._gameState.players[key];
+                for (const v of value) {
+                    let overlay: Object3D = createTileOverlayModel(player.color, 0.7);
+                    let t: string[] = v.split(",");
+                    let q: number = parseInt(t[0]);
+                    let r: number = parseInt(t[1]);
+                    let tworldPos: Vector3 = qrToWorld(q, r);
+    
+                    overlay.position.set(tworldPos.x, tworldPos.y, .5);
+                    overlay.layers.set(11);
+                    overlay.visible = true;
+                    this._ui_map_temp_models.add(overlay);
+                }
+            }
+        }
+    }
+    
+
+    closeReplay() {
+        this._ui_map_temp_models.clear();
+        this._render_replay = false;
+        let r = document.getElementById('replay');
+        if (r) {
+            document.body.removeChild(r);
+        }
+    }
+
     checkVictoryConditions() {
         // check if current player lost
         const currentPlayer = this._gameState.players[this._gameState.currentPlayer];
@@ -4772,6 +5079,18 @@ export default class MapView implements MapViewControls, TileDataSource {
             info += `<p>`;
             info += `<img class="event-img" src="../../assets/ui/events/defeat.png">`;
             info += `</p>`;
+
+
+            let options: [string, string][] = [
+                ["main_menu", "Exit to Main Menu"],
+                ["replay", "Show Timeline (Replay)"],
+            ]
+    
+            let option_info = ""
+            for (const [name, label] of options) {
+                option_info += `<button class="main-menu-option" data-name="${name}">${label}</button>`
+            }
+            info += `<div class="options"> ${option_info}</div>`;
             this.playSound(asset("sounds/ui/violin-lose.mp3"));
             this.showMenu(info)
             return;
@@ -4805,11 +5124,29 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
         }
 
+        if (this.disable_victory) {
+            console.log("One more turn mode; victory disabled");
+            return;
+        }
+
         console.log("Victory!");
         let info = `<h1>Victory!</h1>`;
         info += `<p>`;
         info += `<img class="event-img" src="../../assets/ui/events/victory.png">`;
         info += `</p>`;
+        
+        let options: [string, string][] = [
+            ["main_menu", "Exit to Main Menu"],
+            ["replay", "Show Timeline (Replay)"],
+            ["one_more_turn", "One More Turn.."],
+        ]
+
+        let option_info = ""
+        for (const [name, label] of options) {
+            option_info += `<button class="main-menu-option" data-name="${name}">${label}</button>`
+        }
+        info += `<div class="options"> ${option_info}</div>`;
+        
         this.playSound(asset("sounds/ui/violin-win.mp3"));
         this.showMenu(info);
     }
@@ -4834,8 +5171,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         document.getElementById('menu-modal').style.visibility = 'hidden';
         document.getElementById('menu').style.visibility = 'hidden';
         this.in_city_menu = false;
-
-        console.log(this.menuQueue);
+        this.closeReplay();
         if (this.menuQueue.length > 0) {
             let m = this.menuQueue.shift();
             if (m) {

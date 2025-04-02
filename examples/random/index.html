@@ -232,7 +232,6 @@
         }
 
         #menu {
-            background: rgba(0, 0, 0, 0.8);
             visibility: hidden;
             position: fixed;
             color: white;
@@ -246,10 +245,12 @@
             align-items: center;
             justify-content: center;
             font-size: 3em;
-            border: 2px solid #d4af37;
             border-radius: 5px;
             padding: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+
+            border: 2px solid #6e5c3e!important;
+            background-color: rgba(20, 25, 35, 0.9)!important;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.7)!important;
         }
         #menu .close-button {
             position: absolute;
@@ -547,6 +548,11 @@
             align-items: center;
             position: relative;
         }
+        .building:hover, .unit:hover {
+            cursor: pointer;
+            background: rgba(212, 175, 55, 0.6);
+            /* transform: scale(1.05); */
+        }
         .building:hover .tooltip, .unit:hover .tooltip {
             display: block;
         }
@@ -564,6 +570,7 @@
         }
         .building-details, .unit-details {
             pointer-events: none;
+            text-align: left;
             flex: 1;
         }
         .building-name, .unit-name {

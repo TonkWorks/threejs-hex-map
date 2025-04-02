@@ -11,7 +11,7 @@ function sleep(ms: number) {
 
 export async function takeTurn(mapView: MapView, player: Player) {
     if (player.isBarbarian === true) {
-        // todo unit movements/attacks
+        BarbarianUnitAI(mapView, player);
         placeBarbarianEncampents(mapView);
         mapView.endTurn();
         return
@@ -206,6 +206,45 @@ export async function attack(mapView: MapView, player: Player, targets: TileData
   }
   
 // Barbarian AI
+
+function BarbarianUnitAI(mapView: MapView, player: Player) {
+    for (const unit of Object.values(player.units)) {
+        let t = mapView.getTile(unit.tileInfo.q, unit.tileInfo.r);
+        if (t.worker_improvement && t.worker_improvement.type === "encampent") {
+            // 1 in 10 chance to spawn new unit.
+            const randomNumber = Math.floor(Math.random() * 10);
+            if (randomNumber === 0) {
+                // spawn a new unit
+                const newUnit = createUnit("rifleman", player);
+                const randomTile = mapView.getClosestUnoccupiedTile(t, "land");
+                if (randomTile) {
+                    mapView.addUnitToMap(newUnit, randomTile);
+                } 
+            }
+            continue
+        }
+        // see if there are any targets around the unit.
+        const tiles = mapView.getTileGrid().neighbors(t.q, t.r, 3);
+        for (const targetTile of tiles) {
+            if (targetTile.unit && targetTile.unit.owner !== player.name) {
+                 // 3 in 4 chance to attack unit.
+                 const randomNumber = Math.floor(Math.random() * 4);
+                 if (randomNumber < 3) {
+                    mapView.moveUnit(t, targetTile);
+                    return;
+                }
+                return;
+            }
+        }
+        // otherwise move to a random tile
+        const randomIndex = Math.floor(Math.random() * tiles.length);
+        const randomTile = tiles[randomIndex];
+        if (randomTile) {
+            mapView.moveUnit(t, randomTile);
+        }
+    }
+}
+
 function placeBarbarianEncampents(mapView: MapView) {
     // For now just place near the player cities
     // Get players cities

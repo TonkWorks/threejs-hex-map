@@ -321,6 +321,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                this.landMaterial = material;
 	                this.land.frustumCulled = false;
 	                this.land.layers.enable(10);
+	                this.land.layers.enable(11);
 	                this.add(this.land);
 	            });
 	        }
@@ -365,6 +366,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	                this.mountains = new three_1.Mesh(geometry, material);
 	                this.mountains.frustumCulled = false;
 	                this.mountains.layers.enable(10);
+	                this.mountains.layers.enable(11);
 	                this.add(this.mountains);
 	            });
 	        }

@@ -47,6 +47,7 @@ interface UnitConfig {
     texture: string;
     icon: string;
     image: string;
+    tech_required?: string;
     geometry: { width: number; height: number };
     textureFilter?: 'nearest' | 'linear';
     stats: {
@@ -145,6 +146,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "infantry": {
         name: "Infantry",
         cost: 200,
+        tech_required: "infantry",
         moveSounds: [asset("sounds/units/rifelman.mp3")],
         attackSounds: [asset("sounds/units/rifelman_attack.mp3")],
         texture: "../../assets/map/units/infantry.png",
@@ -186,6 +188,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "tank": {
         name: "Tank",
         cost: 200,
+        tech_required: "tank",
         moveSounds: [asset("sounds/units/tank.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
         texture: "../../assets/map/units/tank.png",
@@ -228,6 +231,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "boat": {
         name: "Boat",
         cost: 500,
+        tech_required: "warships",
         moveSounds: [asset("sounds/units/boat.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
         texture: "../../assets/map/units/boat.png",
@@ -249,6 +253,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "destroyer": {
         name: "Destroyer",
         cost: 1000,
+        tech_required: "destroyer",
         moveSounds: [asset("sounds/units/destroyer.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
         texture: "../../assets/map/units/destroyer.png",
@@ -270,6 +275,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "gunship": {
         name: "Gunship",
         cost: 1000,
+        // tech_required: "gunship",
         moveSounds: [asset("sounds/units/gunship.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
         texture: "../../assets/map/units/gunship.png",
@@ -291,6 +297,7 @@ export const UnitMap: { [key: string]: UnitConfig } = {
     "nuke": {
         name: "Missile",
         cost: 1000,
+        tech_required: "nukes",
         moveSounds: [asset("sounds/units/missile.mp3")],
         attackSounds: [asset("sounds/units/cinematic_boom.mp3")],
         texture: "../../assets/map/units/missile.png",
@@ -682,18 +689,19 @@ export function createTerritoryOverlayModel(player: Player) {
         materialCache.get(key2)
     );
     model2.layers.disable(0);
+    model2.layers.disable(11);
     model2.layers.enable(10);
     model.add(model2);
     model.visible = false;
     return model;
 }
 
-export function createTileOverlayModel() {
-    const key = `tile_overlay`;
+export function createTileOverlayModel(color: string = "white", opacity: number = 0.2) {
+    const key = `tile_overlay_${color}_${opacity}`;
     if (!materialCache.has(key)) {
         materialCache.set(key, new MeshBasicMaterial({ 
-            color: "white",
-            opacity: .2,
+            color: color,
+            opacity: opacity,
             transparent: true,
             side: FrontSide,
         }));

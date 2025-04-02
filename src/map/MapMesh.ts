@@ -463,6 +463,7 @@ export default class MapMesh extends Group implements TileDataSource {
         this.landMaterial = material;
         this.land.frustumCulled = false
         this.land.layers.enable(10)
+        this.land.layers.enable(11)
 
         this.add(this.land)
     }
@@ -508,6 +509,7 @@ export default class MapMesh extends Group implements TileDataSource {
         this.mountains = new Mesh(geometry, material)
         this.mountains.frustumCulled = false            
         this.mountains.layers.enable(10)
+        this.mountains.layers.enable(11)
         this.add(this.mountains)
     }
 }
