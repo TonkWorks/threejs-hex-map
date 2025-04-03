@@ -7,7 +7,9 @@ export interface WorkerImprovement {
     type: string; // Unit type (e.g., "city", "farm", "mine")
     yields: { [key: string]: number }; // Yields provided by the improvement
     index: number; // Variation of the unit model
+    completion: number; // Completion percentage (0-1)
     barbarian?: boolean;
+    research_needed?: string;
     flatten?: boolean; // Whether it should map the land (eg. a farm)
     model?: Mesh; // Reference to the 3D model in the scene
     tileInfo?: {q: number, r: number}; // Reference to the tile the unit is on
@@ -22,6 +24,17 @@ export const WorkerImprovementMap: {[key: string]: any } = {
         images: ["../../assets/map/improvements/farm8.png"],
 
         // images: ["../../assets/map/improvements/farm1.png", "../../assets/map/improvements/farm2.png","../../assets/map/improvements/farm3.png", "../../assets/map/improvements/farm4.png","../../assets/map/improvements/farm5.png"],
+        research_needed: "agriculture",
+        yields: {
+            food: 2,
+        },
+    },
+    "ranch": {
+        type: "ranch",
+        description: "Increases food +2; develops resource",
+        flatten: true,
+        research_needed: "animal_husbandry",
+        images: ["../../assets/map/improvements/farm8.png"],
         yields: {
             food: 2,
         },
@@ -29,6 +42,16 @@ export const WorkerImprovementMap: {[key: string]: any } = {
     "mine": {
         type: "mine",
         description: "Increases production +2",
+        research_needed: "mining",
+        images: ["../../assets/map/improvements/mine.png"],
+        yields: {
+            production: 2,
+        },
+    },
+    "quarry": {
+        type: "quarry",
+        description: "Increases production +2; develops resource",
+        research_needed: "advanced_mining",
         images: ["../../assets/map/improvements/mine.png"],
         yields: {
             production: 2,
@@ -98,6 +121,7 @@ export function CreateWorkerImprovement(type: string, index: number = -1): Worke
     return {
         id: unitID,
         type: type,
+        completion: 1,
         flatten: improvement.flatten,
         model: unitModel,
         index: index,

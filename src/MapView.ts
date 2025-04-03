@@ -23,7 +23,7 @@ import { takeTurn } from './AI';
 
 import Toastify from './third/toastify';
 import { Nations } from './Nations';
-import { AIChooseResearch, DisplayResearchFinished, RenderTechTree, Technologies, Technology } from './Research';
+import { AIChooseResearch, canUnlock, DisplayResearchFinished, RenderTechTree, Technologies, Technology } from './Research';
 import AnimatedSelector, { LightOfGod, Selector, Selectors, WhiteOutline } from './Selector';
 
 import { BloomEffect, EffectComposer, EffectPass, RenderPass, SMAAEffect, VignetteEffect } from './third/postprocessing.esm';
@@ -35,7 +35,7 @@ import { ThickLine } from './third/thickLine';
 import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
 import { BuildingMap } from './CityImprovements';
-import { CreateWorkerImprovement, WorkerImprovement } from './ImprovementsWorker';
+import { CreateWorkerImprovement, WorkerImprovement, WorkerImprovementMap } from './ImprovementsWorker';
 import { RawShaderMaterial, Triangle } from './three';
 import { BonusMap } from './Bonsues';
 import { CircleProgressHTML } from './map/CircleProgressUI';
@@ -1422,14 +1422,14 @@ export default class MapView implements MapViewControls, TileDataSource {
             
             // If the tile is owned by the current player, add as visibility source with range 1
             if (tile.owner && tile.owner === this.gameState.currentPlayer) {
-                visibilitySources.push({tile, range: 2});
+                visibilitySources.push({tile, range: 1});
             }
             
             // If a unit on the tile belongs to the current player, add as visibility source with range 1
             if (tile.unit && tile.unit.owner === this.gameState.currentPlayer) {
-                let range = 2;
+                let range = 1;
                 if (isHill(tile.height)) {
-                    range = 3;
+                    range = 2;
                 }
                 visibilitySources.push({tile, range: range});
             }
@@ -1529,7 +1529,7 @@ export default class MapView implements MapViewControls, TileDataSource {
             data.push(this.generateUnitInfo(tile.unit));
         }
         if (tile.resource) {
-            data.push(this.generateResourceInfo(tile.resource));
+            data.push(this.generateResourceInfo(tile));
         }
         data.push(this.generateTileInfo(tile));
 
@@ -1700,14 +1700,18 @@ export default class MapView implements MapViewControls, TileDataSource {
         </div>`;
     }
 
-    private generateResourceInfo(resource: Resource): string {
+    private generateResourceInfo(tile: TileData): string {
+        let info = ``
+        if (tile.worker_improvement === undefined || tile.worker_improvement.type !== tile.resource.improvement_needed) {
+            info = `<div style="color: red;">Requires ${tile.resource.improvement_needed}</div>`;
+        }
         return `
             <div>
                 Resource
                 <div style="display: flex; align-items: left;">
                     <table style="margin-right: 10px; text-align: left;">
                         <tr>
-                            <td>${capitalize(resource.name)}</br>${resourceIcon(resource.name)}</td>
+                            <td>${capitalize(tile.resource.name)}</br>${resourceIcon(tile.resource.name)}</br>${info}</td>
                         </tr>
                     </table>
                 </div>
@@ -1737,7 +1741,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (currentTile.unit === undefined) {
             return
         }
-        if (currentTile.unit.movement < 1) {
+
+        const terrainCost = this.getTerrainMovementCost(targetTile, currentTile);
+        if (currentTile.unit.movement < terrainCost) {
             this.focusOnNextAction();
             return
         }
@@ -1831,9 +1837,9 @@ export default class MapView implements MapViewControls, TileDataSource {
             return;
         }
         nextMovementTile.unit.tileInfo = { q: nextMovementTile.q, r: nextMovementTile.r }
-        nextMovementTile.unit.movement -= 1;
+        nextMovementTile.unit.movement -= terrainCost;
 
-        if (nextMovementTile.unit.movement === 0) {
+        if (nextMovementTile.unit.movement <= 0) {
             if (nextMovementTile.unit.selector) {
                 nextMovementTile.unit.selector.mesh.parent.remove(nextMovementTile.unit.selector.mesh);
                 nextMovementTile.unit.selector.dispose();
@@ -2357,21 +2363,26 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.updateCityLabel(targetTile);
     }
 
-    pickResearch() {
+    showResearchTree() {
         this.CloseMenu();
         this.showMenu("", "center");
         const currentPlayer = this.getPlayer(this.gameState.currentPlayer);
         let [rpt, rptInfo] = this.getResearch(currentPlayer, this.getPlayerCityYields(currentPlayer));
-
         RenderTechTree(currentPlayer.research.current, currentPlayer.research.researched, rpt, (tech: Technology) => {
-            currentPlayer.research.current = tech.id;
-            currentPlayer.research.progress = 0;
-            this.updateResourcePanel();
-            this.showEndTurnInActionPanel();
-            this.menuPanel.innerHTML = "";
             this.CloseMenu();
             this.keep_menu = false;
+            this.menuPanel.innerHTML = "";
+            if (currentPlayer.research.current !== tech.id) {
+                currentPlayer.research.current = tech.id;
+                currentPlayer.research.progress = 0;
+            }
+            this.pickResearch();
         });
+    }
+
+    pickResearch() {
+        this.CloseMenu();
+        this.showResearchMenu();
     }
 
     cityLabelClick(id: string) {
@@ -2534,26 +2545,44 @@ export default class MapView implements MapViewControls, TileDataSource {
         return true;
     }
 
-    isImprovementEligible(tile: TileData): boolean {
+    eligibleImprovements(tile: TileData): string[] {
         if (!tile) {
-            return false;
+            return [];
         }
         if (isMountain(tile.height)) {
-            return false;
+            return [];
         }
         if (tile.improvement !== undefined) {
-            return false;
+            return [];
         }
         if (tile.owner && (tile.owner !== this._gameState.playersTurn)) {
-            return false;
+            return [];
         }
         if (tile.city === undefined) {
-            return false;
+            return [];
         }
         if (tile.improvement !== undefined) {
-            return false;
+            return [];
         }
-        return true;
+        let results = [];
+        if (isHill(tile.height)) {
+            results.push("mine");
+        } else if (isWater(tile.height)) {
+            results.push("fishery");
+        } else {
+            results.push("farm");
+        }
+
+        if (tile.resource) {
+            results = [tile.resource.improvement_needed];
+        }
+        if (tile.worker_improvement) {
+            const index = results.indexOf(tile.worker_improvement.type);
+            if (index !== -1) {
+                results.splice(index, 1);
+            }
+        }
+        return results;
     }
 
     getClosestUnoccupiedTile(tile: TileData, type: string): TileData | undefined {
@@ -3263,6 +3292,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         let resources: { [key: string]: number } = {};
         for (const tile of this._tileGrid.toArray()) {
             if (tile.owner == player.name && tile.resource !== undefined) {
+                if (!tile.worker_improvement) {
+                    continue;
+                }
                 if (resources[tile.resource.name] === undefined) {
                     resources[tile.resource.name] = 0;
                 }
@@ -3517,8 +3549,10 @@ export default class MapView implements MapViewControls, TileDataSource {
             this.keep_menu = true;
             this.menuQueue.push(() => {
                 this.playSound(asset("sounds/research/complete.mp3"));
-                let info = DisplayResearchFinished(tech);
-                this.showMenu(info, "center");
+                // let info = DisplayResearchFinished(tech);
+                // this.showMenu(info, "center");
+                this.showResearchMenu(tech.id);
+                
                 if (tech.quote_audio) {
                     this.playSound(asset(tech.quote_audio));
                 }
@@ -3559,8 +3593,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         for (const [key, city] of Object.entries(player.improvements)) {
             if (city.production_queue.length === 0) {
                 let t = this.getTile(city.tileInfo.q, city.tileInfo.r);
-                this._selectedUnit = undefined;
-                this.selectTile(t, false);
+                this.selectTile(t, true);
                 this._selectedUnit = undefined;
                 this.panCameraTo(t.q, t.r);
                 this.showCityMenu(t);
@@ -3932,29 +3965,35 @@ export default class MapView implements MapViewControls, TileDataSource {
             let menu = ``
             if (tile.unit.type === "settler") {
                 // validate placement location
+                menu += `<tr>`
                 if (!this.isTileCityEligbile(tile)) {
-                    menu = `<tr><td><button disabled class="city-menu" data-name="settler_place_city">Start City</button></td><td></td></tr>`
+                    menu = `<td><button disabled class="city-menu" data-name="settler_place_city">Start City</button></td><td>`
                 } else {
-                    menu = `<tr><td><button class="city-menu" data-name="settler_place_city">Start City</button></td><td></td></tr>`
-                }                
+                    menu = `<td><button class="city-menu" data-name="settler_place_city">Start City</button></td><td></td>`
+                }
+                menu += `</tr>`            
             }
             if (tile.unit.type === "worker") {
                 // validate placement location
-                if (!this.isImprovementEligible(tile)) {
-                    menu = `<tr><td><button disabled class="city-menu" data-name="worker_improvement">Add farm</button></td><td></td></tr>`
-                } else {
-                    menu = `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="farm">Build Farm</button></td><td></td></tr>`
-                    menu += `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="mine">Build Mine</button></td><td></td></tr>`
-                }                
-
-                if (tile.treeIndex !== undefined) {
-                    menu += `<tr><td><button class="city-menu" data-name="worker_improvement" data-target="remove_forest">Remove Forest</button></td><td></td></tr>`
+                menu += `<tr>`
+                const eligibleImprovements = this.eligibleImprovements(tile);
+                for (const impType of eligibleImprovements) {
+                    const capitalizedType = impType.charAt(0).toUpperCase() + impType.slice(1);
+                    let disabled = ``;
+                    let improvementType = WorkerImprovementMap[impType];
+                    if (improvementType.research_needed && !this._gameState.players[this._gameState.currentPlayer].research.researched[improvementType.research_needed]) {
+                        disabled = `disabled`
+                    }
+                    menu += `<td><button class="city-menu" ${disabled} data-name="worker_improvement" data-target="${impType}">Build ${capitalizedType}</button></td><td></td>`
                 }
+                menu += `</tr>`
             }
 
             // orders
-            menu += `<tr><td><button class="city-menu" data-name="unit_sleep" data-target="mine">Sleep (Skip)</button></td><td></td></tr>`
-            menu += `<tr><td><button class="city-menu" data-name="unit_fortify" data-target="mine">Fortify (Skip)</button></td><td></td></tr>`
+            menu += `<tr>`
+            menu += `<td><button class="city-menu" data-name="unit_sleep" data-target="mine">Sleep (Skip)</button></td>`
+            menu += `<td><button class="city-menu" data-name="unit_fortify" data-target="mine">Fortify (Skip)</button></td>`
+            menu += `</tr>`
             let  orders =  `<tr><th>Orders</th><td>${capitalize(tile.unit.orders)}</td></tr>`
             let info = `<div>
                         <div style="text-align: left;" class="bold">${tile.unit.name}</div>
@@ -4192,6 +4231,12 @@ export default class MapView implements MapViewControls, TileDataSource {
             menuModal.style.visibility = "hidden";
             this.menuPanel.style.visibility = "visible";
         }
+        else if (layout === "research") {
+            this.menuPanel.style.left = "0%";
+            this.menuPanel.classList.add("city-menu-panel");
+            menuModal.style.visibility = "hidden";
+            this.menuPanel.style.visibility = "visible";
+        }
         else {
             this.menuPanel.style.visibility = "visible";
             menuModal.style.visibility = "visible";
@@ -4199,6 +4244,117 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     }
 
+    showResearchMenu(completed: string = "") {
+        let player = this.getPlayer(this._gameState.currentPlayer);
+        let [rpt, rptInfo] = this.getResearch(player, this.getPlayerCityYields(player));
+
+        let research_info =``;
+
+        let research_tree = `
+            <button class="purchase-button city-menu" data-name="research_tree">
+                Research Tree
+            </button>
+        `
+        if (completed) {
+            let tech = Technologies.get(completed);
+
+            research_info += `    
+            <div class="city-header">Research Complete</div>
+            <div class="buildings-list">
+                <div>
+                    <div class="unit-details">
+                        <div class="unit-name">${tech.name}</div>
+                        <div class="unit-effect">
+                            ${tech.description}
+                        </div>
+                        </br>
+
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <img id="menu-research-img" src="${tech.image}">
+            </div>
+            <div class="city-header">
+                ${tech.quote}
+            </div>
+            `;
+        }
+        let tech = Technologies.get(player.research.current);
+        if (tech !== undefined) {
+            let turns = Math.ceil((tech.cost - player.research.progress) / rpt);
+
+            research_info += `
+            <div class="section-title">
+                <span>Currently Researching</span>
+            </div>
+            `
+            research_info += `    
+            <div class="buildings-list">
+                <div class="unit city-menu" data-name="pick_research" data-target="${tech.id}">
+                    <div class="unit-icon">🧪</div>
+                    <div class="unit-details">
+                        <div class="unit-name">${tech.name}</div>
+                        <div class="unit-effect">
+                            ${tech.description}
+                        </div>
+                    </div>
+                    <div class="unit-cost">
+                        <div class="effect-icon research-icon">🧪</div>
+                        <span class="cost-value">${turns}</span>
+                        <div class="effect-icon production-icon">⚒️</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        let options = ``
+        Technologies.forEach(tech => {
+            if (canUnlock(tech) === false) {
+                return;
+            }
+            if (tech.id === player.research.current) {
+                return;
+            }
+            let turns = Math.ceil(tech.cost / rpt);
+            let h = `
+                <div class="unit city-menu" data-name="pick_research" data-target="${tech.id}">
+                    <div class="unit-icon">🧪</div>
+                    <div class="unit-details">
+                        <div class="unit-name">${tech.name}</div>
+                        <div class="unit-effect">
+                            ${tech.description}
+                        </div>
+                    </div>
+                    <div class="unit-cost">
+                        <span class="cost-value">${turns}</span>
+                        <div class="effect-icon production-icon">⚒️</div>
+                    </div>
+                </div>
+            `
+            options += h;
+        });
+
+        // template
+        let info = `
+            <div class="city-panel">
+                <div class="city-header">
+                    Research
+                </div>
+                ${research_tree}
+                ${research_info}
+                <div class ="section">
+                    <div class="section-title">
+                        <span>Research Choices</span>
+                    </div>
+                    <div class="buildings-list">
+                        ${options}
+                    </div>
+                </div>
+            </div>
+        `;
+        this.showMenu(info, "research");
+    }
 
     showCityMenu(tile: TileData) {
         let player = this.getPlayer(tile.improvement.owner);
@@ -4359,9 +4515,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         let info = `
             <div class="city-panel">
                 <div class="city-header">
-                    <div class="nav-arrow left">⟨</div>
                     <div class="city-name">${tile.improvement.name}</div>
-                    <div class="nav-arrow right">⟩</div>
                 </div>
                 <div class="resources">
                 ${yields}
@@ -4407,7 +4561,7 @@ export default class MapView implements MapViewControls, TileDataSource {
 
     getYieldsForCity(tile: TileData) {
         // from worked tiles
-        let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 6).filter(t => t.city === tile.city);
+        let tiles = this.getTileGrid().neighbors(tile.q, tile.r, 4).filter(t => t.city === tile.city);
         let tt = this.getBestYield(tiles, tile);
 
         let yields: {[key: string]: number} = {};
@@ -4418,6 +4572,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         
         yields = { ...tile.yields };
 
+        // From tiles and improvements
         for (let i = 0; i < tt.length; i++) {
             let t = tt[i];
             if (t === tile) {
@@ -4434,7 +4589,9 @@ export default class MapView implements MapViewControls, TileDataSource {
                 yields[key] += value;
             }
             if (tile.resource !== undefined) {
-                resources[tile.resource.name] += 1;
+                if (tile.worker_improvement) {
+                    resources[tile.resource.name] += 1;
+                }
             }
             if (tile.worker_improvement !== undefined) {
                 for (const [keyw, valuew] of Object.entries(tile.worker_improvement.yields)) {
@@ -4635,6 +4792,29 @@ export default class MapView implements MapViewControls, TileDataSource {
             });
             this.CloseMenu();
         }
+
+        if (name === "research_tree") {
+            this.CloseMenu();
+            this.showResearchTree();
+            return;
+        }
+        if (name === "pick_research") {
+            let tech = Technologies.get(target);
+            if (tech === undefined) {
+                console.log("no tech found");
+                return;
+            }
+            if (tech.id !== player.research.current) {
+                player.research.current = tech.id;
+                player.research.progress = 0;
+            }
+            this.updateResourcePanel();
+            this.CloseMenu();
+            this.keep_menu = false;
+            this.focusOnNextAction();
+            return;
+        }
+
         if (name === "replay") {
             target = (target_em as HTMLInputElement).value;
             console.log(target)
@@ -4678,6 +4858,18 @@ export default class MapView implements MapViewControls, TileDataSource {
             }
             const workerImprovement = CreateWorkerImprovement(type);
             this.addWorkerImprovementToMap(workerImprovement, tile);
+            // check if we should trigger notification
+            if (tile.resource) {
+                const mm = this;
+                this.playSound(asset("sounds/ui/drop.mp3"));
+                let city_name = player.improvements[tile.city].name;
+                this.toast({
+                    icon: `../../assets/map/resources/map/${tile.resource.name}.png`,
+                    text: `${capitalize(tile.resource.name)} has been connected to ${city_name}!`,
+                    onClick: function () { }
+                });
+            }
+
             this.focusOnNextAction();
         }
         if (name === "unit_fortify") {
@@ -4973,7 +5165,7 @@ export default class MapView implements MapViewControls, TileDataSource {
     
         if (totalTurns > 0) {
             controls += `<label for="replay-slider" style="color: white; font-size: 0.9em; white-space: nowrap;">${turnBCStart}</label>`;
-            controls += `<input type="range" id="replay-slider" class="city-menu" data-name="replay" min="0" max="${maxTurnIndex}" value="${turn}" step="1" style="flex-grow: 1;">`;
+            controls += `<input type="range" id="replay-slider" class="city-menu" data-name="replay" min="0" max="${maxTurnIndex}" value="${turn}" step="1" style="flex-grow: 1; cursor: pointer;">`;
             controls += `<span id="replay-turn-display" style="color: white; font-weight: bold; min-width: 40px; text-align: right;">${turnBCEnd}</span>`;
         } else {
             controls += '<span style="color: white;">No replay data available.</span>';
@@ -4983,7 +5175,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         controls += `<h5>${turnBCCurrent} (Turn: ${turn})</h5>`;
     
         this.showMenu(controls, "replay");
-    
+        
         type DiffData = {
             added: string[];
             removed: string[];

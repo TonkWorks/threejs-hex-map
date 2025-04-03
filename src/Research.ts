@@ -7,6 +7,7 @@ export interface Technology {
     quote: string;
     cost: number;
     quote_audio?: string;
+    description?: string;
     population_growth_multiplier?: number;
     gold_growth_multiplier?: number;
     unlocks?: string[];
@@ -24,12 +25,16 @@ interface TechTree {
 
 export const Technologies = new Map<string, Technology>([
     ['agriculture', { id: 'agriculture', name: 'Agriculture', dependencies: [], cost: 4, population_growth_multiplier: 20, quote_audio: "/sounds/research/llm.mp3", quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
+    ['animal_husbandry', { id: 'animal_husbandry', name: 'Animal Husbandry', description: "Allows for a ranch to be built.", dependencies: [], cost: 4, quote_audio: "/sounds/research/llm.mp3", quote: "", image: "../../assets/research/agriculture.webp" }],
+
+    ['mining', { id: 'mining', name: 'Mining', dependencies: [], cost: 4, description: "Allows for a mine to be built", quote: "Mining: giving rocks a chance to see the sun, one explosion at a time.", image: "../../assets/research/mining.webp" }],
+    ['advanced_mining', { id: 'advanced_mining', name: 'Advanced Mining', description: "Allows for a quarry to be built", dependencies: ['mining'], cost: 4, quote_audio: "/sounds/research/llm.mp3", quote: "", image: "../../assets/research/agriculture.webp" }],
+
     ['pottery', { id: 'pottery', name: 'Pottery', dependencies: ['agriculture'], cost: 4, population_growth_multiplier: 20, quote: "Agriculture is the art of persuading the soil to produce plants; if it resists, apply more manure.", image: "../../assets/research/agriculture.webp" }],
     ['writing', { id: 'writing', name: 'Writing', dependencies: ['pottery'], cost: 4, population_growth_multiplier: 20, quote: "Writing: because history isn't going to exaggerate itself!", image: "../../assets/research/embassy.webp" }],
     ['mathematics', { id: 'mathematics', name: 'Mathematics', dependencies: ['iron_working',], cost: 4, gold_growth_multiplier: 20, quote: "Mathematics: where numbers go to have a party and leave their logic behind.", image: "../../assets/research/mining.webp" }],
     ['engineering', { id: 'engineering', name: 'Engineering', dependencies: ['writing', 'mathematics'], cost: 4, quote: "Engineering: the art of fixing problems you didn't know you had, in ways you don't understand.", image: "../../assets/research/mining.webp" }],
 
-    ['mining', { id: 'mining', name: 'Mining', dependencies: [], cost: 4, gold_growth_multiplier: 20, quote: "Mining: giving rocks a chance to see the sun, one explosion at a time.", image: "../../assets/research/mining.webp" }],
     ['iron_working', { id: 'iron_working', name: 'Iron Working', dependencies: ['mining'], cost: 4, gold_growth_multiplier: 20, quote: "Iron Working: because stabbing someone with a bronze sword was so last millennium.", image: "../../assets/research/mining.webp" }],
 
 
@@ -289,7 +294,7 @@ export function RenderTechTree(
     menuModal.style.visibility = "visible";
 }
 
-function canUnlock(tech: Technology): boolean {
+export function canUnlock(tech: Technology): boolean {
     return tech.dependencies.every(d => d in techTree.playerTechs) &&
         !(tech.id in techTree.playerTechs);
 }
