@@ -18,6 +18,8 @@
         "src/three",
         "node_modules",
         "electron",
+        "assets",
+        "dist",
         "build",
         "lib"
     ]

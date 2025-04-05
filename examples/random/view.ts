@@ -47,10 +47,16 @@ async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_I
         const terrainValue = (hash + spatialFactor) / 2;
         
         // Use terrainValue to determine terrain type with weighted distribution
-        if (terrainValue < 15) {
-            return "desert"; // 15% chance
-        } else if (terrainValue < 35) {
+        if (terrainValue < 8) {
+            return "desert";
+        } else if (terrainValue < 15) {
+            return "desert_2";
+        } else if (terrainValue < 30) {
             return "plains"; // 20% chance
+        }  else if (terrainValue < 35) {
+            return "plains_2"; // 20% chance
+        } else if (terrainValue < 40) {
+            return "plains_3"; // 40% chance
         } else if (terrainValue < 75) {
             return "grass"; // 40% chance
         } else if (terrainValue < 90) {
@@ -64,7 +70,11 @@ async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_I
 
     function terrainAt(q: number, r: number, height: number): string {
         if (height < 0.0) return "ocean"
-        else if (height > 0.75) return "mountain"
+        else if (height > 0.75) {
+            let montainTextures = ["mountain", "mountain_2", "mountain_3"]
+            let mountainTexture = varying(...montainTextures)
+            return mountainTexture
+        }
         else if (Math.abs(r) > mapSize * 0.4) return coldZone(q, r, height)
         else return warmZone(q, r, height)
     }
@@ -87,11 +97,11 @@ async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_I
         let terrain = getTerrain(tile)
         if (terrain === "ocean" && tile.height >= 0.0) {
             // Re-calculate terrain based on the new height
-            terrain = terrainAt(q, r, tile.height);
-            
+            tile.terrain = terrainAt(q, r, tile.height);
+            terrain = getTerrain(tile)
             // Update tree indexes if needed
             if (terrain !== "desert" && terrain !== "mountain") {
-                tile.treeIndex = varying(true, false, false) ? treeAt(q, r, terrain) : undefined;
+                tile.treeIndex = varying(true, false, false) ? treeAt(q, r, tile.terrain) : undefined;
             }
         }
     });

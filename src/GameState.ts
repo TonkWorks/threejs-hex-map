@@ -15,6 +15,7 @@ export interface Player {
     units: {  [key: string]: any };
     improvements: {  [key: string]: any};
     diplomatic_actions: { [key: string]: any};
+    events: { [key: string]: any };
     research: { current: string, researched: { [key: string]: boolean }, progress: number };
 }
 
@@ -61,6 +62,7 @@ function createPlayer(): Player {
         units: {},
         improvements: {},
         diplomatic_actions: {},
+        events: {},
         research: { current: 'agriculture', researched: {}, progress: 0 },
     };
 }

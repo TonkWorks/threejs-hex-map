@@ -39,6 +39,7 @@ import { CreateWorkerImprovement, WorkerImprovement, WorkerImprovementMap } from
 import { RawShaderMaterial, Triangle } from './three';
 import { BonusMap } from './Bonsues';
 import { CircleProgressHTML } from './map/CircleProgressUI';
+import { CreateNaturalWonder, NaturalWonder, NaturalWonderMap } from './ImprovementsNaturalWonders';
 
 // import * as postProcessing from './src/third/postprocessing'
 declare const tsParticles: any;
@@ -452,7 +453,9 @@ export default class MapView implements MapViewControls, TileDataSource {
         let revealed_goodie_hut = null;
         let revealed_barb = null;
         let revealed_players = new Set<string>(); // Create a set to store all revealed players
+        let revealed_natural_wonders = [];
 
+        const currentPlayer = this.getPlayer(this._gameState.currentPlayer);
         for (const tile of tiles) {
             if (tile.clouds) {
                 continue;
@@ -489,6 +492,11 @@ export default class MapView implements MapViewControls, TileDataSource {
                 }
                 if (tile.worker_improvement !== undefined) {
                     tile.worker_improvement.model.visible = true;
+                }
+                if (tile.naturalWonder !== undefined) {
+                    tile.naturalWonder.model.visible = true;
+                    tile.naturalWonder.mapModel.visible = true;
+                    revealed_natural_wonders.push(tile);
                 }
                 if (tile.unit) {
                     if (tile.unit.model.visible === false) {
@@ -547,10 +555,30 @@ export default class MapView implements MapViewControls, TileDataSource {
             });
         }
 
-        // Process each revealed player
-        const currentPlayer = this._gameState.players[this._gameState.currentPlayer];
+        for (const tile of revealed_natural_wonders) {
+            let key = `discovered_natural_wonder_${tile.naturalWonder.type}`
+            if (currentPlayer.events[key]) {
+                continue
+            }
+            console.log( Object.keys(currentPlayer.events))
+            currentPlayer.events[key] = true;
+            this.menuQueue.push(() => {
+                sound = asset("sounds/units/barb-hit.mp3");
+                let n = NaturalWonderMap[tile.naturalWonder.type];
+                this.showMenu(`Natural Wonder Discovered </br> ${n.name} </br> ${n.description}`, 'small')
+                const mm = this;
+                this.toast({
+                    icon: "../../assets/map/icons/star.png",
+                    text: "Natural Wonder Discovered",
+                    onClick: function () {
+                        mm.selectTile(tile);
+                        mm.panCameraTo(mm.selectedTile.q, mm.selectedTile.r - 3);
+                    }
+                });
+            });
+        }
+
         revealed_players.forEach(playerName => {
-            
             if (playerName && playerName !== this._gameState.currentPlayer) {
                 // Check if we've already met this player
                 if (!currentPlayer.diplomatic_actions[playerName] || 
@@ -706,6 +734,25 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (!tile.clouds) {
             workerImprovement.model.visible = true;
         }
+    }
+
+
+    addNaturalWonderToMap(naturalWonder: NaturalWonder, tile: TileData) {
+        const worldPos = qrToWorld(tile.q, tile.r);
+        naturalWonder.model.position.set(worldPos.x, worldPos.y - .8, 0.3);
+        naturalWonder.tileInfo = { q: tile.q, r: tile.r };
+        tile.naturalWonder = naturalWonder;
+        this._units_models.add(naturalWonder.model);
+        if (!tile.clouds) {
+            naturalWonder.model.visible = true;
+        }
+        
+        if (naturalWonder.mapModel) {
+            naturalWonder.mapModel.visible = false;
+            naturalWonder.mapModel.position.set(worldPos.x, worldPos.y + .2, 0.2);
+            this._units_models.add(naturalWonder.mapModel);
+
+        } 
     }
 
     addTerritoryOverlay(t: TileData, city_id: string, player: Player) {
@@ -958,8 +1005,14 @@ export default class MapView implements MapViewControls, TileDataSource {
                     tile.worker_improvement = undefined;
                     continue;
                 }
-                this.addWorkerImprovementToMap(
-                    CreateWorkerImprovement(type, index), tile);
+                this.addWorkerImprovementToMap(CreateWorkerImprovement(type, index), tile);
+            }
+
+            for (const tile of this._tileGrid.toArray()) {
+                if (tile.naturalWonder === undefined) {
+                    continue;
+                }
+                this.addNaturalWonderToMap(CreateNaturalWonder(tile.naturalWonder.type), tile);
             }
 
             for (const [key, player] of Object.entries(this._gameState.players)) {
@@ -1074,6 +1127,13 @@ export default class MapView implements MapViewControls, TileDataSource {
                 this.addWorkerImprovementToMap(CreateWorkerImprovement("goodie_hut"), tile);
             }
         }
+
+
+        for (const [key, NaturalWonder] of Object.entries(NaturalWonderMap)) {
+            let tile = this.getRandomTile(true);
+            this.addNaturalWonderToMap(CreateNaturalWonder(key), tile);
+        }
+
 
         this.updateGlobalFog();
         this.addUnitSelectors();
@@ -3786,6 +3846,16 @@ export default class MapView implements MapViewControls, TileDataSource {
             info += `<tr><td>Luxury Resource: ${capitalize(resource_name)}</td><td>+${amount}</td></tr>`;
         }
 
+        let amount = 0;
+        Object.keys(player.events).forEach((key) => {
+            if (key.startsWith("discovered_natural_wonder_")) {
+                amount += 1;
+            }
+        });
+        if (amount > 0) {
+            happiness += amount;
+            info += `<tr><td>Natural Wonders</td><td>+${amount}</td></tr>`;
+        }
         // bonuses;
 
         let difficulty = 3;
@@ -4219,9 +4289,20 @@ export default class MapView implements MapViewControls, TileDataSource {
         this.menuPanel.innerHTML = info;
         const menuModal = document.getElementById("menu-modal");
         this.menuPanel.classList.remove("city-menu-panel");
+        this.menuPanel.style.top = "0%";
+        this.menuPanel.style.left = "0%";
+        this.menuPanel.style.height = "100%";
         if (layout === "center") {
             this.menuPanel.style.left = "15%";
             this.menuPanel.style.width = "70%";
+            this.menuPanel.style.visibility = "visible";
+            menuModal.style.visibility = "visible";
+        }
+        else if (layout === "small") {
+            this.menuPanel.style.left = "40%";
+            this.menuPanel.style.width = "20%";
+            this.menuPanel.style.top = "0%";
+            this.menuPanel.style.height = "30%";
             this.menuPanel.style.visibility = "visible";
             menuModal.style.visibility = "visible";
         }
