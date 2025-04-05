@@ -510,6 +510,7 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	    exports.isWater = isWater;
 	    exports.isHill = isHill;
 	    exports.isForest = isForest;
+	    exports.getTerrain = getTerrain;
 	    exports.isMountain = isMountain;
 	    function isLand(height) {
 	        return height >= 0.0 && height < 0.75;
@@ -524,6 +525,12 @@ define("threejs-hex-map", ["three"], function(__WEBPACK_EXTERNAL_MODULE_4__) { r
 	        if (t.treeIndex !== undefined) {
 	            return true;
 	        }
+	    }
+	    function getTerrain(t) {
+	        if (t.terrain.includes('_')) {
+	            return t.terrain.split('_')[0];
+	        }
+	        return t.terrain;
 	    }
 	    function isMountain(height) {
 	        return height >= 0.75;

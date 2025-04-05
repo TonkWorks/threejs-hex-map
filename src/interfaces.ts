@@ -50,6 +50,12 @@ export function isForest(t: TileData) {
         return true
     }
 }
+export function getTerrain(t: TileData) {
+    if (t.terrain.includes('_')) {
+        return t.terrain.split('_')[0];
+    }
+    return t.terrain;
+}
 
 export function isMountain(height: Height) {
     return height >= 0.75

@@ -1,7 +1,7 @@
 import THREE, { Audio, AudioListener, PerspectiveCamera, Scene, WebGLRenderer, Vector3, Group, Camera, Mesh, BoxBufferGeometry, MeshBasicMaterial, Object3D, SpotLight, CylinderGeometry, AdditiveBlending, DoubleSide, Color, TextureLoader, AudioLoader, PCFSoftShadowMap, SpotLightHelper, RingBufferGeometry, CanvasTexture, SpriteMaterial, Sprite, Float32BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments, Vector2, LineDashedMaterial, ArrowHelper, Line, FrontSide, PMREMGenerator, MathUtils } from 'three';
 import { generateRandomMap } from "./map/map-generator"
 import MapMesh from "./map/MapMesh"
-import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater, isHill, isForest } from './interfaces';
+import { TextureAtlas, TileData, TileDataSource, QR, isMountain, isWater, isHill, isForest, getTerrain } from './interfaces';
 import { loadFile, getRandomInt, updateMaterialColor, deepCopy, loadTextureAtlas, asset, capitalize, deepCopyIgnoring } from "./util"
 import Grid from './map/Grid';
 import DefaultTileSelector from "./map/DefaultTileSelector"
@@ -1015,7 +1015,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         // set initial yields
         for (let tile of this._tileGrid.toArray()) {
             tile.yields = { "gold": 0 }
-            switch(tile.terrain) {
+            switch(getTerrain(tile)) {
                 case 'grass':
                     tile.yields = { "food": 1, "production": 1, "gold": 1 };
                     break;
@@ -1516,7 +1516,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         tooltip.innerHTML = ""
         let data = []
         
-        data.push(`<div class="panel-title">${capitalize(tile.terrain)}</div>`);
+        data.push(`<div class="panel-title">${capitalize(getTerrain(tile))}</div>`);
         let battleInfo = this.generateBattleInfo(tile);
         if (battleInfo !== "") {
             data.push(battleInfo);

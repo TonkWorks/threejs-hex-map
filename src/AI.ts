@@ -1,7 +1,7 @@
 import { BuildingMap } from './CityImprovements';
 import { Player, DeclareWarBetweenPlayers } from './GameState';
 import { CreateWorkerImprovement } from './ImprovementsWorker';
-import { TileData } from './interfaces';
+import { getTerrain, TileData } from './interfaces';
 import MapView from './MapView';
 import Unit, { CreateCity, createUnit } from './Units';
 
@@ -268,7 +268,8 @@ function placeBarbarianEncampents(mapView: MapView) {
         if (t.fog === false) {
             continue;
         }
-        if (t.terrain === "ocean" || t.terrain === "mountain") {
+        let terrain = getTerrain(t)
+        if (terrain === "ocean" || terrain === "mountain") {
             continue;
         }
         if (t.owner !== undefined && t.owner !== "") {

@@ -1,6 +1,6 @@
 import MapView from '../../src/MapView';
 import { loadFile, loadJSON, loadTexture } from '../../src/util';
-import { TextureAtlas, isMountain, isWater, TileData } from '../../src/interfaces';
+import { TextureAtlas, isMountain, isWater, TileData, getTerrain } from '../../src/interfaces';
 import {generateRandomMap, MapType} from "../../src/map/map-generator"
 import { varying } from './util';
 import { TextureLoader, Color } from 'three';
@@ -23,7 +23,43 @@ async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_I
     }
 
     function warmZone(q: number, r: number, height: number): string {
-        return varying("grass", "grass", "grass", "plains", "plains", "desert")
+        // Simple coordinate-based hash to create coherent regions
+        // This combines coordinates to create stable terrain "pockets"
+        const regionSize = 2; // Controls how large terrain groups are (2-3 cells)
+        
+        // Create region coordinates (nearby cells will share same region)
+        const regionQ = Math.floor(q / regionSize);
+        const regionR = Math.floor(r / regionSize);
+        
+        // Handle negative coordinates differently to prevent bias
+        // Use absolute values in the hash calculation to prevent left-side bias
+        const absQ = Math.abs(regionQ);
+        const absR = Math.abs(regionR);
+        
+        // Create a more balanced hash value from the region coordinates
+        // Using different prime multipliers and adding a rotation factor
+        const hash = ((absQ * 37 + absR * 29) + (regionQ * regionR * 13)) % 100;
+        
+        // Use a secondary spatial factor to prevent deserts from clustering on one side
+        const spatialFactor = Math.sin(regionQ * 0.3 + regionR * 0.4) * 50 + 50; // 0-100 range
+        
+        // Combine the hash and spatial factor for final terrain determination
+        const terrainValue = (hash + spatialFactor) / 2;
+        
+        // Use terrainValue to determine terrain type with weighted distribution
+        if (terrainValue < 15) {
+            return "desert"; // 15% chance
+        } else if (terrainValue < 35) {
+            return "plains"; // 20% chance
+        } else if (terrainValue < 75) {
+            return "grass"; // 40% chance
+        } else if (terrainValue < 90) {
+            return "grass_2"; // 15% chance
+        } else {
+            return "plains"; // 10% chance
+        }
+
+        // return varying("grass", "grass", "grass_2", "plains", "plains", "desert")
     }
 
     function terrainAt(q: number, r: number, height: number): string {
@@ -48,13 +84,14 @@ async function generateMap(mapSize: number, mapType: MapType = MapType.ONE_BIG_I
     }, mapType)
 
     grid.forEachQR((q, r, tile) => {
-        if (tile.terrain === "ocean" && tile.height >= 0.0) {
+        let terrain = getTerrain(tile)
+        if (terrain === "ocean" && tile.height >= 0.0) {
             // Re-calculate terrain based on the new height
-            tile.terrain = terrainAt(q, r, tile.height);
+            terrain = terrainAt(q, r, tile.height);
             
             // Update tree indexes if needed
-            if (tile.terrain !== "desert" && tile.terrain !== "mountain") {
-                tile.treeIndex = varying(true, false, false) ? treeAt(q, r, tile.terrain) : undefined;
+            if (terrain !== "desert" && terrain !== "mountain") {
+                tile.treeIndex = varying(true, false, false) ? treeAt(q, r, terrain) : undefined;
             }
         }
     });
