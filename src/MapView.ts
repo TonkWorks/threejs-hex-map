@@ -36,7 +36,7 @@ import { GovernmentsMap } from './Governments';
 import { ResetNegotiations, TradeMenuButtonClicked, TradeMenuHtml } from './PlayerNegotiations';
 import { BuildingMap } from './CityImprovements';
 import { CreateWorkerImprovement, WorkerImprovement, WorkerImprovementMap } from './ImprovementsWorker';
-import { RawShaderMaterial, Triangle } from './three';
+import { PositionalAudio, RawShaderMaterial, Triangle } from './three';
 import { BonusMap } from './Bonsues';
 import { CircleProgressHTML } from './map/CircleProgressUI';
 import { CreateNaturalWonder, NaturalWonder, NaturalWonderMap } from './ImprovementsNaturalWonders';
@@ -3971,7 +3971,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         } else {
             happiness_icon = `icons8-smiling-48.png`
         }
-        happiness_icon = `<img src="../../assets/ui/resources/happiness/${happiness_icon}" style="padding-left: 0px; padding-right: 5px; width: 20px; height: 20px;"/>`
+        happiness_icon = `<img src="../../assets/ui/resources/happiness/${happiness_icon}" style="pad ding-left: 0px; padding-right: 5px; width: 20px; height: 20px;"/>`
 
         let gold_icon = `<img src="../../assets/ui/resources/gold.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
         let taxes_icon = `<img src="../../assets/ui/resources/taxes.png" style="padding-left: 15px; padding-right: 5px; width: 20px; height: 20px;"/>`
@@ -4286,6 +4286,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (this.menuPanel == null) {
             return;
         }
+        this.keep_menu = true;
         this.menuPanel.innerHTML = info;
         const menuModal = document.getElementById("menu-modal");
         this.menuPanel.classList.remove("city-menu-panel");
@@ -4295,7 +4296,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         if (layout === "center") {
             this.menuPanel.style.left = "15%";
             this.menuPanel.style.width = "70%";
-            this.menuPanel.style.visibility = "visible";
+            this.menuPanel.style.visibility  = "visible";
             menuModal.style.visibility = "visible";
         }
         else if (layout === "small") {
@@ -5431,7 +5432,6 @@ export default class MapView implements MapViewControls, TileDataSource {
             sound.position.copy(position);
         }
         audioLoader.load(name, function (buffer) {
-
             sound.setBuffer(buffer);
             // sound.setLoop(false); 
             sound.setVolume(0.5);
@@ -5444,6 +5444,7 @@ export default class MapView implements MapViewControls, TileDataSource {
         document.getElementById('menu-modal').style.visibility = 'hidden';
         document.getElementById('menu').style.visibility = 'hidden';
         this.in_city_menu = false;
+        this.keep_menu = false;
         this.closeReplay();
         if (this.menuQueue.length > 0) {
             let m = this.menuQueue.shift();
